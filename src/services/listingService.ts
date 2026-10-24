@@ -1226,6 +1226,23 @@ export const listingService = {
       const isUuid = (val?: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val || '');
       const validListingId = isUuid(offer.listingId) ? offer.listingId : null;
 
+      // Extract buyer and seller user ids
+      const { data: sessionData } = await supabase.auth.getSession();
+      const buyerUserId = offer.buyerUserId || sessionData?.session?.user?.id || null;
+
+      let sellerUserId = offer.sellerUserId || null;
+      if (!sellerUserId && validListingId) {
+        const { data: cl } = await supabase.from('car_listings').select('user_id').eq('id', validListingId).maybeSingle();
+        if (cl?.user_id) sellerUserId = cl.user_id;
+      }
+      if (!sellerUserId && offer.caseReference) {
+        const { data: cl } = await supabase.from('car_listings').select('user_id').eq('case_reference', offer.caseReference).maybeSingle();
+        if (cl?.user_id) sellerUserId = cl.user_id;
+      }
+
+      newOffer.buyerUserId = buyerUserId || undefined;
+      newOffer.sellerUserId = sellerUserId || undefined;
+
       // 1. Attempt insertion into public.purchase_offers
       const { error: poError } = await supabase
         .from('purchase_offers')
@@ -1233,8 +1250,11 @@ export const listingService = {
           id: offerId,
           listing_id: validListingId,
           case_reference: offer.caseReference,
+          car_title: offer.carTitle,
           buyer_name: offer.buyerName,
           buyer_phone: offer.buyerPhone,
+          buyer_user_id: buyerUserId,
+          seller_user_id: sellerUserId,
           offer_type: offer.offerType,
           offered_price: offer.offeredPrice,
           asking_price: offer.askingPrice,
@@ -1417,12 +1437,13 @@ export const listingService = {
   async respondToOfferBySeller(
     offerId: string,
     decision: 'accept' | 'reject',
-    sellerUserId: string,
-    notes?: string
+    notesOrUserId?: string,
+    extraNotes?: string
   ): Promise<{ success: boolean; message: string }> {
     try {
       const now = new Date().toISOString();
       const newStatus = decision === 'accept' ? 'seller_accepted' : 'seller_rejected';
+      const notes = extraNotes || notesOrUserId || null;
 
       await this.updatePurchaseOfferStatus(offerId, newStatus);
 
@@ -1431,7 +1452,7 @@ export const listingService = {
         .update({
           status: newStatus,
           seller_response_at: now,
-          seller_response_notes: notes || null,
+          seller_response_notes: notes,
           updated_at: now
         })
         .eq('id', offerId);
@@ -1447,7 +1468,7 @@ export const listingService = {
               userId: offer.buyerUserId,
               type: 'offer_accepted',
               title: '🎉 تهانينا! وافق البائع مبدئياً على عرضك',
-              message: `وافق البائع على عرض الشراء بمبلغ ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م على سيارة ${offer.carTitle}. سيتواصل معك مستشار مخلصة لترتيب فحص أوراق البنك والمعاينة الميدانية.`,
+              message: `وافق البائع على عرض الشراء بمبلغ ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م على سيارة ${offer.carTitle}. بانتظار الاعتماد النهائي وتحديد موعد المقابلة البنكية.`,
               linkView: 'profile',
               relatedId: offerId
             });
@@ -1482,6 +1503,74 @@ export const listingService = {
       };
     } catch (err: any) {
       return { success: false, message: err?.message || 'تعذر تسجيل الرد على العرض.' };
+    }
+  },
+
+  /**
+   * ADMIN: Final confirmation of deal between Buyer and Seller (24-hour meeting coordination)
+   */
+  async confirmDealByAdmin(
+    offerId: string,
+    adminNotes: string = 'تم تأكيد الاتفاق وتنسيق المقابلة البنكية خلال 24 ساعة'
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const now = new Date().toISOString();
+      await this.updatePurchaseOfferStatus(offerId, 'accepted');
+
+      await supabase
+        .from('purchase_offers')
+        .update({
+          status: 'accepted',
+          admin_notes: adminNotes,
+          updated_at: now
+        })
+        .eq('id', offerId);
+
+      const offersRes = await this.getPurchaseOffers();
+      const offer = offersRes.offers.find(o => o.id === offerId);
+
+      if (offer) {
+        // 1. Notify Buyer
+        if (offer.buyerUserId) {
+          await this.sendCustomerNotification({
+            userId: offer.buyerUserId,
+            type: 'offer_accepted',
+            title: '🎉 تم اعتماد موافقة البائع وتنسيق المعاينة!',
+            message: `تم اعتماد عرض سعرك بمبلغ ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م على سيارة (${offer.carTitle}). سيتم التواصل معك خلال 24 ساعة لتحديد موعد المقابلة والمعاينة البنكية وإنهاء الإجراءات.`,
+            linkView: 'profile',
+            relatedId: offerId
+          });
+        }
+
+        // 2. Notify Seller
+        let sellerId = offer.sellerUserId;
+        if (!sellerId && offer.listingId) {
+          const { data: car } = await supabase
+            .from('car_listings')
+            .select('user_id')
+            .eq('id', offer.listingId)
+            .maybeSingle();
+          sellerId = car?.user_id;
+        }
+
+        if (sellerId) {
+          await this.sendCustomerNotification({
+            userId: sellerId,
+            type: 'offer_accepted',
+            title: '✅ تم اعتماد قبولك للعرض وتنسيق المقابلة!',
+            message: `تم اعتماد موافقتك على بيع السيارة (${offer.carTitle}) بمبلغ ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م. سيتم التواصل معك خلال 24 ساعة لتحديد موعد المقابلة مع المشتري والتنسيق مع البنك.`,
+            linkView: 'profile',
+            relatedId: offerId
+          });
+        }
+      }
+
+      return {
+        success: true,
+        message: 'تم اعتماد الصفقة بنجاح وإرسال إشعار للمشتري والبائع بالتواصل خلال 24 ساعة!'
+      };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'تعذر اعتماد الصفقة.' };
     }
   },
 

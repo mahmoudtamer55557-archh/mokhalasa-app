@@ -72,6 +72,46 @@ export function App() {
   const [targetProblemCaseRef, setTargetProblemCaseRef] = useState<string | null>(null);
   const [targetProblemAction, setTargetProblemAction] = useState<'edit' | 'documents' | 'offers' | null>(null);
 
+  // Listen for Supabase Authentication State (Vital for Google OAuth Redirect & Session Persistence)
+  useEffect(() => {
+    // 1. Initial Session Check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const mapped = mapSupabaseUserToCustomerUser(session.user);
+        setCustomerUser(mapped);
+        try {
+          localStorage.setItem('mokhalasa_customer_user', JSON.stringify(mapped));
+        } catch {}
+      }
+    });
+
+    // 2. Realtime Auth State Listener (Triggered when Google OAuth redirects back)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        const mapped = mapSupabaseUserToCustomerUser(session.user);
+        setCustomerUser(mapped);
+        try {
+          localStorage.setItem('mokhalasa_customer_user', JSON.stringify(mapped));
+        } catch {}
+
+        // If URL has OAuth callback fragments, clean them and land on profile
+        if (window.location.hash.includes('access_token') || window.location.search.includes('code=')) {
+          window.history.replaceState(null, '', window.location.pathname + '#/profile');
+          setCurrentView('profile');
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setCustomerUser(null);
+        try {
+          localStorage.removeItem('mokhalasa_customer_user');
+        } catch {}
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   // Sync notifications from Database and Active Cases
   useEffect(() => {
     const loadGlobalNotifications = async () => {

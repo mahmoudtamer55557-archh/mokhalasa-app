@@ -254,6 +254,20 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
     }
   };
 
+  // Confirm Deal & Send 24-hr Meeting Notification to Both Parties
+  const handleConfirmDeal = async (offerId: string) => {
+    setOfferActionMsg(null);
+    const res = await listingService.confirmDealByAdmin(offerId);
+    if (res.success) {
+      setOfferActionMsg(res.message);
+      await loadPurchaseOffers();
+      alert(`✅ ${res.message}`);
+    } else {
+      setOfferActionMsg(`خطأ: ${res.message}`);
+      alert(`خطأ: ${res.message}`);
+    }
+  };
+
   // Handle Deactivation / Safe Removal with mandatory reason (Priority 3)
   const handleDeactivateListing = async () => {
     if (!listingToDeactivate) return;
@@ -1534,8 +1548,12 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                         </div>
 
                         <span className={`px-2.5 py-1 rounded-full text-3xs font-extrabold border ${
-                          offer.status === 'new'
+                          offer.status === 'seller_accepted'
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/60 animate-pulse font-black'
+                          : offer.status === 'new'
                             ? 'bg-emerald-950/50 text-emerald-300 border-emerald-800/60'
+                            : offer.status === 'communicated_to_seller'
+                            ? 'bg-amber-950/50 text-amber-300 border-amber-800/60'
                             : offer.status === 'contacted'
                             ? 'bg-blue-950/50 text-blue-300 border-blue-800/60'
                             : offer.status === 'negotiating'
@@ -1544,10 +1562,12 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                             ? 'bg-green-950/50 text-green-300 border-green-800/60'
                             : 'bg-rose-950/50 text-rose-300 border-rose-800/60'
                         }`}>
-                          {offer.status === 'new' ? 'طلب جديد' :
+                          {offer.status === 'seller_accepted' ? '🎉 وافق البائع على العرض' :
+                           offer.status === 'communicated_to_seller' ? 'تم الإرسال للبائع' :
+                           offer.status === 'new' ? 'طلب جديد' :
                            offer.status === 'contacted' ? 'تم التواصل' :
                            offer.status === 'negotiating' ? 'جاري التفاوض' :
-                           offer.status === 'accepted' ? 'مقبول من البائع' : 'مرفوض'}
+                           offer.status === 'accepted' ? 'مقبول ومعتمد نهائياً' : 'مرفوض'}
                         </span>
                       </div>
 
@@ -1581,14 +1601,28 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                         >
                           <option value="new">جديد</option>
                           <option value="contacted">تم التواصل</option>
+                          <option value="communicated_to_seller">أرسل للبائع</option>
+                          <option value="seller_accepted">وافق البائع</option>
                           <option value="negotiating">جاري التفاوض</option>
-                          <option value="accepted">مقبول</option>
+                          <option value="accepted">مقبول ومعتمد</option>
                           <option value="declined">مرفوض</option>
                         </select>
 
                         {/* Forward to Seller & Communication Actions (Priority 5) */}
                         <div className="flex flex-wrap items-center gap-2">
-                          {offer.status !== 'communicated_to_seller' && offer.status !== 'accepted' && offer.status !== 'declined' && (
+                          {offer.status === 'seller_accepted' && (
+                            <button
+                              type="button"
+                              onClick={() => handleConfirmDeal(offer.id)}
+                              className="px-3.5 py-1.5 rounded-xl bg-brand-green hover:bg-emerald-500 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md transition animate-pulse"
+                              title="اعتماد الاتفاق النهائي وإشعار المشتري والبائع بالتواصل خلال 24 ساعة للمقابلة"
+                            >
+                              <CheckCircle2 className="w-4 h-4 text-slate-950" />
+                              <span>اعتماد وتنسيق المقابلة (إشعار الطرفين)</span>
+                            </button>
+                          )}
+
+                          {offer.status !== 'communicated_to_seller' && offer.status !== 'seller_accepted' && offer.status !== 'accepted' && offer.status !== 'declined' && (
                             <button
                               type="button"
                               onClick={() => handleForwardOffer(offer.id)}
