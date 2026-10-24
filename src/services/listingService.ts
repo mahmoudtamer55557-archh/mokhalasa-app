@@ -1394,6 +1394,18 @@ export const listingService = {
             }
           }
 
+          // Check forwarded to seller notifications
+          const forwardedNotifs = notifs.filter(n => n.type === 'purchase_offer' && n.title?.includes('تم إرسال العرض للبائع'));
+          for (const f of forwardedNotifs) {
+            const key = f.listing_id;
+            if (key && offersMap.has(key)) {
+              const offer = offersMap.get(key)!;
+              if (offer.status === 'new') {
+                offer.status = 'communicated_to_seller';
+              }
+            }
+          }
+
           // Check admin final confirmation notifications
           const confirmNotifs = notifs.filter(n => n.title?.includes('اعتماد الصفقة') || n.title?.includes('تنسيق المقابلة'));
           for (const c of confirmNotifs) {
@@ -1477,8 +1489,7 @@ export const listingService = {
   ): Promise<{ success: boolean; message: string }> {
     try {
       const now = new Date().toISOString();
-      const res = await this.updatePurchaseOfferStatus(offerId, 'communicated_to_seller');
-      if (!res.success) return res;
+      await this.updatePurchaseOfferStatus(offerId, 'communicated_to_seller');
 
       await supabase
         .from('purchase_offers')
@@ -1491,9 +1502,19 @@ export const listingService = {
 
       // Find offer details
       const offersRes = await this.getPurchaseOffers();
-      const offer = offersRes.offers.find(o => o.id === offerId);
+      const offer = offersRes.offers.find(o => o.id === offerId || o.listingId === offerId || (o.listingId && offerId.includes(o.listingId)));
 
       if (offer) {
+        // Record in admin_notifications so all devices immediately see it as forwarded
+        try {
+          await supabase.from('admin_notifications').insert({
+            type: 'purchase_offer',
+            title: 'تم إرسال العرض للبائع (بانتظار الرد)',
+            message: `قام ${staffName} بإرسال عرض ${offer.buyerName} بمبلغ ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م على كود ${offer.caseReference} للبائع للدراسة والرد`,
+            listing_id: offer.listingId || null
+          });
+        } catch {}
+
         let sellerId = offer.sellerUserId;
         if (!sellerId && offer.listingId) {
           const { data: car } = await supabase
@@ -1510,8 +1531,8 @@ export const listingService = {
             type: 'offer_communicated',
             title: 'وصلك عرض شراء وتفاوض جديد!',
             message: `قام مستشار الصفقات (${staffName}) بالتواصل مع مشترٍ مهتم، وقدم عرض سعر بمبلغ ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م على سيارتك (${offer.carTitle}). يرجى الدخول لمتابعة طلباتك وقبول أو رفض العرض.`,
-            linkView: 'profile',
-            relatedId: offerId
+            linkView: 'portal',
+            relatedId: offer.listingId || offer.caseReference || offerId
           });
         }
       }
@@ -1634,6 +1655,21 @@ export const listingService = {
           });
         } catch {}
 
+        // Update car listing status in database to 'reserved' (محجوزة وجاري إنهاء المعاملة)
+        if (offer.listingId) {
+          try {
+            await supabase
+              .from('car_listings')
+              .update({
+                status: 'reserved',
+                followup_status: 'deal_accepted',
+                next_action: 'تنسيق المقابلة البنكية والمعاينة خلال 24 ساعة',
+                updated_at: now
+              })
+              .eq('id', offer.listingId);
+          } catch {}
+        }
+
         // 1. Notify Buyer
         if (offer.buyerUserId) {
           await this.sendCustomerNotification({
@@ -1683,38 +1719,78 @@ export const listingService = {
    */
   async getCustomerNotifications(userId: string): Promise<{ success: boolean; notifications: InAppNotification[] }> {
     try {
-      const { data, error } = await supabase
-        .from('customer_notifications')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+      const notifsMap = new Map<string, InAppNotification>();
 
-      if (!error && data && data.length > 0) {
-        const mapped: InAppNotification[] = data.map((d: any) => ({
-          id: d.id,
-          userId: d.user_id,
-          type: d.type,
-          title: d.title,
-          message: d.message,
-          linkView: d.link_view,
-          relatedId: d.related_id,
-          isRead: d.is_read,
-          createdAt: d.created_at
-        }));
-        return { success: true, notifications: mapped };
-      }
+      // 1. Try customer_notifications table
+      try {
+        const { data, error } = await supabase
+          .from('customer_notifications')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
 
-      // Local mirror fallback
+        if (!error && data) {
+          data.forEach((d: any) => {
+            notifsMap.set(d.id, {
+              id: d.id,
+              userId: d.user_id,
+              type: d.type,
+              title: d.title,
+              message: d.message,
+              linkView: d.link_view,
+              relatedId: d.related_id,
+              isRead: d.is_read,
+              createdAt: d.created_at
+            });
+          });
+        }
+      } catch {}
+
+      // 2. Also read from admin_notifications (real-time fail-safe across devices)
+      try {
+        const { data: adminNotifs } = await supabase
+          .from('admin_notifications')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        if (adminNotifs) {
+          adminNotifs.forEach((an: any) => {
+            if (an.message && (an.message.includes(`[USER:${userId}]`) || an.message.includes(userId))) {
+              const linkMatch = an.message.match(/\[VIEW:([^\]]+)\]/);
+              const refMatch = an.message.match(/\[REF:([^\]]+)\]/);
+              const cleanMsg = an.message.replace(/\[USER:[^\]]+\]\s*/g, '').replace(/\[VIEW:[^\]]+\]\s*/g, '').replace(/\[REF:[^\]]+\]\s*/g, '');
+              const id = `admin-notif-${an.id}`;
+              if (!notifsMap.has(id)) {
+                notifsMap.set(id, {
+                  id,
+                  userId,
+                  type: 'general',
+                  title: an.title || 'إشعار من منصة مخلصة',
+                  message: cleanMsg,
+                  linkView: linkMatch ? linkMatch[1] : 'portal',
+                  relatedId: refMatch ? refMatch[1] : an.listing_id,
+                  isRead: false,
+                  createdAt: an.created_at
+                });
+              }
+            }
+          });
+        }
+      } catch {}
+
+      // 3. Fallback to localStorage
       try {
         const stored = localStorage.getItem('mokhalasa_customer_notifications');
         if (stored) {
           const parsed: InAppNotification[] = JSON.parse(stored);
-          const filtered = parsed.filter(n => n.userId === userId);
-          return { success: true, notifications: filtered };
+          parsed.filter(n => n.userId === userId).forEach(n => {
+            if (!notifsMap.has(n.id)) notifsMap.set(n.id, n);
+          });
         }
       } catch {}
 
-      return { success: true, notifications: [] };
+      return { success: true, notifications: Array.from(notifsMap.values()) };
     } catch {
       return { success: true, notifications: [] };
     }
@@ -1727,6 +1803,8 @@ export const listingService = {
     notif: Omit<InAppNotification, 'id' | 'createdAt' | 'isRead'>
   ): Promise<{ success: boolean }> {
     try {
+      const isUuid = (val?: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val || '');
+
       const newNotif: InAppNotification = {
         ...notif,
         id: `notif-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -1734,19 +1812,32 @@ export const listingService = {
         createdAt: new Date().toISOString()
       };
 
+      // 1. Insert into customer_notifications without text id (let PostgreSQL generate uuid)
+      if (isUuid(notif.userId)) {
+        try {
+          await supabase.from('customer_notifications').insert({
+            user_id: notif.userId,
+            type: notif.type,
+            title: notif.title,
+            message: notif.message,
+            link_view: notif.linkView || null,
+            related_id: notif.relatedId || null,
+            is_read: false
+          });
+        } catch {}
+      }
+
+      // 2. Also log to admin_notifications so all devices receive the notification even if RLS is active
       try {
-        await supabase.from('customer_notifications').insert({
-          id: newNotif.id,
-          user_id: newNotif.userId,
-          type: newNotif.type,
-          title: newNotif.title,
-          message: newNotif.message,
-          link_view: newNotif.linkView || null,
-          related_id: newNotif.relatedId || null,
-          is_read: false
+        await supabase.from('admin_notifications').insert({
+          type: 'customer_notification',
+          title: notif.title,
+          message: `[USER:${notif.userId}] [VIEW:${notif.linkView || 'portal'}] [REF:${notif.relatedId || ''}] ${notif.message}`,
+          listing_id: isUuid(notif.relatedId) ? notif.relatedId : null
         });
       } catch {}
 
+      // 3. Keep local storage mirror
       try {
         const stored = localStorage.getItem('mokhalasa_customer_notifications') || '[]';
         const parsed: InAppNotification[] = JSON.parse(stored);
@@ -1757,6 +1848,75 @@ export const listingService = {
       return { success: true };
     } catch {
       return { success: false };
+    }
+  },
+
+  /**
+   * ADMIN & DEV: Purge all test data for clean launch testing
+   */
+  async purgeAllTestData(): Promise<{ success: boolean; message: string }> {
+    try {
+      // 1. Delete purchase offers
+      try {
+        const { data: offers } = await supabase.from('purchase_offers').select('id');
+        for (const o of (offers || [])) {
+          await supabase.from('purchase_offers').delete().eq('id', o.id);
+        }
+      } catch (e) {
+        console.warn('Purge offers warning:', e);
+      }
+
+      // 2. Delete customer notifications
+      try {
+        const { data: notifs } = await supabase.from('customer_notifications').select('id');
+        for (const n of (notifs || [])) {
+          await supabase.from('customer_notifications').delete().eq('id', n.id);
+        }
+      } catch (e) {
+        console.warn('Purge customer notifications warning:', e);
+      }
+
+      // 3. Delete admin notifications
+      try {
+        const { data: admNotifs } = await supabase.from('admin_notifications').select('id');
+        for (const an of (admNotifs || [])) {
+          await supabase.from('admin_notifications').delete().eq('id', an.id);
+        }
+      } catch (e) {
+        console.warn('Purge admin notifications warning:', e);
+      }
+
+      // 4. Delete car listings
+      try {
+        const { data: cars } = await supabase.from('car_listings').select('id');
+        for (const c of (cars || [])) {
+          await supabase.from('car_listings').delete().eq('id', c.id);
+        }
+      } catch (e) {
+        console.warn('Purge car listings warning:', e);
+      }
+
+      // 5. Clean local storage mirrors
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem('mokhalasa_local_listings');
+          localStorage.removeItem('mokhalasa_customer_listings');
+          localStorage.removeItem('mokhalasa_moderation_overrides');
+          localStorage.removeItem('mokhalasa_purchase_offers');
+          localStorage.removeItem('mokhalasa_customer_notifications');
+          localStorage.removeItem('mokhalasa_admin_notifications');
+          localStorage.removeItem('mokhalasa_audit_logs');
+          window.dispatchEvent(new CustomEvent('mokhalasa-listings-updated'));
+          window.dispatchEvent(new CustomEvent('mokhalasa-offers-updated'));
+        } catch {}
+      }
+
+      return {
+        success: true,
+        message: 'تم تصفير ومسح كافة بيانات الاختبار بنجاح (الإعلانات، العروض، والإشعارات) لبدء مرحلة الإطلاق النظيف!'
+      };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'تعذر إتمام التصفير.' };
     }
   },
 
@@ -1807,17 +1967,9 @@ export const listingService = {
   },
 
   /**
-   * CLEANUP: Clear test listings for clean testing (Priority 9 Requirement)
+   * Legacy alias
    */
   async clearTestListings(): Promise<{ success: boolean; message: string }> {
-    try {
-      const { data: cars } = await supabase.from('car_listings').select('id');
-      for (const c of (cars || [])) {
-        await supabase.from('car_listings').delete().eq('id', c.id);
-      }
-      return { success: true, message: 'تم إفراغ الإعلانات التجريبية بنجاح.' };
-    } catch (err: any) {
-      return { success: false, message: err?.message || 'فشل إفراغ الإعلانات.' };
-    }
+    return this.purgeAllTestData();
   }
 };

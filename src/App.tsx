@@ -187,6 +187,10 @@ export function App() {
     };
 
     loadGlobalNotifications();
+
+    // Auto-poll every 5 seconds so notifications arrive live across devices without refresh
+    const pollInterval = setInterval(loadGlobalNotifications, 5000);
+    return () => clearInterval(pollInterval);
   }, [customerUser, distressedCases]);
 
   const unreadNotificationsCount = useMemo(() => {

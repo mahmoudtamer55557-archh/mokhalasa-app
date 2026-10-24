@@ -125,6 +125,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
   const [purchaseOffers, setPurchaseOffers] = useState<PurchaseOffer[]>([]);
   const [offersLoading, setOffersLoading] = useState(false);
   const [offerActionMsg, setOfferActionMsg] = useState<string | null>(null);
+  const [isPurging, setIsPurging] = useState(false);
 
   // Load Database Listings for Moderation (Loads all so tab counts & filters work instantly)
   const loadModerationListings = useCallback(async () => {
@@ -265,6 +266,25 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
     } else {
       setOfferActionMsg(`خطأ: ${res.message}`);
       alert(`خطأ: ${res.message}`);
+    }
+  };
+
+  // 1-Click Purge of All Test Data (Listings, Offers, Notifications) for Pre-Launch Testing
+  const handlePurgeAllData = async () => {
+    const confirmed = window.confirm(
+      '⚠️ تأكيد تصفير بيانات الاختبار:\n\nهل أنت متأكد من مسح كافة الإعلانات والعروض والإشعارات التجريبية؟\nسيتم إفراغ قاعدة البيانات لتبدأ التجربة والاختبار على نظيف تماماً قبل الإطلاق.'
+    );
+    if (!confirmed) return;
+    setIsPurging(true);
+    try {
+      const res = await listingService.purgeAllTestData();
+      alert(res.message);
+      await loadModerationListings();
+      await loadPurchaseOffers();
+    } catch (err: any) {
+      alert('حدث خطأ أثناء التصفير: ' + (err?.message || 'خطأ غير معروف'));
+    } finally {
+      setIsPurging(false);
     }
   };
 
@@ -690,6 +710,16 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
           </button>
 
           <button
+            onClick={handlePurgeAllData}
+            disabled={isPurging}
+            className="px-3 py-1.5 rounded-xl bg-red-950/80 hover:bg-red-900 border border-red-800 text-red-200 text-xs font-bold transition flex items-center gap-1.5"
+            title="إفراغ بيانات الاختبار بالكامل (إعلانات، عروض، إشعارات)"
+          >
+            <Trash2 className={`w-3.5 h-3.5 text-red-400 ${isPurging ? 'animate-spin' : ''}`} />
+            <span>{isPurging ? 'جاري التصفير...' : 'تصفير بيانات الاختبار'}</span>
+          </button>
+
+          <button
             onClick={handleLogout}
             className="px-3 py-1.5 rounded-xl bg-rose-950/70 hover:bg-rose-900 border border-rose-800/60 text-rose-300 text-xs font-bold transition flex items-center gap-1.5"
             title="تسجيل الخروج من لوحة العمليات"
@@ -803,6 +833,35 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
         {activeTab === 'cases' && (
           <div className="space-y-6 animate-fadeIn">
             
+            {/* Comprehensive Bank Exit Lifecycle Guide Banner */}
+            <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 p-5 rounded-3xl border border-brand-green/30 space-y-3 shadow-lg">
+              <div className="flex items-center gap-2 text-brand-green font-black text-sm">
+                <ShieldCheck className="w-5 h-5 text-brand-green flex-shrink-0" />
+                <span>دليل فهم وإدارة «ملفات التخارج المصرفي» (Distress Exit Protocol)</span>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                <strong>ما هو ملف التخارج؟</strong> هو ملف سيارة عليها حظر بيع بنكي أو أقساط متبقية، يتولى فريق منصة «مخلصة» إدارته قانونياً ومالياً لحماية البائع والمشتري بدون أن تستلم المنصة أي أموال من ثمن السيارة (Zero-Custody).
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-2.5 pt-1 text-2xs">
+                <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
+                  <div className="font-bold text-amber-400">1. حصر المديونية والأهلية</div>
+                  <p className="text-slate-400">استخراج بيان مديونية رسمي من البنك لتحديد أصل الدين المتبقي، وفحص وجود فائض مالي للبائع أو عجز يتطلب تغطية.</p>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
+                  <div className="font-bold text-sky-400">2. نشر الإعلان واستقبال المشترين</div>
+                  <p className="text-slate-400">نشر السيارة في معرض «مخلصة» واستقبال عروض شراء جادة وفحص قدرة المشتري على السداد الفوري بالبنك.</p>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
+                  <div className="font-bold text-emerald-400">3. سداد البنك وإصدار المخالصة</div>
+                  <p className="text-slate-400">المقابلة بفرع البنك الدائن: المشتري يسدد المديونية مباشرة في حساب القرض لاستخراج المخالصة الرسمية وخطاب رفع الحظر.</p>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
+                  <div className="font-bold text-brand-green">4. نقل الملكية بالمرور</div>
+                  <p className="text-slate-400">تسجيل عقد البيع النهائي بالشهر العقاري، ونقل قيد السيارة في المرور، واستلام عمولة المنصة (1.5%).</p>
+                </div>
+              </div>
+            </div>
+
             {/* KPI Summary */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div className="bg-slate-950 p-4.5 rounded-2xl border border-slate-800">
@@ -974,6 +1033,18 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
         {activeTab === 'edits_review' && (
           <div className="space-y-6 animate-fadeIn">
             
+            {/* Guide Explainer Banner for Edit Requests */}
+            <div className="p-4.5 rounded-2xl bg-amber-950/30 border border-amber-800/40 text-xs text-amber-200 flex items-start gap-3 shadow-md">
+              <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
+              <div className="space-y-1">
+                <div className="font-black text-white text-sm">ما هي طلبات التعديل وبناءً على ماذا تظهر هنا؟</div>
+                <p className="text-2xs text-slate-300 leading-relaxed">
+                  تظهر طلبات التعديل عندما يقوم البائع بتعديل السعر المطلوب (مثل تخفيض السعر لتسريع البيع أو استجابة لنصيحة الإدارة) أو تحديث قراءة العداد ومواصفات سيارته من خلال حسابه، أو بعد طلب الإدارة منه تعديل بيانات الإعلان.
+                  تقوم الإدارة هنا بمراجعة الفارق بين القيمة القديمة والجديدة والضغط على <strong>«اعتماد التعديل»</strong> لترقية الإعلان فوراً في المعرض، أو <strong>«رفض»</strong> مع إشعار البائع بالسبب.
+                </p>
+              </div>
+            </div>
+
             <div className="flex justify-between items-center pb-2 border-b border-slate-800">
               <div>
                 <h3 className="font-extrabold text-base text-white flex items-center gap-2">
@@ -1356,6 +1427,37 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                         <span className="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 font-mono text-3xs border border-emerald-800/60" dir="ltr">
                           {item.seller_phone}
                         </span>
+
+                        {/* Direct Click-to-Call */}
+                        {item.seller_phone && (
+                          <a
+                            href={`tel:${item.seller_phone}`}
+                            className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold transition flex items-center gap-1 text-3xs border border-slate-700"
+                            title="اتصال هاتفي مباشر بالبائع"
+                          >
+                            <PhoneCall className="w-2.5 h-2.5 text-emerald-400" />
+                            <span>اتصال</span>
+                          </a>
+                        )}
+
+                        {/* Direct WhatsApp */}
+                        {item.seller_phone && (() => {
+                          const clean = (item.seller_phone || '').replace(/\D/g, '');
+                          const intl = clean.startsWith('0') ? `2${clean}` : clean.startsWith('20') ? clean : `20${clean}`;
+                          const waMsg = encodeURIComponent(`مرحباً أستاذ ${item.seller_name || ''}، معك مستشار منصة مخلصة بخصوص سيارتك المعروضة (${item.make} ${item.model}) كود: ${item.case_reference || item.id.slice(0, 8)}...`);
+                          return (
+                            <a
+                              href={`https://wa.me/${intl}?text=${waMsg}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2 py-0.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition flex items-center gap-1 text-3xs shadow-sm"
+                              title="تواصل مباشر عبر واتساب"
+                            >
+                              <MessageSquare className="w-2.5 h-2.5" />
+                              <span>واتساب</span>
+                            </a>
+                          );
+                        })()}
                       </div>
                       <div className="flex items-center gap-1.5">
                         <button
@@ -1529,16 +1631,39 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                     `مرحباً أستاذ ${offer.buyerName}، معك مستشار الصفقات من منصة مخلصة بخصوص عرض الشراء المقدم على سيارة ${offer.carTitle} (كود الحالة: ${offer.caseReference}) بمبلغ ${offer.offeredPrice.toLocaleString()} ج.م...`
                   );
 
+                  // Price Difference Breakdown
+                  const priceDiff = offer.offeredPrice - offer.askingPrice;
+                  const diffPercent = Math.round((Math.abs(priceDiff) / (offer.askingPrice || 1)) * 100);
+                  const isUnder = priceDiff < 0;
+                  const isOver = priceDiff > 0;
+
+                  // Car Deal State Checks
+                  const isThisOfferAccepted = offer.status === 'accepted';
+                  const isAnyOtherOfferAccepted = purchaseOffers.some(
+                    o => o.id !== offer.id &&
+                         ((offer.listingId && o.listingId === offer.listingId) ||
+                          (offer.caseReference && o.caseReference === offer.caseReference)) &&
+                         o.status === 'accepted'
+                  );
+
                   return (
                     <div
                       key={offer.id}
-                      className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4 hover:border-slate-700 transition"
+                      className={`bg-slate-950 p-5 rounded-2xl border transition space-y-4 ${
+                        isThisOfferAccepted
+                          ? 'border-emerald-500/60 shadow-lg shadow-emerald-950/40'
+                          : isAnyOtherOfferAccepted
+                          ? 'border-slate-800/60 opacity-80'
+                          : offer.status === 'seller_accepted'
+                          ? 'border-emerald-500/50 shadow-md'
+                          : 'border-slate-800 hover:border-slate-700'
+                      }`}
                     >
                       <div className="flex items-start justify-between gap-3 border-b border-slate-800/80 pb-3">
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-extrabold text-sm text-white">{offer.buyerName}</span>
-                            <span className="px-2 py-0.5 rounded-full text-3xs font-bold bg-slate-900 border border-slate-700 text-slate-300" dir="ltr">
+                            <span className="px-2 py-0.5 rounded-full text-3xs font-bold bg-slate-900 border border-slate-700 text-slate-300 font-mono" dir="ltr">
                               {offer.buyerPhone}
                             </span>
                           </div>
@@ -1548,30 +1673,34 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                         </div>
 
                         <span className={`px-2.5 py-1 rounded-full text-3xs font-extrabold border ${
-                          offer.status === 'seller_accepted'
+                          isThisOfferAccepted
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/60 font-black'
+                          : isAnyOtherOfferAccepted
+                            ? 'bg-slate-800 text-slate-400 border-slate-700'
+                          : offer.status === 'seller_accepted'
                             ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/60 animate-pulse font-black'
                           : offer.status === 'new'
                             ? 'bg-emerald-950/50 text-emerald-300 border-emerald-800/60'
-                            : offer.status === 'communicated_to_seller'
+                          : offer.status === 'communicated_to_seller'
                             ? 'bg-amber-950/50 text-amber-300 border-amber-800/60'
-                            : offer.status === 'contacted'
+                          : offer.status === 'contacted'
                             ? 'bg-blue-950/50 text-blue-300 border-blue-800/60'
-                            : offer.status === 'negotiating'
+                          : offer.status === 'negotiating'
                             ? 'bg-amber-950/50 text-amber-300 border-amber-800/60'
-                            : offer.status === 'accepted'
-                            ? 'bg-green-950/50 text-green-300 border-green-800/60'
-                            : 'bg-rose-950/50 text-rose-300 border-rose-800/60'
+                          : 'bg-rose-950/50 text-rose-300 border-rose-800/60'
                         }`}>
-                          {offer.status === 'seller_accepted' ? '🎉 وافق البائع على العرض' :
+                          {isThisOfferAccepted ? '✅ صفقة معتمدة' :
+                           isAnyOtherOfferAccepted ? 'قائمة انتظار بديلة' :
+                           offer.status === 'seller_accepted' ? '🎉 وافق البائع على العرض' :
                            offer.status === 'communicated_to_seller' ? 'تم الإرسال للبائع' :
                            offer.status === 'new' ? 'طلب جديد' :
                            offer.status === 'contacted' ? 'تم التواصل' :
-                           offer.status === 'negotiating' ? 'جاري التفاوض' :
-                           offer.status === 'accepted' ? 'مقبول ومعتمد نهائياً' : 'مرفوض'}
+                           offer.status === 'negotiating' ? 'جاري التفاوض' : 'مرفوض'}
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 text-xs">
+                      {/* 3-Column Negotiation & Price Difference Breakdown */}
+                      <div className="grid grid-cols-3 gap-2 text-xs">
                         <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
                           <span className="text-slate-400 block text-3xs">السعر المطلوب:</span>
                           <span className="font-bold text-slate-200">
@@ -1584,7 +1713,46 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                             {offer.offeredPrice.toLocaleString()} ج.م
                           </span>
                         </div>
+                        <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                          <span className="text-slate-400 block text-3xs">فارق التفاوض:</span>
+                          <span className={`font-black text-2xs ${
+                            isUnder ? 'text-amber-400' : isOver ? 'text-emerald-400' : 'text-slate-300'
+                          }`}>
+                            {priceDiff === 0
+                              ? 'مطابق تماماً'
+                              : `${priceDiff > 0 ? '+' : ''}${priceDiff.toLocaleString()} ج.م (${diffPercent}%)`}
+                          </span>
+                        </div>
                       </div>
+
+                      {/* Deal Status Banners */}
+                      {isThisOfferAccepted && (
+                        <div className="p-3 bg-emerald-950/60 border border-emerald-500/60 rounded-xl text-xs text-emerald-200 font-bold flex items-center gap-2">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+                          <div>
+                            <div>✅ صفقة معتمدة نهائياً - تم التنسيق لمقابلة البنك والمعاينة خلال 24 ساعة</div>
+                            <div className="text-3xs text-emerald-300/80 font-normal mt-0.5">
+                              تم حجز السيارة تلقائياً بالمعرض وإشعار الطرفين (المشتري والبائع) لمتابعة الإجراءات.
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {isAnyOtherOfferAccepted && (
+                        <div className="p-2.5 bg-slate-900/90 border border-amber-800/40 rounded-xl text-2xs text-amber-300 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                          <div>
+                            <strong>عرض بديل (في قائمة الانتظار):</strong> تم اعتماد صفقة أخرى بالفعل لهذه السيارة. يبقى هذا العرض كاحتياطي في حال تعثر إتمام الصفقة الأولى.
+                          </div>
+                        </div>
+                      )}
+
+                      {offer.status === 'seller_accepted' && !isThisOfferAccepted && (
+                        <div className="p-2.5 bg-emerald-950/40 border border-emerald-600/50 rounded-xl text-2xs text-emerald-300 flex items-center gap-2 animate-pulse">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                          <span><strong>وافق البائع على السعر!</strong> جاهز للاعتماد النهائي وتحديد موعد المقابلة البنكية.</span>
+                        </div>
+                      )}
 
                       <div className="text-2xs text-slate-400 space-y-1 bg-slate-900/50 p-3 rounded-xl">
                         <div>طريقة السداد: <strong className="text-slate-200">{offer.paymentPreference === 'cash_at_bank' ? 'سداد مباشر بالبنك' : offer.paymentPreference === 'need_new_financing' ? 'طلب تمويل جديد' : 'كاش بالشهر العقاري'}</strong></div>
@@ -1592,25 +1760,31 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                         {offer.notes && <div>ملاحظات المشتري: <span className="text-slate-300 italic">"{offer.notes}"</span></div>}
                       </div>
 
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-800">
+                      <div className="flex flex-wrap items-center justify-between pt-2 border-t border-slate-800 gap-2">
                         {/* Status update selector */}
-                        <select
-                          value={offer.status}
-                          onChange={(e) => handleUpdateOfferStatus(offer.id, e.target.value as any)}
-                          className="px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 text-3xs font-bold focus:outline-none"
-                        >
-                          <option value="new">جديد</option>
-                          <option value="contacted">تم التواصل</option>
-                          <option value="communicated_to_seller">أرسل للبائع</option>
-                          <option value="seller_accepted">وافق البائع</option>
-                          <option value="negotiating">جاري التفاوض</option>
-                          <option value="accepted">مقبول ومعتمد</option>
-                          <option value="declined">مرفوض</option>
-                        </select>
+                        {!isThisOfferAccepted && !isAnyOtherOfferAccepted ? (
+                          <select
+                            value={offer.status}
+                            onChange={(e) => handleUpdateOfferStatus(offer.id, e.target.value as any)}
+                            className="px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 text-3xs font-bold focus:outline-none"
+                          >
+                            <option value="new">جديد</option>
+                            <option value="contacted">تم التواصل</option>
+                            <option value="communicated_to_seller">أرسل للبائع</option>
+                            <option value="seller_accepted">وافق البائع</option>
+                            <option value="negotiating">جاري التفاوض</option>
+                            <option value="accepted">مقبول ومعتمد</option>
+                            <option value="declined">مرفوض</option>
+                          </select>
+                        ) : (
+                          <span className="text-3xs text-slate-500 font-mono">
+                            {isThisOfferAccepted ? 'معاملة مغلقة ومعتمدة' : 'عرض انتظار بديل'}
+                          </span>
+                        )}
 
-                        {/* Forward to Seller & Communication Actions (Priority 5) */}
+                        {/* Forward to Seller & Communication Actions */}
                         <div className="flex flex-wrap items-center gap-2">
-                          {offer.status === 'seller_accepted' && (
+                          {offer.status === 'seller_accepted' && !isThisOfferAccepted && (
                             <button
                               type="button"
                               onClick={() => handleConfirmDeal(offer.id)}
@@ -1622,7 +1796,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                             </button>
                           )}
 
-                          {offer.status !== 'communicated_to_seller' && offer.status !== 'seller_accepted' && offer.status !== 'accepted' && offer.status !== 'declined' && (
+                          {!isThisOfferAccepted && !isAnyOtherOfferAccepted && offer.status !== 'communicated_to_seller' && offer.status !== 'seller_accepted' && offer.status !== 'accepted' && offer.status !== 'declined' && (
                             <button
                               type="button"
                               onClick={() => handleForwardOffer(offer.id)}
@@ -1634,7 +1808,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                             </button>
                           )}
 
-                          {offer.status === 'communicated_to_seller' && (
+                          {offer.status === 'communicated_to_seller' && !isThisOfferAccepted && !isAnyOtherOfferAccepted && (
                             <span className="px-2.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-3xs font-bold flex items-center gap-1">
                               <Clock className="w-3 h-3" />
                               <span>تم الإرسال للبائع (بانتظار رده)</span>
@@ -1646,14 +1820,16 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                             target="_blank"
                             rel="noopener noreferrer"
                             className="px-3 py-1.5 rounded-xl bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-500/30 font-bold text-xs flex items-center gap-1.5 transition"
+                            title="تواصل واتساب مع المشتري"
                           >
                             <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>واتساب</span>
+                            <span>واتساب المشتري</span>
                           </a>
 
                           <a
                             href={`tel:+${intlPhone}`}
                             className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 font-bold text-xs flex items-center gap-1.5 transition"
+                            title="اتصال هاتفي بالمشتري"
                           >
                             <PhoneCall className="w-3.5 h-3.5 text-slate-400" />
                             <span>اتصال</span>
@@ -1820,9 +1996,38 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                 <span className="text-slate-400 block text-3xs">اسم البائع:</span>
                 <span className="font-bold text-white">{selectedModerationListing.seller_name || 'مالك السيارة'}</span>
               </div>
-              <div className="col-span-2">
-                <span className="text-slate-400 block text-3xs">رقم هاتف البائع (محمي إدارياً):</span>
-                <span className="font-black text-white font-mono" dir="ltr">{selectedModerationListing.seller_phone}</span>
+              <div className="col-span-2 flex flex-wrap items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800 gap-2">
+                <div>
+                  <span className="text-slate-400 block text-3xs font-bold">رقم هاتف وتواصل البائع:</span>
+                  <span className="font-black text-white font-mono text-sm" dir="ltr">{selectedModerationListing.seller_phone}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={`tel:${selectedModerationListing.seller_phone}`}
+                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold transition flex items-center gap-1.5 text-xs border border-slate-700"
+                    title="اتصال هاتفي مباشر بالبائع"
+                  >
+                    <PhoneCall className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>اتصال بالبائع</span>
+                  </a>
+                  {(() => {
+                    const clean = (selectedModerationListing.seller_phone || '').replace(/\D/g, '');
+                    const intl = clean.startsWith('0') ? `2${clean}` : clean.startsWith('20') ? clean : `20${clean}`;
+                    const waMsg = encodeURIComponent(`مرحباً أستاذ ${selectedModerationListing.seller_name || ''}، معك إدارة منصة مخلصة بخصوص سيارتك المعروضة (${selectedModerationListing.make} ${selectedModerationListing.model})...`);
+                    return (
+                      <a
+                        href={`https://wa.me/${intl}?text=${waMsg}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition flex items-center gap-1.5 text-xs shadow-md"
+                        title="مراسلة فورية عبر واتساب"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>محادثة واتساب</span>
+                      </a>
+                    );
+                  })()}
+                </div>
               </div>
             </div>
 
@@ -2200,9 +2405,37 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                   <PhoneCall className="w-4 h-4 text-brand-green" />
                   <span>متابعة إدارية: {listingForFollowup.make} {listingForFollowup.model}</span>
                 </h3>
-                <span className="text-3xs text-slate-400 font-mono">
-                  البائع: {listingForFollowup.seller_name || 'مالك السيارة'} ({listingForFollowup.seller_phone})
-                </span>
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  <span className="text-3xs text-slate-400 font-mono">
+                    البائع: {listingForFollowup.seller_name || 'مالك السيارة'} ({listingForFollowup.seller_phone})
+                  </span>
+                  {listingForFollowup.seller_phone && (
+                    <a
+                      href={`tel:${listingForFollowup.seller_phone}`}
+                      className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold text-3xs flex items-center gap-1 border border-slate-700"
+                      title="اتصال هاتفي مباشر"
+                    >
+                      <PhoneCall className="w-2.5 h-2.5" />
+                      <span>اتصال</span>
+                    </a>
+                  )}
+                  {listingForFollowup.seller_phone && (() => {
+                    const clean = (listingForFollowup.seller_phone || '').replace(/\D/g, '');
+                    const intl = clean.startsWith('0') ? `2${clean}` : clean.startsWith('20') ? clean : `20${clean}`;
+                    return (
+                      <a
+                        href={`https://wa.me/${intl}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2 py-0.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-3xs flex items-center gap-1 shadow-sm"
+                        title="مراسلة عبر واتساب"
+                      >
+                        <MessageSquare className="w-2.5 h-2.5" />
+                        <span>واتساب</span>
+                      </a>
+                    );
+                  })()}
+                </div>
               </div>
               <button
                 onClick={() => setListingForFollowup(null)}

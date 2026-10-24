@@ -407,8 +407,9 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
       decision === 'accept' ? 'موافق مبدئياً على السعر المعروض وننتظر موعد المعاينة' : 'السعر المعروض غير مناسب'
     );
     if (res.success) {
+      const newStatus = decision === 'accept' ? 'seller_accepted' : 'seller_rejected';
       setOfferActionMsg(decision === 'accept' ? 'تم قبول العرض وإشعار مستشار مخلصة لترتيب المعاينة!' : 'تم رفض العرض.');
-      setDbOffers(prev => prev.map(o => o.id === offerId ? { ...o, status: (decision === 'accept' ? 'accepted' : 'rejected') as any } : o));
+      setDbOffers(prev => prev.map(o => (o.id === offerId || o.listingId === offerId || (o.listingId && offerId.includes(o.listingId))) ? { ...o, status: newStatus as any } : o));
     }
   };
 
@@ -445,6 +446,28 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
            (activeCase.vehicle.id && o.listingId && o.listingId.includes(activeCase.vehicle.id))
     );
   }, [dbOffers, activeCase]);
+
+  // Split offers into pending (waiting for seller response) and responded (locked state)
+  const { pendingOffers, respondedOffers } = useMemo(() => {
+    const pending: PurchaseOffer[] = [];
+    const responded: PurchaseOffer[] = [];
+
+    activeOffers.forEach(o => {
+      if (
+        o.status === 'seller_accepted' ||
+        o.status === 'accepted' ||
+        o.status === 'rejected' ||
+        o.status === 'seller_rejected' ||
+        o.status === 'declined'
+      ) {
+        responded.push(o);
+      } else {
+        pending.push(o);
+      }
+    });
+
+    return { pendingOffers: pending, respondedOffers: responded };
+  }, [activeOffers]);
 
   if (!activeCase) {
     return (
@@ -880,62 +903,128 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {activeOffers.map((offer) => (
-                  <div key={offer.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-black text-sm text-brand-navy">{offer.buyerName}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-3xs font-bold ${
-                          (offer.status as string) === 'accepted' ? 'bg-emerald-100 text-emerald-800 font-black' :
-                          (offer.status as string) === 'seller_accepted' ? 'bg-teal-100 text-teal-800 font-black' :
-                          (offer.status as string) === 'rejected' || (offer.status as string) === 'seller_rejected' ? 'bg-rose-100 text-rose-800' :
-                          'bg-amber-100 text-amber-800'
-                        }`}>
-                          {(offer.status as string) === 'accepted' ? '✓ تم الاعتماد النهائي (تواصل خلال 24 ساعة)' :
-                           (offer.status as string) === 'seller_accepted' ? '✓ تمت موافقتك المبدئية (بانتظار تنسيق المقابلة)' :
-                           (offer.status as string) === 'rejected' || (offer.status as string) === 'seller_rejected' ? '✕ تم الرفض' :
-                           'عرض سعر جديد بانتظار ردك'}
-                        </span>
-                      </div>
-                      <p className="text-2xs text-slate-500">
-                        تاريخ العرض: {new Date(offer.createdAt).toLocaleDateString('ar-EG')}
-                      </p>
-                      {offer.notes && (
-                        <p className="text-2xs text-slate-600 bg-white p-2 rounded-xl border border-slate-200/80">
-                          ملاحظة المشتري: {offer.notes}
-                        </p>
-                      )}
+              <div className="space-y-6">
+                {/* 1. Pending Offers requiring Seller Action */}
+                {pendingOffers.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                      <h4 className="font-black text-xs text-slate-800">
+                        عروض شراء جديدة بانتظار موافقتك أو رفضك ({pendingOffers.length})
+                      </h4>
                     </div>
 
-                    <div className="flex flex-col sm:items-end gap-2 w-full sm:w-auto">
-                      <div className="text-sm font-black text-brand-green font-mono">
-                        {formatEGP(offer.offeredPrice)}
-                      </div>
+                    <div className="space-y-3">
+                      {pendingOffers.map((offer) => (
+                        <div key={offer.id} className="p-4 rounded-2xl bg-amber-50/40 border border-amber-200/80 text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-black text-sm text-brand-navy">{offer.buyerName}</span>
+                              <span className="px-2 py-0.5 rounded-full text-3xs font-bold bg-amber-100 text-amber-800">
+                                عرض جديد بانتظار ردك
+                              </span>
+                            </div>
+                            <p className="text-2xs text-slate-500">
+                              تاريخ العرض: {new Date(offer.createdAt).toLocaleDateString('ar-EG')}
+                            </p>
+                            {offer.notes && (
+                              <p className="text-2xs text-slate-600 bg-white p-2 rounded-xl border border-slate-200/80">
+                                ملاحظة المشتري: {offer.notes}
+                              </p>
+                            )}
+                          </div>
 
-                      {((offer.status as string) === 'pending' || 
-                        (offer.status as string) === 'new' || 
-                        (offer.status as string) === 'communicated_to_seller') && (
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
-                          <button
-                            type="button"
-                            onClick={() => handleRespondToOffer(offer.id, 'accept')}
-                            className="flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-bold text-2xs shadow-sm transition"
-                          >
-                            قبول العرض
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleRespondToOffer(offer.id, 'reject')}
-                            className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 font-bold text-2xs transition"
-                          >
-                            رفض
-                          </button>
+                          <div className="flex flex-col sm:items-end gap-2 w-full sm:w-auto">
+                            <div className="text-sm font-black text-brand-green font-mono">
+                              {formatEGP(offer.offeredPrice)}
+                            </div>
+
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
+                              <button
+                                type="button"
+                                onClick={() => handleRespondToOffer(offer.id, 'accept')}
+                                className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-2xs shadow-sm transition flex items-center justify-center gap-1"
+                              >
+                                <span>قبول العرض مبدئياً</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRespondToOffer(offer.id, 'reject')}
+                                className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 font-bold text-2xs transition"
+                              >
+                                <span>اعتذار عن العرض</span>
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                      )}
+                      ))}
                     </div>
                   </div>
-                ))}
+                )}
+
+                {/* 2. Responded Offers (Locked & Settled) */}
+                {respondedOffers.length > 0 && (
+                  <div className="space-y-3 pt-2">
+                    <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      <h4 className="font-black text-xs text-slate-700">
+                        عروض تم الرد عليها والبت فيها ({respondedOffers.length})
+                      </h4>
+                    </div>
+
+                    <div className="space-y-3">
+                      {respondedOffers.map((offer) => {
+                        const isAccepted = offer.status === 'seller_accepted' || offer.status === 'accepted';
+                        return (
+                          <div 
+                            key={offer.id} 
+                            className={`p-4 rounded-2xl border text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 ${
+                              isAccepted 
+                                ? 'bg-emerald-50/60 border-emerald-300/80' 
+                                : 'bg-slate-50 border-slate-200 opacity-75'
+                            }`}
+                          >
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className="font-black text-sm text-brand-navy">{offer.buyerName}</span>
+                                <span className={`px-2.5 py-0.5 rounded-full text-3xs font-extrabold ${
+                                  offer.status === 'accepted' 
+                                    ? 'bg-emerald-600 text-white' 
+                                    : isAccepted 
+                                    ? 'bg-emerald-200 text-emerald-900' 
+                                    : 'bg-rose-100 text-rose-800'
+                                }`}>
+                                  {offer.status === 'accepted' 
+                                    ? '✓ تم الاعتماد النهائي (تواصل لتحديد المقابلة خلال 24 ساعة)' 
+                                    : isAccepted 
+                                    ? '✓ تمت موافقتك المبدئية بنجاح' 
+                                    : '✕ تم الاعتذار عن هذا العرض'}
+                                </span>
+                              </div>
+                              <p className="text-2xs text-slate-500">
+                                تاريخ العرض: {new Date(offer.createdAt).toLocaleDateString('ar-EG')}
+                              </p>
+                              {isAccepted && (
+                                <p className="text-2xs text-emerald-800 font-bold bg-white/80 p-2 rounded-xl border border-emerald-200/80">
+                                  🔒 تم تثبيت موافقتك على العرض ولا يمكن التراجع أو إلغاؤه، وجاري الآن اعتماد إدارة مخلصة لتحديد موعد المقابلة البنكية.
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex flex-col sm:items-end gap-1.5 w-full sm:w-auto">
+                              <div className="text-sm font-black text-brand-green font-mono">
+                                {formatEGP(offer.offeredPrice)}
+                              </div>
+                              <span className="text-3xs font-bold text-slate-400">
+                                {isAccepted ? 'عرض معتمد' : 'عرض ملغي'}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
