@@ -49,7 +49,12 @@ const LIFECYCLE_STATUS_LABELS: Record<CaseLifecycleStatus, { labelAr: string; co
   completed: { labelAr: '22. تمت المعاملة بنجاح', color: 'bg-green-100 text-green-800' },
   rejected_ineligible: { labelAr: '23. مرفوض - غير مؤهل', color: 'bg-rose-100 text-rose-800' },
   cancelled: { labelAr: '24. ملغي', color: 'bg-slate-100 text-slate-800' },
-  on_hold: { labelAr: '25. معلق / وجود عجز مالي', color: 'bg-red-100 text-red-800' }
+  on_hold: { labelAr: '25. معلق / وجود عجز مالي', color: 'bg-red-100 text-red-800' },
+  published: { labelAr: 'منشور بالمعرض', color: 'bg-emerald-100 text-emerald-800' },
+  needs_changes: { labelAr: 'مطلوب تعديل', color: 'bg-amber-100 text-amber-800' },
+  pending_review: { labelAr: 'قيد التدقيق', color: 'bg-blue-100 text-blue-800' },
+  approved: { labelAr: 'معتمد', color: 'bg-emerald-100 text-emerald-800' },
+  rejected: { labelAr: 'مرفوض', color: 'bg-rose-100 text-rose-800' }
 };
 
 export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProps> = ({

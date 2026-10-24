@@ -66,10 +66,10 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
         revisions: [],
         assignedEmployeeId: 'emp-1',
         assignedEmployeeName: 'أ. محمود تامر (المسؤول العام)',
-        urgency: 'medium',
+        urgency: 'urgent',
         distressReason: 'financial_pressure',
         seller: {
-          name: db.seller_name || customerUser?.fullName || 'مالك السيارة',
+          name: db.seller_name || customerUser?.name || 'مالك السيارة',
           phone: db.seller_phone || customerUser?.phone || '',
           preferredContactTime: 'أي وقت',
           governorate: db.governorate || 'القاهرة',
@@ -84,20 +84,33 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
           trim: db.trim || '',
           price: db.asking_price,
           askingPrice: db.asking_price,
+          estimatedMarketValue: db.asking_price,
           mileage: db.mileage,
-          transmission: (db.transmission as any) || 'automatic',
-          fuelType: (db.fuel_type as any) || 'gasoline',
-          bodyType: 'sedan',
-          governorate: db.governorate,
+          transmission: (db.transmission as any) || 'أوتوماتيك',
+          fuelType: (db.fuel_type as any) || 'بنزين',
+          engineSize: '1600 cc',
+          city: db.governorate || 'القاهرة',
+          cityEn: 'Cairo',
+          color: 'فضي',
           images: Array.isArray(db.images) && db.images.length > 0 ? db.images : ['https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=1200&q=80'],
-          features: [],
-          description: db.condition_description || '',
-          distressCategory: 'overdue_installments',
-          monthlyInstallment: db.monthly_installment || 0,
-          remainingMonths: db.remaining_months || 0,
-          outstandingBalance: db.outstanding_amount || 0,
-          isVerified: db.status === 'published',
-          status: (db.status as any) || 'pending_review'
+          financingType: (db.financing_type as any) || 'bank_loan',
+          inspection: {
+            isInspected: false,
+            score: 85,
+            inspectorName: 'فحص مبدئي',
+            date: new Date().toISOString().split('T')[0],
+            engineCondition: 'جيد جداً',
+            transmissionCondition: 'جيد جداً',
+            paintCondition: 'فابريكا بالكامل',
+            chassisStatus: 'سليم 100% بدون أي ملاحظات',
+            notes: ''
+          },
+          licenseValidityMonths: 12,
+          trafficDepartment: 'مرور القاهرة',
+          sellerType: 'مالك أول',
+          status: 'under_review',
+          createdAt: db.created_at || new Date().toISOString(),
+          description: db.condition_description || ''
         },
         disclosedIssues: Array.isArray(db.disclosed_defects) ? db.disclosed_defects : [],
         sellerConditionStory: db.condition_description || '',
@@ -105,13 +118,39 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
           institutionKey: 'bank',
           institutionName: db.financing_provider || 'بنك / شركة تمويل',
           productType: db.financing_type || 'قرض سيارة',
+          estimatedOutstandingPrincipal: db.outstanding_amount || 0,
           outstandingPrincipal: db.outstanding_amount || 0,
           monthlyInstallment: db.monthly_installment || 0,
+          remainingMonths: db.remaining_months || 0,
           remainingInstallmentsCount: db.remaining_months || 0,
+          arrearsAmount: 0,
           overdueInstallmentsCount: 0,
           overdueAmount: 0,
           approximatePayoffQuote: db.outstanding_amount || 0,
-          clearanceStatus: 'pending_settlement'
+          clearanceStatus: 'pending_settlement',
+          hasOfficialStatement: false,
+          isVerifiedByStaff: false,
+          unverifiedNotice: 'بيانات غير معتمدة رسمياً'
+        },
+        settlementStatement: {
+          grossSalePrice: db.asking_price || 0,
+          lenderSettlementAmount: db.outstanding_amount || 0,
+          lenderSettlementSource: db.financing_provider || 'بنك / شركة تمويل',
+          lenderSettlementValidityDate: new Date().toISOString(),
+          earlySettlementFee: 0,
+          releaseLetterFee: 0,
+          trafficAndGovFees: 0,
+          inspectionFee: 0,
+          platformCommission: Math.round((db.asking_price || 0) * 0.015),
+          commissionRate: 0.015,
+          otherCosts: [],
+          totalDeductions: (db.outstanding_amount || 0) + Math.round((db.asking_price || 0) * 0.015),
+          netProceedsToSeller: Math.max(0, (db.asking_price || 0) - ((db.outstanding_amount || 0) + Math.round((db.asking_price || 0) * 0.015))),
+          shortfallAmount: 0,
+          isShortfall: false,
+          isPreliminary: true,
+          sellerAccepted: false,
+          buyerAccepted: false
         },
         settlement: {
           askingPrice: db.asking_price,
@@ -120,7 +159,12 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
           settlementProcessingFee: Math.round(db.asking_price * 0.015),
           totalDeductions: (db.outstanding_amount || 0) + Math.round(db.asking_price * 0.015),
           sellerNetCash: Math.max(0, db.asking_price - ((db.outstanding_amount || 0) + Math.round(db.asking_price * 0.015)))
-        }
+        },
+        callLogs: [],
+        timeline: [],
+        buyerInquiries: [],
+        internalNotes: [],
+        documents: []
       };
     });
   }, [dbListings, customerUser]);
@@ -364,7 +408,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
     );
     if (res.success) {
       setOfferActionMsg(decision === 'accept' ? 'تم قبول العرض وإشعار مستشار مخلصة لترتيب المعاينة!' : 'تم رفض العرض.');
-      setDbOffers(prev => prev.map(o => o.id === offerId ? { ...o, status: decision === 'accept' ? 'accepted' : 'rejected' } : o));
+      setDbOffers(prev => prev.map(o => o.id === offerId ? { ...o, status: (decision === 'accept' ? 'accepted' : 'rejected') as any } : o));
     }
   };
 
@@ -839,11 +883,11 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                       <div className="flex items-center gap-2">
                         <span className="font-black text-sm text-brand-navy">{offer.buyerName}</span>
                         <span className={`px-2 py-0.5 rounded-full text-3xs font-bold ${
-                          offer.status === 'accepted' ? 'bg-emerald-100 text-emerald-800' :
-                          offer.status === 'rejected' ? 'bg-rose-100 text-rose-800' :
+                          (offer.status as string) === 'accepted' ? 'bg-emerald-100 text-emerald-800' :
+                          (offer.status as string) === 'rejected' ? 'bg-rose-100 text-rose-800' :
                           'bg-amber-100 text-amber-800'
                         }`}>
-                          {offer.status === 'accepted' ? '✓ تم القبول' : offer.status === 'rejected' ? '✕ تم الرفض' : 'عرض جديد بانتظار ردك'}
+                          {(offer.status as string) === 'accepted' ? '✓ تم القبول' : (offer.status as string) === 'rejected' ? '✕ تم الرفض' : 'عرض جديد بانتظار ردك'}
                         </span>
                       </div>
                       <p className="text-2xs text-slate-500">
@@ -861,7 +905,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                         {formatEGP(offer.offeredPrice)}
                       </div>
 
-                      {offer.status === 'pending' && (
+                      {((offer.status as string) === 'pending' || (offer.status as string) === 'new') && (
                         <div className="flex items-center gap-2 w-full sm:w-auto">
                           <button
                             type="button"

@@ -143,7 +143,7 @@ export function App() {
     // Mark as read
     setGlobalNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, isRead: true } : n));
     if (customerUser?.id) {
-      listingService.markCustomerNotificationAsRead(notification.id);
+      listingService.markNotificationAsRead(notification.id);
     }
   };
 

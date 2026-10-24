@@ -26,6 +26,7 @@ export type DistressReason =
   | 'relocation_travel'      // سفر مفاجئ أو تغيير محل الإقامة
   | 'reducing_overhead'      // تقليل النفقات والمصاريف التشغيلية
   | 'downsizing_car'         // استبدال بسيارة أصغر كاش
+  | 'financial_pressure'     // ضغوط مالية
   | 'other';                 // سبب آخر
 
 export type UrgencyLevel =
@@ -38,6 +39,7 @@ export type OwnerRelationship =
   | 'power_of_attorney'       // وكيل بموجب توكيل رسمي بالشهر العقاري
   | 'heir'                    // وريث بموجب إعلام وراثة رسمي
   | 'first_degree_relative'   // قريب درجة أولى بتفويض
+  | 'sole_owner'              // مالك فردي
   | 'not_sure';               // مش متأكد
 
 // 25-Status Configurable Lifecycle Model
@@ -66,7 +68,12 @@ export type CaseLifecycleStatus =
   | 'completed'                       // 22. تمت المعاملة بنجاح
   | 'rejected_ineligible'             // 23. مرفوض - غير مؤهل
   | 'cancelled'                       // 24. ملغي
-  | 'on_hold';                        // 25. معلق / وجود عجز مالي
+  | 'on_hold'                         // 25. معلق / وجود عجز مالي
+  | 'published'                       // منشورة
+  | 'needs_changes'                   // مطلوب تعديل
+  | 'pending_review'                  // قيد المراجعة
+  | 'approved'                        // معتمد
+  | 'rejected';                       // مرفوض
 
 export type ListingStatus = 'active' | 'under_review' | 'settlement_pending' | 'sold';
 
@@ -160,6 +167,7 @@ export interface Car {
   disclosedProblems?: string[]; // Honest defect disclosures
   sellerConditionStory?: string; // Large Arabic textarea description
   askingPrice: number;        // P (Confirmed asking price)
+  price?: number;
   estimatedMarketValue: number; // V
   images: string[];
   financingType: FinancingType;
@@ -345,6 +353,7 @@ export interface StaffAuthCredentials {
 export interface CustomerUser {
   id: string;
   name: string;
+  fullName?: string;
   email: string;
   phone?: string;
   avatarUrl?: string;
@@ -365,7 +374,9 @@ export type PurchaseOfferStatus =
   | 'contacted'
   | 'negotiating'
   | 'accepted'
-  | 'declined';
+  | 'declined'
+  | 'pending'
+  | 'rejected';
 
 export interface PurchaseOffer {
   id: string;
@@ -494,17 +505,24 @@ export interface DistressedVehicleCase {
     institutionName: string;
     productType: string;
     estimatedOutstandingPrincipal: number;
+    outstandingPrincipal?: number;
     monthlyInstallment: number;
     remainingMonths: number;
+    remainingInstallmentsCount?: number;
     arrearsAmount: number;
+    overdueInstallmentsCount?: number;
+    overdueAmount?: number;
+    approximatePayoffQuote?: number;
+    clearanceStatus?: string;
     hasOfficialStatement: boolean;
     statementDate?: string;
     isVerifiedByStaff: boolean;
     verifiedSettlementAmount?: number;
     unverifiedNotice: string;
   };
-  valuation: ValuationResult;
+  valuation?: ValuationResult;
   settlementStatement: ItemizedSettlementStatement;
+  settlement?: any;
   callLogs: CallLogEntry[];
   timeline: CaseTimelineEvent[];
   buyerInquiries: BuyerInquiryRecord[];
