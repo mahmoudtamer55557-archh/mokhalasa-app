@@ -58,28 +58,16 @@ export const MokhalasaSvgLogo: React.FC<MokhalasaSvgLogoProps> = ({
 
       {/* English Wordmark Below */}
       <text
-        x="102"
+        x="110"
         y="62"
         textAnchor="middle"
         fontFamily="'Tajawal', 'Helvetica Neue', Arial, sans-serif"
         fontWeight="800"
         fontSize="12.5"
-        fill={textColor}
         letterSpacing="0.32em"
       >
-        MOKHALAS
-      </text>
-      <text
-        x="180"
-        y="62"
-        textAnchor="middle"
-        fontFamily="'Tajawal', 'Helvetica Neue', Arial, sans-serif"
-        fontWeight="800"
-        fontSize="12.5"
-        fill={accentColor}
-        letterSpacing="0.32em"
-      >
-        A
+        <tspan fill={textColor}>MOKHALAS</tspan>
+        <tspan fill={accentColor}>A</tspan>
       </text>
     </svg>
   );
