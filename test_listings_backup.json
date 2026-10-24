@@ -1,0 +1,73 @@
+{
+  "cars": [
+    {
+      "id": "42d64b78-5162-4518-a23c-ce86177d12d6",
+      "user_id": "9b20f101-4e04-436b-8ef6-437cb5a864ac",
+      "case_ref": null,
+      "make": "نيسان",
+      "model": "صني (Sunny)",
+      "year": 2023,
+      "trim": "سوبر صالون بصمة وتكييف تاتش (Super Saloon)",
+      "transmission": "أوتوماتيك",
+      "fuel_type": "بنزين",
+      "engine_size": "1500 cc",
+      "mileage": 34000,
+      "color": "فضي ميتاليك",
+      "governorate": "القاهرة",
+      "city": "التجمع الخامس (القاهرة الجديدة)",
+      "asking_price": 620000,
+      "condition_description": "العربية فابريكا من الزيرو وصياناتها منتظمة في التوكيل، فيها خربوش بسيط سطحي في الإكصدام الخلفي، ومحتاجة صيانة الـ 40 ألف قريباً. البيع فقط لأن القسط الشهري أصبح عبئاً كبيراً وأرغب في تصفية المديونية بالكامل.",
+      "paint_condition": "فابريكا بالكامل",
+      "disclosed_defects": [
+        "شروخ بالزجاج الأمامي أو ملاحظات بالصالون"
+      ],
+      "has_financing": true,
+      "financing_type": "bank_loan",
+      "financing_provider": "بنك كريدي أجريكول مصر",
+      "outstanding_amount": 260000,
+      "monthly_installment": 9400,
+      "remaining_months": 32,
+      "seller_name": "م. طارق العسلي",
+      "seller_phone": "01012345678",
+      "status": "published",
+      "review_feedback": null,
+      "created_at": "2026-10-22T16:12:17.610726+00:00",
+      "updated_at": "2026-10-23T01:35:59.375267+00:00"
+    }
+  ],
+  "images": [
+    {
+      "id": "13bf7409-b319-46af-8fb7-ffad34b04169",
+      "listing_id": "42d64b78-5162-4518-a23c-ce86177d12d6",
+      "user_id": "9b20f101-4e04-436b-8ef6-437cb5a864ac",
+      "image_url": "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=1200&q=80",
+      "display_order": 0,
+      "created_at": "2026-10-22T16:12:17.891637+00:00"
+    },
+    {
+      "id": "1f0c8aac-b60e-4e67-85d7-b804f22e3e58",
+      "listing_id": "42d64b78-5162-4518-a23c-ce86177d12d6",
+      "user_id": "9b20f101-4e04-436b-8ef6-437cb5a864ac",
+      "image_url": "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=1200&q=80",
+      "display_order": 1,
+      "created_at": "2026-10-22T16:12:17.891637+00:00"
+    },
+    {
+      "id": "e4284fd5-5c7d-4acb-9a66-7df7bbfbedd7",
+      "listing_id": "42d64b78-5162-4518-a23c-ce86177d12d6",
+      "user_id": "9b20f101-4e04-436b-8ef6-437cb5a864ac",
+      "image_url": "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80",
+      "display_order": 2,
+      "created_at": "2026-10-22T16:12:17.891637+00:00"
+    },
+    {
+      "id": "fccac74b-a493-4f84-bda3-da89a2bf4373",
+      "listing_id": "42d64b78-5162-4518-a23c-ce86177d12d6",
+      "user_id": "9b20f101-4e04-436b-8ef6-437cb5a864ac",
+      "image_url": "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=1200&q=80",
+      "display_order": 3,
+      "created_at": "2026-10-22T16:12:17.891637+00:00"
+    }
+  ],
+  "timestamp": "2026-10-23T03:13:09.554Z"
+}

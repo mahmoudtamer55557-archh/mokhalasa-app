@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #0B2D4A;
+  --color-accent: #10B981;
+  --color-bg: #F1F5F9;
+  --color-surface: #EAF0F6;
+  --color-text: #102747;
+  --color-muted: #64748B;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Typography smoothing */
+body {
+  font-family: 'Cairo', sans-serif;
+  overflow-x: hidden;
+}
+
+[dir="ltr"] {
+  font-family: 'Tajawal', sans-serif;
+}
