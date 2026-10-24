@@ -1300,47 +1300,141 @@ export const listingService = {
   },
 
   /**
-   * ADMIN: Fetch all purchase offers
+   * ADMIN & MULTI-PARTY: Fetch all purchase offers
+   * Combines Supabase purchase_offers table, admin_notifications real-time audit log, and local cache
    */
   async getPurchaseOffers(): Promise<{ success: boolean; offers: PurchaseOffer[]; error?: string }> {
     try {
-      // 1. Try fetching from Supabase table
-      const { data, error } = await supabase
-        .from('purchase_offers')
-        .select('*')
-        .order('created_at', { ascending: false });
+      let dbOffers: PurchaseOffer[] = [];
 
-      if (!error && data && data.length > 0) {
-        const mapped: PurchaseOffer[] = data.map((d: any) => ({
-          id: d.id,
-          listingId: d.listing_id,
-          carId: d.listing_id || d.case_reference,
-          carTitle: d.car_title || 'سيارة معروضة',
-          caseReference: d.case_reference || 'MK-CASE',
-          buyerName: d.buyer_name,
-          buyerPhone: d.buyer_phone,
-          offerType: d.offer_type || 'asking_price',
-          offeredPrice: Number(d.offered_price) || 0,
-          askingPrice: Number(d.asking_price) || 0,
-          paymentPreference: d.payment_preference || 'cash_at_bank',
-          preferredContactTime: d.preferred_contact_time || 'مساءً',
-          notes: d.notes,
-          status: d.status || 'new',
-          createdAt: d.created_at
-        }));
-        return { success: true, offers: mapped };
+      // 1. Try fetching directly from Supabase purchase_offers table
+      try {
+        const { data, error } = await supabase
+          .from('purchase_offers')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && data && data.length > 0) {
+          dbOffers = data.map((d: any) => ({
+            id: d.id,
+            listingId: d.listing_id,
+            carId: d.listing_id || d.case_reference,
+            carTitle: d.car_title || 'سيارة معروضة',
+            caseReference: d.case_reference || 'MK-CASE',
+            buyerName: d.buyer_name,
+            buyerPhone: d.buyer_phone,
+            buyerUserId: d.buyer_user_id,
+            sellerUserId: d.seller_user_id,
+            offerType: d.offer_type || 'asking_price',
+            offeredPrice: Number(d.offered_price) || 0,
+            askingPrice: Number(d.asking_price) || 0,
+            paymentPreference: d.payment_preference || 'cash_at_bank',
+            preferredContactTime: d.preferred_contact_time || 'مساءً',
+            notes: d.notes,
+            status: d.status || 'new',
+            sellerResponseAt: d.seller_response_at,
+            sellerResponseNotes: d.seller_response_notes,
+            adminNotes: d.admin_notes,
+            createdAt: d.created_at
+          }));
+        }
+      } catch {}
+
+      // 2. Also query Supabase admin_notifications (guaranteed accessible across devices)
+      let notifOffers: PurchaseOffer[] = [];
+      try {
+        const { data: notifs } = await supabase
+          .from('admin_notifications')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (notifs && notifs.length > 0) {
+          const offersMap = new Map<string, PurchaseOffer>();
+          const newOfferNotifs = notifs.filter(n => n.type === 'purchase_offer' && n.title && n.title.includes('عرض شراء جديد'));
+
+          for (const n of newOfferNotifs) {
+            const match = n.message?.match(/قدم المشتري\s+([^(]+)\s*\(([^)]+)\)\s*عرض سعر\s*([\d,]+)\s*ج\.م\s*على كود\s*([^\s]+)/);
+            const key = n.listing_id || (match ? match[4] : n.id);
+            const buyerName = match ? match[1].trim() : 'مشتري مهتم';
+            const buyerPhone = match ? match[2].trim() : '';
+            const priceStr = match ? match[3].replace(/,/g, '') : '0';
+            const offeredPrice = Number(priceStr) || 0;
+            const carTitle = n.title.replace('عرض شراء جديد:', '').trim();
+
+            offersMap.set(key, {
+              id: `offer-${key}`,
+              listingId: n.listing_id || undefined,
+              carId: n.listing_id || key,
+              carTitle: carTitle || 'سيارة معروضة',
+              caseReference: key,
+              buyerName,
+              buyerPhone,
+              offerType: 'asking_price',
+              offeredPrice,
+              askingPrice: offeredPrice,
+              paymentPreference: 'cash_at_bank',
+              preferredContactTime: 'مساءً',
+              notes: '',
+              status: 'new',
+              createdAt: n.created_at
+            });
+          }
+
+          // Check seller response notifications
+          const responseNotifs = notifs.filter(n => n.type === 'purchase_offer' && (n.title?.includes('موافقة بائع') || n.title?.includes('رفض بائع')));
+          for (const r of responseNotifs) {
+            const key = r.listing_id;
+            if (key && offersMap.has(key)) {
+              const offer = offersMap.get(key)!;
+              if (r.title.includes('موافقة بائع')) {
+                offer.status = 'seller_accepted';
+              } else {
+                offer.status = 'seller_rejected';
+              }
+            }
+          }
+
+          // Check admin final confirmation notifications
+          const confirmNotifs = notifs.filter(n => n.title?.includes('اعتماد الصفقة') || n.title?.includes('تنسيق المقابلة'));
+          for (const c of confirmNotifs) {
+            const key = c.listing_id;
+            if (key && offersMap.has(key)) {
+              const offer = offersMap.get(key)!;
+              offer.status = 'accepted';
+            }
+          }
+
+          notifOffers = Array.from(offersMap.values());
+        }
+      } catch {}
+
+      // 3. Merge dbOffers and notifOffers seamlessly
+      const combinedMap = new Map<string, PurchaseOffer>();
+      for (const o of notifOffers) {
+        const key = o.listingId || o.carId || o.id;
+        combinedMap.set(key, o);
+      }
+      for (const o of dbOffers) {
+        const key = o.listingId || o.carId || o.id;
+        combinedMap.set(key, o);
       }
 
-      // 2. Fallback to localStorage mirror
+      // 4. Also incorporate any local offers in localStorage
       try {
         const stored = localStorage.getItem('mokhalasa_purchase_offers');
         if (stored) {
           const parsed: PurchaseOffer[] = JSON.parse(stored);
-          return { success: true, offers: parsed };
+          for (const o of parsed) {
+            const key = o.listingId || o.carId || o.id;
+            if (!combinedMap.has(key)) {
+              combinedMap.set(key, o);
+            }
+          }
         }
       } catch {}
 
-      return { success: true, offers: [] };
+      const finalOffers = Array.from(combinedMap.values());
+      return { success: true, offers: finalOffers };
     } catch (err: any) {
       return { success: false, offers: [], error: err?.message };
     }
@@ -1527,9 +1621,19 @@ export const listingService = {
         .eq('id', offerId);
 
       const offersRes = await this.getPurchaseOffers();
-      const offer = offersRes.offers.find(o => o.id === offerId);
+      const offer = offersRes.offers.find(o => o.id === offerId || o.listingId === offerId || (o.listingId && offerId.includes(o.listingId)));
 
       if (offer) {
+        // Record deal confirmation in admin_notifications so all devices sync instantly
+        try {
+          await supabase.from('admin_notifications').insert({
+            type: 'purchase_offer',
+            title: '✅ تم اعتماد الصفقة وتنسيق المقابلة (إشعار الطرفين)',
+            message: `تم اعتماد موافقة البائع على عرض ${offer.buyerName} بكود ${offer.caseReference}: سيتم التواصل خلال 24 ساعة لتحديد موعد المقابلة والمعاينة البنكية.`,
+            listing_id: offer.listingId || null
+          });
+        } catch {}
+
         // 1. Notify Buyer
         if (offer.buyerUserId) {
           await this.sendCustomerNotification({

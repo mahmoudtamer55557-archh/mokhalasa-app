@@ -248,10 +248,15 @@ export const authService = {
    */
   async registerWithGoogle(): Promise<AuthResponse> {
     try {
+      const redirectUrl = window.location.origin;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: redirectUrl,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'select_account'
+          }
         }
       });
 

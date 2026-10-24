@@ -438,7 +438,11 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
   const activeOffers = useMemo(() => {
     if (!activeCase) return [];
     return dbOffers.filter(
-      o => o.caseReference === activeCase.caseReference || o.carId === activeCase.vehicle.id
+      o => o.caseReference === activeCase.caseReference ||
+           o.carId === activeCase.vehicle.id ||
+           o.listingId === activeCase.vehicle.id ||
+           (activeCase.vehicle.id && o.carId && o.carId.includes(activeCase.vehicle.id)) ||
+           (activeCase.vehicle.id && o.listingId && o.listingId.includes(activeCase.vehicle.id))
     );
   }, [dbOffers, activeCase]);
 
@@ -883,11 +887,15 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                       <div className="flex items-center gap-2">
                         <span className="font-black text-sm text-brand-navy">{offer.buyerName}</span>
                         <span className={`px-2 py-0.5 rounded-full text-3xs font-bold ${
-                          (offer.status as string) === 'accepted' ? 'bg-emerald-100 text-emerald-800' :
-                          (offer.status as string) === 'rejected' ? 'bg-rose-100 text-rose-800' :
+                          (offer.status as string) === 'accepted' ? 'bg-emerald-100 text-emerald-800 font-black' :
+                          (offer.status as string) === 'seller_accepted' ? 'bg-teal-100 text-teal-800 font-black' :
+                          (offer.status as string) === 'rejected' || (offer.status as string) === 'seller_rejected' ? 'bg-rose-100 text-rose-800' :
                           'bg-amber-100 text-amber-800'
                         }`}>
-                          {(offer.status as string) === 'accepted' ? '✓ تم القبول' : (offer.status as string) === 'rejected' ? '✕ تم الرفض' : 'عرض جديد بانتظار ردك'}
+                          {(offer.status as string) === 'accepted' ? '✓ تم الاعتماد النهائي (تواصل خلال 24 ساعة)' :
+                           (offer.status as string) === 'seller_accepted' ? '✓ تمت موافقتك المبدئية (بانتظار تنسيق المقابلة)' :
+                           (offer.status as string) === 'rejected' || (offer.status as string) === 'seller_rejected' ? '✕ تم الرفض' :
+                           'عرض سعر جديد بانتظار ردك'}
                         </span>
                       </div>
                       <p className="text-2xs text-slate-500">
@@ -905,7 +913,9 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                         {formatEGP(offer.offeredPrice)}
                       </div>
 
-                      {((offer.status as string) === 'pending' || (offer.status as string) === 'new') && (
+                      {((offer.status as string) === 'pending' || 
+                        (offer.status as string) === 'new' || 
+                        (offer.status as string) === 'communicated_to_seller') && (
                         <div className="flex items-center gap-2 w-full sm:w-auto">
                           <button
                             type="button"

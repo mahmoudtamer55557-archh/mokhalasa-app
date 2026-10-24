@@ -74,7 +74,46 @@ export function App() {
 
   // Listen for Supabase Authentication State (Vital for Google OAuth Redirect & Session Persistence)
   useEffect(() => {
-    // 1. Initial Session Check
+    // 1. Explicitly check for OAuth Code exchange or OAuth Error in URL (from Google redirect)
+    const handleOAuthCallback = async () => {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const rawHash = window.location.hash.replace(/^#\/?/, '');
+        const hashQueryIdx = rawHash.indexOf('?');
+        const hashParams = new URLSearchParams(hashQueryIdx >= 0 ? rawHash.slice(hashQueryIdx) : rawHash);
+
+        const error = urlParams.get('error_description') || urlParams.get('error') || hashParams.get('error_description') || hashParams.get('error');
+        if (error) {
+          console.error('Google OAuth Error:', error);
+          alert(`تنبيه تسجيل الدخول بـ Google:\n${decodeURIComponent(error)}\n\nيرجى التأكد من ضبط الروابط المسموح بها في Supabase Dashboard -> Authentication -> URL Configuration -> Redirect URLs.`);
+          window.history.replaceState(null, '', window.location.pathname + '#/home');
+          return;
+        }
+
+        const code = urlParams.get('code') || hashParams.get('code');
+        if (code) {
+          const { data, error: exchangeErr } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeErr) {
+            console.error('Error exchanging OAuth code:', exchangeErr);
+          } else if (data?.session?.user) {
+            const mapped = mapSupabaseUserToCustomerUser(data.session.user);
+            setCustomerUser(mapped);
+            try {
+              localStorage.setItem('mokhalasa_customer_user', JSON.stringify(mapped));
+            } catch {}
+            window.history.replaceState(null, '', window.location.pathname + '#/profile');
+            setCurrentView('profile');
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('OAuth Callback processing error:', err);
+      }
+    };
+
+    handleOAuthCallback();
+
+    // 2. Initial Session Check
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         const mapped = mapSupabaseUserToCustomerUser(session.user);
@@ -85,7 +124,7 @@ export function App() {
       }
     });
 
-    // 2. Realtime Auth State Listener (Triggered when Google OAuth redirects back)
+    // 3. Realtime Auth State Listener (Triggered when Google OAuth redirects back)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         const mapped = mapSupabaseUserToCustomerUser(session.user);
