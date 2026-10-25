@@ -16,7 +16,7 @@
  */
 
 import { normalizeEgyptianPhone, isValidEgyptianPhone } from '../utils/phoneValidator';
-import { sendOtpViaWhatsApp } from './whatsappService';
+import { sendOtpViaWhatsApp, sendPasswordResetOtpViaWhatsApp } from './whatsappService';
 import { supabase } from './supabaseClient';
 
 export interface PendingOtpRecord {
@@ -26,7 +26,7 @@ export interface PendingOtpRecord {
   expiresAt: number; // timestamp ms
   attempts: number;
   lastSentAt: number;
-  purpose: 'register' | 'login' | 'verify_phone' | 'profile_update';
+  purpose: 'register' | 'login' | 'verify_phone' | 'profile_update' | 'reset_password';
 }
 
 const STORAGE_KEY = 'mokhalasa_active_otps_v1';
@@ -69,7 +69,7 @@ export const otpService = {
     rawPhone: string,
     options: {
       userId?: string;
-      purpose?: 'register' | 'login' | 'verify_phone' | 'profile_update';
+      purpose?: 'register' | 'login' | 'verify_phone' | 'profile_update' | 'reset_password';
     } = {}
   ): Promise<{ success: boolean; message: string; cooldownSeconds?: number; code?: string }> {
     const { userId, purpose = 'verify_phone' } = options;
@@ -112,7 +112,9 @@ export const otpService = {
     saveOtpStore(store);
 
     // إرسال الكود عبر الواتساب الفعلي بواسطة Wapilot
-    const sendResult = await sendOtpViaWhatsApp(normalizedPhone, randomCode);
+    const sendResult = purpose === 'reset_password'
+      ? await sendPasswordResetOtpViaWhatsApp(normalizedPhone, randomCode)
+      : await sendOtpViaWhatsApp(normalizedPhone, randomCode);
 
     if (!sendResult.success) {
       console.warn('WhatsApp API notice:', sendResult.error);

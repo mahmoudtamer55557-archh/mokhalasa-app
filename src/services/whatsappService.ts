@@ -15,6 +15,33 @@ export const getWapilotConfig = () => {
 };
 
 /**
+ * هل خدمة رسائل الواتساب مفعلة حالياً؟
+ * يمكن إيقافها أو تشغيلها في أي وقت عبر:
+ * 1. متغير البيئة VITE_ENABLE_WHATSAPP_OTP
+ * 2. مفتاح التبديل المباشر في المتصفح / الداشبورد (mokhalasa_whatsapp_enabled)
+ */
+export const isWhatsAppServiceEnabled = (): boolean => {
+  if (typeof window !== 'undefined') {
+    const override = localStorage.getItem('mokhalasa_whatsapp_enabled');
+    if (override !== null) {
+      return override === 'true';
+    }
+  }
+  const envVal = import.meta.env?.VITE_ENABLE_WHATSAPP_OTP;
+  if (envVal !== undefined) {
+    return envVal === 'true' || envVal === true;
+  }
+  return true; // Enabled by default for the trial period
+};
+
+export const setWhatsAppServiceEnabled = (enabled: boolean): void => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('mokhalasa_whatsapp_enabled', String(enabled));
+    window.dispatchEvent(new CustomEvent('mokhalasa-whatsapp-status-changed', { detail: { enabled } }));
+  }
+};
+
+/**
  * تحويل رقم الهاتف المصري إلى صيغة الواتساب الدولية القياسية (201xxxxxxxxx@c.us)
  */
 export function formatEgyptianWhatsAppNumber(phone: string): string {
@@ -46,6 +73,10 @@ export interface SendWhatsAppResult {
  * إرسال رسالة نصية عامة عبر الواتساب
  */
 export async function sendWhatsAppMessage(phone: string, text: string): Promise<SendWhatsAppResult> {
+  if (!isWhatsAppServiceEnabled()) {
+    return { success: false, error: 'خدمة الواتساب معطلة حالياً' };
+  }
+
   const { token, instanceId } = getWapilotConfig();
   const chatId = formatEgyptianWhatsAppNumber(phone);
 
@@ -86,6 +117,14 @@ export async function sendWhatsAppMessage(phone: string, text: string): Promise<
  */
 export async function sendOtpViaWhatsApp(phone: string, otpCode: string): Promise<SendWhatsAppResult> {
   const message = `🚗 *منصة مخلّصة | Mokhalasa*\nكود التحقق الخاص بك لتسجيل الدخول:\n\n👉 *${otpCode}* 👈\n\n⏱️ الكود صالح لمدة 5 دقائق فقط.\n⚠️ للأمان: أوعى تشارك الكود ده مع أي شخص علشان نحافظ على أمان حسابك.`;
+  return sendWhatsAppMessage(phone, message);
+}
+
+/**
+ * إرسال كود استعادة وتعيين كلمة المرور عبر الواتساب
+ */
+export async function sendPasswordResetOtpViaWhatsApp(phone: string, otpCode: string): Promise<SendWhatsAppResult> {
+  const message = `🚗 *منصة مخلّصة | استعادة كلمة المرور*\nكود التحقق لإعادة تعيين كلمة المرور هو:\n\n👉 *${otpCode}* 👈\n\n⏱️ الكود صالح لمدة 5 دقائق.\n⚠️ للأمان: أوعى تشارك الكود ده مع أي شخص علشان نحافظ على أمان حسابك.`;
   return sendWhatsAppMessage(phone, message);
 }
 

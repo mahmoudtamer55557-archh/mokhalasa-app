@@ -3,17 +3,18 @@ import MokhalasaSvgLogo from '../brand/MokhalasaSvgLogo';
 import { CustomerUser, CustomerAuthStatus } from '../../types';
 import { authService } from '../../services/authService';
 import { otpService } from '../../services/otpService';
+import { isWhatsAppServiceEnabled } from '../../services/whatsappService';
 import { getPhoneValidationError, normalizeEgyptianPhone } from '../../utils/phoneValidator';
 import { 
   X, ShieldCheck, Mail, Eye, EyeOff, Lock, User, Phone, MapPin, 
-  CheckCircle2, AlertCircle, ArrowRight, MessageSquare, RotateCcw
+  CheckCircle2, AlertCircle, ArrowRight, MessageSquare, RotateCcw, KeyRound
 } from 'lucide-react';
 
 interface CustomerLoginModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLoginSuccess: (user: CustomerUser) => void;
-  initialTab?: 'login' | 'register' | 'otp_login';
+  initialTab?: 'login' | 'register';
   lang?: 'ar' | 'en';
 }
 
@@ -32,27 +33,29 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
   lang = 'ar'
 }) => {
   const isAr = lang === 'ar';
-  const [activeTab, setActiveTab] = useState<'login' | 'register' | 'otp_login'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'login' | 'register'>(initialTab);
   const [authStatus, setAuthStatus] = useState<CustomerAuthStatus>('unauthenticated');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
-  // Login with Email Form State
-  const [loginEmail, setLoginEmail] = useState('');
+  // Login Form State
+  const [loginIdentifier, setLoginIdentifier] = useState(''); // Phone or Email
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
 
-  // Quick WhatsApp OTP Login State
-  const [otpLoginPhone, setOtpLoginPhone] = useState('');
-  const [otpLoginCode, setOtpLoginCode] = useState('');
-  const [isOtpLoginPending, setIsOtpLoginPending] = useState(false);
-  const [otpLoginCountdown, setOtpLoginCountdown] = useState(45);
+  // Forgot Password Flow State ('form' | 'forgot_phone' | 'forgot_otp' | 'forgot_new_password')
+  const [loginView, setLoginView] = useState<'form' | 'forgot_phone' | 'forgot_otp' | 'forgot_new_password'>('form');
+  const [forgotPhone, setForgotPhone] = useState('');
+  const [forgotOtpCode, setForgotOtpCode] = useState('');
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
+  const [forgotCountdown, setForgotCountdown] = useState(45);
 
   // Register Form State
   const [regFullName, setRegFullName] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regGovernorate, setRegGovernorate] = useState('القاهرة');
-  const [regEmail, setRegEmail] = useState('');
+  const [regEmail, setRegEmail] = useState(''); // Optional!
   const [regPassword, setRegPassword] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);
   
@@ -63,7 +66,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Countdown timer for OTP
+  // Countdown timers
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     if (isRegisterOtpStep && registerCountdown > 0) {
@@ -74,32 +77,37 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
-    if (isOtpLoginPending && otpLoginCountdown > 0) {
-      timer = setTimeout(() => setOtpLoginCountdown(c => c - 1), 1000);
+    if (loginView === 'forgot_otp' && forgotCountdown > 0) {
+      timer = setTimeout(() => setForgotCountdown(c => c - 1), 1000);
     }
     return () => clearTimeout(timer);
-  }, [isOtpLoginPending, otpLoginCountdown]);
+  }, [loginView, forgotCountdown]);
 
+  // Reset states on modal open
   useEffect(() => {
     if (isOpen) {
       setActiveTab(initialTab);
       setErrorMessage(null);
       setSuccessNotice(null);
       setAuthStatus('unauthenticated');
+      setLoginView('form');
       setIsRegisterOtpStep(false);
-      setIsOtpLoginPending(false);
       setRegisterOtpCode('');
-      setOtpLoginCode('');
+      setForgotOtpCode('');
+      setForgotNewPassword('');
+      setForgotConfirmPassword('');
     }
   }, [isOpen, initialTab]);
 
   if (!isOpen) return null;
 
-  // Handle Standard Email Login
-  const handleEmailSignIn = async (e: React.FormEvent) => {
+  // -------------------------------------------------------------
+  // 1. LOGIN HANDLERS
+  // -------------------------------------------------------------
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loginEmail.trim() || !loginPassword) {
-      setErrorMessage('يرجى إدخال البريد الإلكتروني وكلمة المرور.');
+    if (!loginIdentifier.trim() || !loginPassword) {
+      setErrorMessage('يرجى إدخال رقم الهاتف أو البريد الإلكتروني وكلمة المرور.');
       setAuthStatus('error');
       return;
     }
@@ -109,7 +117,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
     setIsSubmitting(true);
 
     const response = await authService.loginWithEmail({ 
-      email: loginEmail.trim(), 
+      identifier: loginIdentifier.trim(), 
       password: loginPassword 
     });
 
@@ -127,27 +135,29 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
     setIsSubmitting(false);
   };
 
-  // Handle WhatsApp OTP Request for Quick Login
-  const handleRequestOtpLogin = async (e: React.FormEvent) => {
+  // -------------------------------------------------------------
+  // 2. FORGOT PASSWORD HANDLERS (VIA WHATSAPP OTP)
+  // -------------------------------------------------------------
+  const handleRequestForgotOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
-    const phoneErr = getPhoneValidationError(otpLoginPhone);
+    const phoneErr = getPhoneValidationError(forgotPhone);
     if (phoneErr) {
       setErrorMessage(phoneErr);
       setAuthStatus('error');
       return;
     }
 
-    const cleanPhone = normalizeEgyptianPhone(otpLoginPhone);
+    const cleanPhone = normalizeEgyptianPhone(forgotPhone);
     setIsSubmitting(true);
 
     try {
-      const res = await otpService.generateAndSendOtp(cleanPhone, { purpose: 'login' });
+      const res = await otpService.generateAndSendOtp(cleanPhone, { purpose: 'reset_password' });
       if (res.success) {
-        setIsOtpLoginPending(true);
-        setOtpLoginCountdown(45);
-        setSuccessNotice(`تم إرسال كود التحقق عبر الواتساب إلى رقم: ${cleanPhone}`);
+        setLoginView('forgot_otp');
+        setForgotCountdown(45);
+        setSuccessNotice(`تم إرسال كود استعادة كلمة المرور عبر الواتساب إلى رقم: ${cleanPhone}`);
       } else {
         setErrorMessage(res.message);
         setAuthStatus('error');
@@ -160,50 +170,81 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
     }
   };
 
-  // Handle WhatsApp OTP Verification for Quick Login
-  const handleVerifyOtpLogin = async (e: React.FormEvent) => {
+  const handleVerifyForgotOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
-    if (otpLoginCode.trim().length !== 4) {
+    if (forgotOtpCode.trim().length !== 4) {
       setErrorMessage('يرجى إدخال كود الـ OTP المكون من 4 أرقام.');
       setAuthStatus('error');
       return;
     }
 
-    const cleanPhone = normalizeEgyptianPhone(otpLoginPhone);
+    const cleanPhone = normalizeEgyptianPhone(forgotPhone);
     setIsSubmitting(true);
 
     try {
-      const verifyRes = await otpService.verifyOtp(cleanPhone, otpLoginCode.trim());
-      if (!verifyRes.success) {
-        setErrorMessage(verifyRes.message);
-        setAuthStatus('error');
-        setIsSubmitting(false);
-        return;
-      }
-
-      const loginRes = await authService.loginWithVerifiedPhone(cleanPhone);
-      if (loginRes.success && loginRes.user) {
-        setAuthStatus('authenticated');
-        setSuccessNotice('تم تسجيل الدخول وتوثيق رقم الواتساب بنجاح!');
-        setTimeout(() => {
-          onLoginSuccess(loginRes.user!);
-          onClose();
-        }, 700);
+      const verifyRes = await otpService.verifyOtp(cleanPhone, forgotOtpCode.trim());
+      if (verifyRes.success) {
+        setLoginView('forgot_new_password');
+        setSuccessNotice('تم التحقق من هويتك بنجاح! يرجى إدخال كلمة المرور الجديدة.');
       } else {
-        setErrorMessage(loginRes.message);
+        setErrorMessage(verifyRes.message);
         setAuthStatus('error');
       }
     } catch (err: any) {
-      setErrorMessage(err?.message || 'تعذر تسجيل الدخول.');
+      setErrorMessage(err?.message || 'تعذر التحقق من الكود.');
       setAuthStatus('error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Handle Step 1 of Registration: Validate and Send WhatsApp OTP
+  const handleSetNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+
+    if (forgotNewPassword.length < 8) {
+      setErrorMessage('يجب ألا تقل كلمة المرور عن 8 أحرف وأرقام.');
+      setAuthStatus('error');
+      return;
+    }
+
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      setErrorMessage('كلمتا المرور غير متطابقتين.');
+      setAuthStatus('error');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setAuthStatus('authenticating');
+
+    try {
+      const cleanPhone = normalizeEgyptianPhone(forgotPhone);
+      const res = await authService.resetPasswordWithPhone(cleanPhone, forgotNewPassword);
+
+      if (res.success && res.user) {
+        setAuthStatus('authenticated');
+        setSuccessNotice('تم تعيين كلمة المرور الجديدة وتسجيل دخولك بنجاح!');
+        setTimeout(() => {
+          onLoginSuccess(res.user!);
+          onClose();
+        }, 800);
+      } else {
+        setErrorMessage(res.message || 'تعذر تحديث كلمة المرور.');
+        setAuthStatus('error');
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'حدث خطأ أثناء حفظ كلمة المرور.');
+      setAuthStatus('error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // 3. REGISTRATION HANDLERS (PHONE MANDATORY + WHATSAPP OTP)
+  // -------------------------------------------------------------
   const handleInitiateRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
@@ -214,6 +255,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
       return;
     }
 
+    // Phone is MANDATORY
     const phoneValidationError = getPhoneValidationError(regPhone);
     if (phoneValidationError) {
       setErrorMessage(phoneValidationError);
@@ -222,8 +264,9 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
     }
     const cleanPhone = normalizeEgyptianPhone(regPhone);
 
-    if (!regEmail.trim() || !regEmail.includes('@')) {
-      setErrorMessage('يرجى إدخال بريد إلكتروني صحيح.');
+    // Email is OPTIONAL: validate only if entered
+    if (regEmail.trim() && !regEmail.includes('@')) {
+      setErrorMessage('صيغة البريد الإلكتروني غير صحيحة (أو يمكنك تركه فارغاً).');
       setAuthStatus('error');
       return;
     }
@@ -234,13 +277,47 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
       return;
     }
 
+    // If WhatsApp service is disabled (trial finished or toggled off), register immediately!
+    if (!isWhatsAppServiceEnabled()) {
+      setIsSubmitting(true);
+      setAuthStatus('authenticating');
+      try {
+        const response = await authService.registerWithEmail({
+          fullName: regFullName.trim(),
+          phone: cleanPhone,
+          email: regEmail.trim() || undefined,
+          password: regPassword,
+          governorate: regGovernorate
+        });
+
+        if (response.success && response.user) {
+          setAuthStatus('authenticated');
+          setSuccessNotice('تم إنشاء حسابك وتفعيله بنجاح! مرحباً بك في مخلصة.');
+          setTimeout(() => {
+            onLoginSuccess(response.user!);
+            onClose();
+          }, 900);
+        } else {
+          setAuthStatus('error');
+          setErrorMessage(response.message || 'تعذر إتمام التسجيل.');
+        }
+      } catch (err: any) {
+        setAuthStatus('error');
+        setErrorMessage(err?.message || 'حدث خطأ أثناء تفعيل الحساب.');
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     setIsSubmitting(true);
     try {
+      // Send dynamic single-use OTP via WhatsApp
       const res = await otpService.generateAndSendOtp(cleanPhone, { purpose: 'register' });
       if (res.success) {
         setIsRegisterOtpStep(true);
         setRegisterCountdown(45);
-        setSuccessNotice(`تم إرسال كود التحقق (OTP) إلى واتساب رقم: ${cleanPhone}`);
+        setSuccessNotice(`تم إرسال كود التحقق (OTP) إلى واتساب رقمك: ${cleanPhone}`);
       } else {
         setErrorMessage(res.message);
         setAuthStatus('error');
@@ -253,56 +330,28 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
     }
   };
 
-  // Handle Step 2 of Registration: Verify OTP and Create Final Account
-  const handleFinalizeRegistration = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-
-    if (registerOtpCode.trim().length !== 4) {
-      setErrorMessage('يرجى كتابة كود الـ OTP المكون من 4 أرقام.');
-      setAuthStatus('error');
-      return;
-    }
-
+  // Direct activation fallback if user didn't receive WhatsApp or trial ended
+  const handleDirectActivationFallback = async () => {
     const cleanPhone = normalizeEgyptianPhone(regPhone);
     setIsSubmitting(true);
     setAuthStatus('authenticating');
 
     try {
-      // 1. Verify OTP
-      const verifyRes = await otpService.verifyOtp(cleanPhone, registerOtpCode.trim());
-      if (!verifyRes.success) {
-        setErrorMessage(verifyRes.message);
-        setAuthStatus('error');
-        setIsSubmitting(false);
-        return;
-      }
-
-      // 2. Register account via Supabase Auth
       const response = await authService.registerWithEmail({
         fullName: regFullName.trim(),
         phone: cleanPhone,
-        email: regEmail.trim(),
+        email: regEmail.trim() || undefined,
         password: regPassword,
         governorate: regGovernorate
       });
 
-      if (response.success) {
+      if (response.success && response.user) {
         setAuthStatus('authenticated');
-        setSuccessNotice('تم تأكيد رقم هاتفك وإنشاء حسابك بنجاح! مرحباً بك في مخلصة.');
-        if (response.user) {
-          setTimeout(() => {
-            onLoginSuccess(response.user!);
-            onClose();
-          }, 900);
-        } else {
-          setTimeout(() => {
-            setActiveTab('login');
-            setLoginEmail(regEmail);
-            setAuthStatus('unauthenticated');
-            setIsRegisterOtpStep(false);
-          }, 1500);
-        }
+        setSuccessNotice('تم تفعيل حسابك بنجاح! مرحباً بك في مخلصة.');
+        setTimeout(() => {
+          onLoginSuccess(response.user!);
+          onClose();
+        }, 900);
       } else {
         setAuthStatus('error');
         setErrorMessage(response.message || 'تعذر إتمام التسجيل.');
@@ -315,7 +364,59 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
     }
   };
 
-  // Google OAuth Trigger
+  const handleFinalizeRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+
+    if (registerOtpCode.trim().length !== 4) {
+      setErrorMessage('يرجى كتابة كود الـ OTP المكون من 4 أرقام لتفعيل الحساب.');
+      setAuthStatus('error');
+      return;
+    }
+
+    const cleanPhone = normalizeEgyptianPhone(regPhone);
+    setIsSubmitting(true);
+    setAuthStatus('authenticating');
+
+    try {
+      // 1. Verify OTP strictly matching phone
+      const verifyRes = await otpService.verifyOtp(cleanPhone, registerOtpCode.trim());
+      if (!verifyRes.success) {
+        setErrorMessage(verifyRes.message);
+        setAuthStatus('error');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 2. Register account via Supabase Auth with verified state
+      const response = await authService.registerWithEmail({
+        fullName: regFullName.trim(),
+        phone: cleanPhone,
+        email: regEmail.trim() || undefined,
+        password: regPassword,
+        governorate: regGovernorate
+      });
+
+      if (response.success && response.user) {
+        setAuthStatus('authenticated');
+        setSuccessNotice('تم تأكيد كود الواتساب وتفعيل حسابك بنجاح! مرحباً بك في مخلصة.');
+        setTimeout(() => {
+          onLoginSuccess(response.user!);
+          onClose();
+        }, 900);
+      } else {
+        setAuthStatus('error');
+        setErrorMessage(response.message || 'تعذر إتمام التسجيل.');
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'حدث خطأ أثناء تفعيل الحساب.');
+      setAuthStatus('error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Google OAuth
   const handleGoogleSignIn = async () => {
     setAuthStatus('authenticating');
     setErrorMessage(null);
@@ -346,65 +447,48 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
           <div className="flex items-center gap-2.5">
             <MokhalasaSvgLogo variant="light" height={28} />
             <span className="text-3xs font-extrabold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-              بوابة العملاء المعتمدة
+              بوابة العملاء
             </span>
           </div>
 
-          {/* Tab Switcher */}
+          {/* Tab Switcher: ONLY 2 TABS */}
           <div className="mt-4 flex bg-slate-800/80 p-1 rounded-xl border border-slate-700/60">
             <button
               type="button"
               onClick={() => { 
                 setActiveTab('login'); 
+                setLoginView('form');
                 setErrorMessage(null); 
+                setSuccessNotice(null);
                 setAuthStatus('unauthenticated');
-                setIsRegisterOtpStep(false);
-                setIsOtpLoginPending(false);
               }}
-              className={`flex-1 py-1.5 rounded-lg text-3xs sm:text-xs font-bold transition flex items-center justify-center gap-1 ${
+              className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
                 activeTab === 'login'
                   ? 'bg-brand-green text-white shadow-sm'
                   : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
             >
               <User className="w-3.5 h-3.5" />
-              <span>دخول بالبريد</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => { 
-                setActiveTab('otp_login'); 
-                setErrorMessage(null); 
-                setAuthStatus('unauthenticated');
-                setIsRegisterOtpStep(false);
-              }}
-              className={`flex-1 py-1.5 rounded-lg text-3xs sm:text-xs font-bold transition flex items-center justify-center gap-1 ${
-                activeTab === 'otp_login'
-                  ? 'bg-brand-green text-white shadow-sm'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
-              <span>دخول واتساب</span>
+              <span>تسجيل الدخول</span>
             </button>
 
             <button
               type="button"
               onClick={() => { 
                 setActiveTab('register'); 
+                setIsRegisterOtpStep(false);
                 setErrorMessage(null); 
+                setSuccessNotice(null);
                 setAuthStatus('unauthenticated');
-                setIsOtpLoginPending(false);
               }}
-              className={`flex-1 py-1.5 rounded-lg text-3xs sm:text-xs font-bold transition flex items-center justify-center gap-1 ${
+              className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
                 activeTab === 'register'
                   ? 'bg-brand-green text-white shadow-sm'
                   : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
             >
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>حساب جديد</span>
+              <span>إنشاء حساب</span>
             </button>
           </div>
         </div>
@@ -443,152 +527,194 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
             </div>
           )}
 
-          {/* TAB 1: EMAIL LOGIN FORM */}
+          {/* ========================================================= */}
+          {/* TAB 1: LOGIN FLOW */}
+          {/* ========================================================= */}
           {activeTab === 'login' && authStatus !== 'authenticated' && (
-            <form onSubmit={handleEmailSignIn} className="space-y-3">
-              <div className="space-y-1">
-                <label className="font-bold text-xs text-slate-700 block text-right">
-                  البريد الإلكتروني:
-                </label>
-                <div className="relative">
-                  <input
-                    type="email"
-                    required
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    placeholder="name@example.com"
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green focus:outline-none text-right pr-9"
-                  />
-                  <Mail className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
-                </div>
-              </div>
+            <>
+              {/* SUBVIEW 1: STANDARD LOGIN FORM */}
+              {loginView === 'form' && (
+                <form onSubmit={handleSignIn} className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="font-bold text-xs text-slate-700 block text-right">
+                      رقم الهاتف أو البريد الإلكتروني:
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        required
+                        value={loginIdentifier}
+                        onChange={(e) => setLoginIdentifier(e.target.value)}
+                        placeholder="010XXXXXXXX أو name@example.com"
+                        className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green focus:outline-none text-right pr-9"
+                      />
+                      <Phone className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+                    </div>
+                  </div>
 
-              <div className="space-y-1">
-                <div className="flex justify-between items-center">
-                  <label className="font-bold text-xs text-slate-700 block text-right">
-                    كلمة المرور:
-                  </label>
-                </div>
-                <div className="relative">
-                  <input
-                    type={showLoginPassword ? 'text' : 'password'}
-                    required
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green focus:outline-none text-right pr-9"
-                  />
-                  <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <label className="font-bold text-xs text-slate-700 block text-right">
+                        كلمة المرور:
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLoginView('forgot_phone');
+                          setErrorMessage(null);
+                          setSuccessNotice(null);
+                          setForgotPhone(loginIdentifier.replace(/\D/g, '').length >= 10 ? loginIdentifier : '');
+                        }}
+                        className="text-3xs text-brand-green hover:underline font-bold"
+                      >
+                        نسيت كلمة المرور؟
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showLoginPassword ? 'text' : 'password'}
+                        required
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green focus:outline-none text-right pr-9"
+                      />
+                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+                      <button
+                        type="button"
+                        onClick={() => setShowLoginPassword(!showLoginPassword)}
+                        className="absolute left-3 top-2 text-slate-400 hover:text-slate-600 p-0.5"
+                      >
+                        {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
                   <button
-                    type="button"
-                    onClick={() => setShowLoginPassword(!showLoginPassword)}
-                    className="absolute left-3 top-2 text-slate-400 hover:text-slate-600 p-0.5"
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full py-2.5 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-60"
                   >
-                    {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>جاري تسجيل الدخول...</span>
+                      </>
+                    ) : (
+                      <span>تسجيل الدخول</span>
+                    )}
                   </button>
-                </div>
-              </div>
+                </form>
+              )}
 
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full py-2.5 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-60"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>جاري تسجيل الدخول...</span>
-                  </>
-                ) : (
-                  <span>تسجيل الدخول</span>
-                )}
-              </button>
-            </form>
-          )}
-
-          {/* TAB 2: WHATSAPP OTP QUICK LOGIN */}
-          {activeTab === 'otp_login' && authStatus !== 'authenticated' && (
-            <div className="space-y-3">
-              {!isOtpLoginPending ? (
-                <form onSubmit={handleRequestOtpLogin} className="space-y-3">
-                  <div className="p-3 bg-emerald-50/70 border border-emerald-200/60 rounded-2xl text-2xs text-emerald-950 flex items-start gap-2">
-                    <MessageSquare className="w-4 h-4 text-brand-green flex-shrink-0 mt-0.5" />
-                    <p className="leading-relaxed">
-                      تسجيل دخول فوري بدون كلمة مرور! سنرسل لك كود تحقق مؤقت (OTP) مباشرة على الواتساب.
-                    </p>
+              {/* SUBVIEW 2: FORGOT PASSWORD - STEP 1 (PHONE) */}
+              {loginView === 'forgot_phone' && (
+                <form onSubmit={handleRequestForgotOtp} className="space-y-3 animate-fadeIn">
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-2xs text-emerald-950 flex items-start gap-2">
+                    <KeyRound className="w-4 h-4 text-brand-green flex-shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-extrabold block">استعادة كلمة المرور عبر الواتساب:</span>
+                      <p className="text-3xs text-slate-600 leading-relaxed mt-0.5">
+                        أدخل رقم هاتفك المسجل وسنرسل لك كود تحقق (OTP) على الواتساب لتعيين كلمة مرور جديدة فوراً.
+                      </p>
+                    </div>
                   </div>
 
                   <div className="space-y-1">
                     <label className="font-bold text-xs text-slate-700 block text-right">
-                      رقم الواتساب المسجل (مصر):
+                      رقم الهاتف المسجل (واتساب):
                     </label>
                     <div className="relative">
                       <input
                         type="tel"
                         dir="ltr"
                         required
-                        value={otpLoginPhone}
-                        onChange={(e) => setOtpLoginPhone(e.target.value)}
+                        value={forgotPhone}
+                        onChange={(e) => setForgotPhone(e.target.value)}
                         placeholder="010XXXXXXXX"
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono font-bold focus:ring-2 focus:ring-brand-green focus:outline-none text-right pr-9"
+                        autoFocus
                       />
                       <Phone className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
                     </div>
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={isSubmitting || !otpLoginPhone.trim()}
-                    className="w-full py-2.5 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>جاري إرسال الكود...</span>
-                      </>
-                    ) : (
-                      <>
-                        <MessageSquare className="w-4 h-4" />
-                        <span>إرسال كود الدخول عبر الواتساب</span>
-                      </>
-                    )}
-                  </button>
-                </form>
-              ) : (
-                <form onSubmit={handleVerifyOtpLogin} className="space-y-3 animate-fadeIn">
-                  <div className="flex items-center justify-between">
-                    <label className="font-black text-xs text-slate-800">
-                      كود التحقق المكون من 4 أرقام:
-                    </label>
+                  <div className="flex gap-2 pt-1">
                     <button
                       type="button"
-                      onClick={() => setIsOtpLoginPending(false)}
-                      className="text-3xs text-brand-green font-bold hover:underline inline-flex items-center gap-1"
+                      onClick={() => setLoginView('form')}
+                      className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition"
                     >
-                      <ArrowRight className="w-3 h-3 rotate-180" />
-                      <span>تعديل الرقم</span>
+                      إلغاء
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting || !forgotPhone.trim()}
+                      className="flex-1 py-2.5 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-1.5 disabled:opacity-60"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>جاري إرسال الكود...</span>
+                        </>
+                      ) : (
+                        <>
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>إرسال كود الواتساب</span>
+                        </>
+                      )}
                     </button>
                   </div>
+                </form>
+              )}
 
-                  <input
-                    type="text"
-                    dir="ltr"
-                    maxLength={4}
-                    value={otpLoginCode}
-                    onChange={(e) => setOtpLoginCode(e.target.value.replace(/\D/g, ''))}
-                    placeholder="••••"
-                    className="w-full py-3 text-center text-2xl font-black font-mono tracking-widest rounded-2xl border-2 border-brand-green/40 focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 focus:outline-none bg-emerald-50/20 text-slate-900"
-                    autoFocus
-                  />
+              {/* SUBVIEW 3: FORGOT PASSWORD - STEP 2 (OTP) */}
+              {loginView === 'forgot_otp' && (
+                <form onSubmit={handleVerifyForgotOtp} className="space-y-3 animate-fadeIn">
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-1">
+                    <span className="text-3xs text-emerald-800 font-bold block">
+                      وصلك كود تحقق على الواتساب على رقمك:
+                    </span>
+                    <span className="text-sm font-black font-mono text-brand-navy dir-ltr block">
+                      {forgotPhone}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="font-bold text-xs text-slate-700">
+                        أدخل كود الـ OTP المكون من 4 أرقام:
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setLoginView('forgot_phone')}
+                        className="text-3xs text-brand-green font-bold hover:underline inline-flex items-center gap-1"
+                      >
+                        <ArrowRight className="w-3 h-3 rotate-180" />
+                        <span>تعديل الرقم</span>
+                      </button>
+                    </div>
+
+                    <input
+                      type="text"
+                      dir="ltr"
+                      maxLength={4}
+                      value={forgotOtpCode}
+                      onChange={(e) => setForgotOtpCode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="••••"
+                      className="w-full py-3 text-center text-2xl font-black font-mono tracking-widest rounded-2xl border-2 border-brand-green/40 focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 focus:outline-none bg-emerald-50/20 text-slate-900"
+                      autoFocus
+                    />
+                  </div>
 
                   <div className="flex items-center justify-between text-3xs text-slate-500 font-bold px-1">
-                    <span>صالح لمدة 5 دقائق</span>
-                    {otpLoginCountdown > 0 ? (
-                      <span className="text-slate-400">إعادة إرسال بعد ({otpLoginCountdown}ث)</span>
+                    <span>صلاحية الكود: 5 دقائق</span>
+                    {forgotCountdown > 0 ? (
+                      <span className="text-slate-400">إعادة إرسال بعد ({forgotCountdown}ث)</span>
                     ) : (
                       <button
                         type="button"
-                        onClick={handleRequestOtpLogin}
+                        onClick={handleRequestForgotOtp}
                         className="text-brand-green hover:underline inline-flex items-center gap-1"
                       >
                         <RotateCcw className="w-3 h-3" />
@@ -599,27 +725,85 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
 
                   <button
                     type="submit"
-                    disabled={isSubmitting || otpLoginCode.trim().length !== 4}
+                    disabled={isSubmitting || forgotOtpCode.trim().length !== 4}
                     className="w-full py-2.5 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60"
                   >
                     {isSubmitting ? (
                       <>
                         <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>جاري التحقق والدخول...</span>
+                        <span>جاري التحقق...</span>
                       </>
                     ) : (
-                      <span>تأكيد وتسجيل الدخول</span>
+                      <span>تأكيد الكود ومتابعة</span>
                     )}
                   </button>
                 </form>
               )}
-            </div>
+
+              {/* SUBVIEW 4: FORGOT PASSWORD - STEP 3 (NEW PASSWORD) */}
+              {loginView === 'forgot_new_password' && (
+                <form onSubmit={handleSetNewPassword} className="space-y-3 animate-fadeIn">
+                  <div className="space-y-1">
+                    <label className="font-bold text-xs text-slate-700 block text-right">
+                      كلمة المرور الجديدة:
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="password"
+                        required
+                        value={forgotNewPassword}
+                        onChange={(e) => setForgotNewPassword(e.target.value)}
+                        placeholder="8 أحرف وأرقام على الأقل"
+                        className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green focus:outline-none text-right pr-9"
+                        autoFocus
+                      />
+                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-xs text-slate-700 block text-right">
+                      تأكيد كلمة المرور الجديدة:
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="password"
+                        required
+                        value={forgotConfirmPassword}
+                        onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                        placeholder="أعد إدخال كلمة المرور"
+                        className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green focus:outline-none text-right pr-9"
+                      />
+                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || forgotNewPassword.length < 8}
+                    className="w-full py-2.5 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>جاري حفظ كلمة المرور والدخول...</span>
+                      </>
+                    ) : (
+                      <span>حفظ كلمة المرور والدخول</span>
+                    )}
+                  </button>
+                </form>
+              )}
+            </>
           )}
 
-          {/* TAB 3: REGISTER FORM */}
+          {/* ========================================================= */}
+          {/* TAB 2: REGISTER FLOW (PHONE MANDATORY + WHATSAPP OTP) */}
+          {/* ========================================================= */}
           {activeTab === 'register' && authStatus !== 'authenticated' && (
             <div className="space-y-3">
               {!isRegisterOtpStep ? (
+                /* STEP 1: FILL INFO */
                 <form onSubmit={handleInitiateRegistration} className="space-y-2.5">
                   <div className="space-y-1">
                     <label className="font-bold text-xs text-slate-700 block text-right">
@@ -638,25 +822,46 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
                     </div>
                   </div>
 
+                  {/* MANDATORY PHONE INPUT */}
+                  <div className="space-y-1">
+                    <label className="font-black text-xs text-slate-800 flex items-center justify-between">
+                      <span>رقم الهاتف المحمول (واتساب) <span className="text-rose-500">* أساسي</span></span>
+                      <span className="text-3xs text-brand-green font-mono">11 رقماً</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="tel"
+                        required
+                        dir="ltr"
+                        value={regPhone}
+                        onChange={(e) => setRegPhone(e.target.value)}
+                        placeholder="010XXXXXXXX"
+                        className="w-full px-3 py-2 rounded-xl border-2 border-brand-green/30 focus:border-brand-green text-xs font-mono font-bold focus:ring-2 focus:ring-brand-green/20 focus:outline-none text-right pr-9"
+                      />
+                      <Phone className="w-4 h-4 text-brand-green absolute right-3 top-2.5 pointer-events-none" />
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {/* OPTIONAL EMAIL */}
                     <div className="space-y-1">
-                      <label className="font-bold text-xs text-slate-700 block text-right">
-                        رقم الواتساب (مصر):
+                      <label className="font-bold text-xs text-slate-700 flex items-center justify-between">
+                        <span>البريد الإلكتروني:</span>
+                        <span className="text-3xs text-slate-400 font-normal">(اختياري)</span>
                       </label>
                       <div className="relative">
                         <input
-                          type="tel"
-                          required
-                          dir="ltr"
-                          value={regPhone}
-                          onChange={(e) => setRegPhone(e.target.value)}
-                          placeholder="010XXXXXXXX"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono font-bold focus:ring-2 focus:ring-brand-green focus:outline-none text-right pr-9"
+                          type="email"
+                          value={regEmail}
+                          onChange={(e) => setRegEmail(e.target.value)}
+                          placeholder="name@example.com (اختياري)"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green focus:outline-none text-right pr-9"
                         />
-                        <Phone className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+                        <Mail className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
                       </div>
                     </div>
 
+                    {/* GOVERNORATE */}
                     <div className="space-y-1">
                       <label className="font-bold text-xs text-slate-700 block text-right">
                         المحافظة:
@@ -676,23 +881,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
                     </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="font-bold text-xs text-slate-700 block text-right">
-                      البريد الإلكتروني:
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="email"
-                        required
-                        value={regEmail}
-                        onChange={(e) => setRegEmail(e.target.value)}
-                        placeholder="name@example.com"
-                        className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green focus:outline-none text-right pr-9"
-                      />
-                      <Mail className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
-                    </div>
-                  </div>
-
+                  {/* PASSWORD */}
                   <div className="space-y-1">
                     <label className="font-bold text-xs text-slate-700 block text-right">
                       كلمة المرور:
@@ -717,13 +906,14 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
                     </div>
                   </div>
 
-                  <div className="p-2 bg-slate-50 rounded-xl border border-slate-100 text-3xs text-slate-500 leading-relaxed">
-                    🔒 سنرسل لك كود تحقق (OTP) عبر الواتساب لتأكيد رقمك وتفعيل حسابك فوراً.
+                  <div className="p-2.5 bg-emerald-50/70 border border-emerald-200/50 rounded-xl text-3xs text-emerald-950 flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-brand-green flex-shrink-0" />
+                    <span>سنرسل لك كود تحقق (OTP) على رقم الواتساب لتفعيل الأكونت فوراً.</span>
                   </div>
 
                   <button
                     type="submit"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !regPhone.trim()}
                     className="w-full py-2.5 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-60"
                   >
                     {isSubmitting ? (
@@ -734,26 +924,30 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
                     ) : (
                       <>
                         <MessageSquare className="w-4 h-4" />
-                        <span>متابعة وتأكيد بالواتساب</span>
+                        <span>إنشاء الحساب ومتابعة التحقق</span>
                       </>
                     )}
                   </button>
                 </form>
               ) : (
+                /* STEP 2: WHATSAPP OTP VERIFICATION SCREEN */
                 <form onSubmit={handleFinalizeRegistration} className="space-y-3 animate-fadeIn">
                   <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-1">
                     <span className="text-3xs text-emerald-800 font-bold block">
-                      أرسلنا كود التحقق (OTP) إلى واتساب رقم:
+                      جالك كود تحقق (OTP) على الواتساب على رقمك:
                     </span>
                     <span className="text-sm font-black font-mono text-brand-navy dir-ltr block">
                       {regPhone}
+                    </span>
+                    <span className="text-3xs text-slate-500 block">
+                      حط الكود المكون من 4 أرقام لتفعيل الأكونت مباشرة
                     </span>
                   </div>
 
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <label className="font-bold text-xs text-slate-700">
-                        أدخل كود الـ OTP المكون من 4 أرقام:
+                        كود الـ OTP:
                       </label>
                       <button
                         type="button"
@@ -761,7 +955,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
                         className="text-3xs text-brand-green font-bold hover:underline inline-flex items-center gap-1"
                       >
                         <ArrowRight className="w-3 h-3 rotate-180" />
-                        <span>تعديل البيانات</span>
+                        <span>تعديل البيانات أو الرقم</span>
                       </button>
                     </div>
 
@@ -801,12 +995,12 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
                     {isSubmitting ? (
                       <>
                         <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>جاري التحقق وإنشاء الحساب...</span>
+                        <span>جاري التحقق وتفعيل الأكونت...</span>
                       </>
                     ) : (
                       <>
                         <CheckCircle2 className="w-4 h-4" />
-                        <span>تأكيد الكود وتفعيل الحساب</span>
+                        <span>حط الكود وفعل الأكونت</span>
                       </>
                     )}
                   </button>

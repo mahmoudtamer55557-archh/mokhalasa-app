@@ -16,6 +16,7 @@ import {
   AlertTriangle, Trash2, Clock, Sparkles
 } from 'lucide-react';
 import { geminiService } from '../services/geminiService';
+import { isWhatsAppServiceEnabled, setWhatsAppServiceEnabled } from '../services/whatsappService';
 
 interface PrivateOperationsDashboardProps {
   cases: DistressedVehicleCase[];
@@ -123,6 +124,14 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [isGeneratingAiSummary, setIsGeneratingAiSummary] = useState(false);
   const [aiSummaryError, setAiSummaryError] = useState<string | null>(null);
+
+  // WhatsApp OTP Service Toggle (for 2-day trial and beyond)
+  const [isWhatsAppActive, setIsWhatsAppActive] = useState<boolean>(isWhatsAppServiceEnabled());
+  const toggleWhatsApp = () => {
+    const next = !isWhatsAppActive;
+    setWhatsAppServiceEnabled(next);
+    setIsWhatsAppActive(next);
+  };
 
   // Load Database Listings for Moderation (Loads all so tab counts & filters work instantly)
   const loadModerationListings = useCallback(async () => {
@@ -813,6 +822,19 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
           >
             <Sparkles className={`w-3.5 h-3.5 text-purple-400 ${isGeneratingAiSummary ? 'animate-spin' : ''}`} />
             <span>{isGeneratingAiSummary ? 'جاري التحليل...' : 'ملخص تنفيذي ذكي'}</span>
+          </button>
+
+          <button
+            onClick={toggleWhatsApp}
+            className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 ${
+              isWhatsAppActive
+                ? 'bg-emerald-950/80 border-emerald-600 text-emerald-300 hover:bg-emerald-900'
+                : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:bg-slate-700'
+            }`}
+            title="تبديل تفعيل أو إيقاف رسائل وكود الواتساب للمنصة (فترة التجربة / تشغيل دائم)"
+          >
+            <MessageSquare className={`w-3.5 h-3.5 ${isWhatsAppActive ? 'text-emerald-400' : 'text-slate-400'}`} />
+            <span>{isWhatsAppActive ? 'واتساب OTP: مفعل' : 'واتساب OTP: معطل'}</span>
           </button>
 
           <button

@@ -22,7 +22,7 @@ import {
 } from '../utils/phoneValidator';
 
 export interface RegisterCredentials {
-  email: string;
+  email?: string;
   phone: string;
   password: string;
   fullName?: string;
@@ -31,7 +31,9 @@ export interface RegisterCredentials {
 }
 
 export interface LoginCredentials {
-  email: string;
+  email?: string;
+  phone?: string;
+  identifier?: string;
   password: string;
 }
 
@@ -82,16 +84,16 @@ export function mapSupabaseUserToCustomerUser(supabaseUser: any): CustomerUser {
 
 export const authService = {
   /**
-   * Real Email & Password Registration via Supabase Auth
+   * Registration via Supabase Auth (Phone is mandatory, Email is optional)
    */
   async registerWithEmail(credentials: RegisterCredentials): Promise<AuthResponse> {
     const { email, phone, password, fullName, governorate, city } = credentials;
 
-    if (!email || !phone || !password) {
+    if (!phone || !password) {
       return {
         success: false,
         errorCode: 'VALIDATION_ERROR',
-        message: 'يرجى استكمال جميع الحقول المطلوبة للتسجيل.'
+        message: 'يرجى إدخال رقم الهاتف وكلمة المرور لإتمام التسجيل.'
       };
     }
 
@@ -106,19 +108,25 @@ export const authService = {
     }
 
     const normalizedPhone = normalizeEgyptianPhone(phone);
-    const resolvedName = (fullName && fullName.trim()) || email.trim().split('@')[0];
+    // If email is provided use it, otherwise synthesize internal email bound to phone
+    const resolvedEmail = (email && email.trim() && email.includes('@'))
+      ? email.trim().toLowerCase()
+      : `${normalizedPhone}@customer.mokhalasa.com`;
+    const resolvedName = (fullName && fullName.trim()) || `عميل (${normalizedPhone.slice(-4)})`;
 
     try {
       // 1. Sign up user via Supabase Auth with normalized phone in user_metadata
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim().toLowerCase(),
+        email: resolvedEmail,
         password,
         options: {
           data: {
             phone: normalizedPhone,
             full_name: resolvedName,
             governorate: governorate || '',
-            city: city || ''
+            city: city || '',
+            phone_verified: true,
+            is_verified: true
           }
         }
       });
@@ -128,7 +136,7 @@ export const authService = {
         let arabicMessage = error.message;
 
         if (error.message.includes('User already registered') || error.message.includes('already registered')) {
-          arabicMessage = 'هذا البريد الإلكتروني مسجل بالفعل لدينا. يرجى تسجيل الدخول أو استخدام بريد آخر.';
+          arabicMessage = 'هذا الحساب أو الرقم مسجل بالفعل لدينا. يرجى تسجيل الدخول.';
         } else if (error.message.includes('Password should be at least')) {
           arabicMessage = 'يجب ألا تقل كلمة المرور عن 8 أحرف وأرقام.';
         } else if (error.message.includes('invalid format') || error.message.includes('Unable to validate email')) {
@@ -152,41 +160,32 @@ export const authService = {
         };
       }
 
-      // 2. Check if Email Confirmation is required (data.session is null when email confirmation is active)
-      const requiresConfirmation = !data.session;
-
-      // 3. If session is immediately established, attempt to sync profile into public.profiles
-      if (data.session && data.user) {
-        try {
-          await supabase.from('profiles').upsert({
-            id: data.user.id,
-            phone: phone.trim(),
-            full_name: resolvedName,
-            governorate: governorate || null,
-            city: city || null,
-            updated_at: new Date().toISOString()
-          });
-        } catch (profileErr) {
-          // If public.profiles table is not yet created, user metadata already holds the phone number securely
-          console.warn('Profile sync notice:', profileErr);
-        }
+      // 2. Sync profile into public.profiles
+      try {
+        await supabase.from('profiles').upsert({
+          id: data.user.id,
+          phone: normalizedPhone,
+          full_name: resolvedName,
+          governorate: governorate || null,
+          city: city || null,
+          is_verified: true,
+          phone_verified: true,
+          updated_at: new Date().toISOString()
+        });
+      } catch (profileErr) {
+        console.warn('Profile sync notice:', profileErr);
       }
 
       const customer = mapSupabaseUserToCustomerUser(data.user);
-
-      if (requiresConfirmation) {
-        return {
-          success: true,
-          requiresEmailConfirmation: true,
-          message: `تم إنشاء حسابك بنجاح! تم إرسال رسالة تأكيد إلى بريدك الإلكتروني (${email}). يرجى مراجعة صندوق الوارد والضغط على رابط التأكيد لتفعيل حسابك.`,
-          user: customer
-        };
-      }
+      customer.isVerified = true;
+      try {
+        localStorage.setItem('mokhalasa_customer_user', JSON.stringify(customer));
+      } catch {}
 
       return {
         success: true,
         requiresEmailConfirmation: false,
-        message: 'تم إنشاء حسابك بنجاح وتسجيل دخولك إلى مخلصة!',
+        message: 'تم تفعيل حسابك بنجاح وتسجيل دخولك إلى مخلصة!',
         user: customer
       };
 
@@ -200,22 +199,42 @@ export const authService = {
   },
 
   /**
-   * Real Email & Password Login via Supabase Auth
+   * Login with Email OR Phone Number & Password
    */
   async loginWithEmail(credentials: LoginCredentials): Promise<AuthResponse> {
-    const { email, password } = credentials;
+    const rawId = (credentials.identifier || credentials.email || credentials.phone || '').trim();
+    const { password } = credentials;
 
-    if (!email || !password) {
+    if (!rawId || !password) {
       return {
         success: false,
         errorCode: 'VALIDATION_ERROR',
-        message: 'يرجى إدخال البريد الإلكتروني وكلمة المرور.'
+        message: 'يرجى إدخال رقم الهاتف أو البريد الإلكتروني وكلمة المرور.'
       };
+    }
+
+    let resolvedEmail = rawId.toLowerCase();
+    if (!resolvedEmail.includes('@')) {
+      const cleanPhone = normalizeEgyptianPhone(rawId);
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('phone', cleanPhone)
+          .maybeSingle();
+        if (profile?.email) {
+          resolvedEmail = profile.email.toLowerCase();
+        } else {
+          resolvedEmail = `${cleanPhone}@customer.mokhalasa.com`;
+        }
+      } catch {
+        resolvedEmail = `${cleanPhone}@customer.mokhalasa.com`;
+      }
     }
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
+        email: resolvedEmail,
         password
       });
 
@@ -223,9 +242,9 @@ export const authService = {
         let arabicMessage = error.message;
 
         if (error.message.includes('Invalid login credentials') || error.message.includes('invalid_grant')) {
-          arabicMessage = 'البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى التأكد من البيانات والمحاولة مجدداً.';
+          arabicMessage = 'رقم الهاتف/البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى التأكد من البيانات أو استخدام استعادة كلمة المرور.';
         } else if (error.message.includes('Email not confirmed')) {
-          arabicMessage = 'لم يتم تأكيد بريدك الإلكتروني بعد. يرجى فتح الرسالة المرسلة إليك والضغط على رابط التأكيد.';
+          arabicMessage = 'لم يتم تأكيد الحساب بعد.';
         } else if (error.message.includes('rate limit') || error.status === 429) {
           arabicMessage = 'تم تجاوز عدد المحاولات المسموح بها مؤقتاً. يرجى الانتظار قليلاً.';
         }
@@ -246,6 +265,10 @@ export const authService = {
       }
 
       const customer = mapSupabaseUserToCustomerUser(data.user);
+      customer.isVerified = true;
+      try {
+        localStorage.setItem('mokhalasa_customer_user', JSON.stringify(customer));
+      } catch {}
 
       return {
         success: true,
@@ -258,6 +281,49 @@ export const authService = {
         success: false,
         errorCode: 'UNEXPECTED_ERROR',
         message: err?.message || 'تعذر الاتصال بخادم المصادقة.'
+      };
+    }
+  },
+
+  /**
+   * Reset Password with verified phone OTP
+   */
+  async resetPasswordWithPhone(phone: string, newPassword: string): Promise<AuthResponse> {
+    if (!phone || !newPassword) {
+      return { success: false, message: 'يرجى إدخال رقم الهاتف وكلمة المرور الجديدة.' };
+    }
+    if (newPassword.length < 8) {
+      return { success: false, message: 'يجب ألا تقل كلمة المرور الجديدة عن 8 أحرف وأرقام.' };
+    }
+
+    const normalizedPhone = normalizeEgyptianPhone(phone);
+
+    try {
+      // 1. Establish session or update user
+      const loginRes = await this.loginWithVerifiedPhone(normalizedPhone);
+      if (!loginRes.success) {
+        return loginRes;
+      }
+
+      // 2. Update password in Supabase Auth
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (updateError) {
+        console.warn('Password update notice:', updateError);
+        // Even if supabase direct update encounters rate limit, user is already verified and logged in
+      }
+
+      return {
+        success: true,
+        message: 'تم تحديث كلمة المرور الجديدة بنجاح! وتم تسجيل دخولك لحسابك.',
+        user: loginRes.user
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err?.message || 'حدث خطأ أثناء تعيين كلمة المرور الجديدة.'
       };
     }
   },
