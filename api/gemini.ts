@@ -155,22 +155,32 @@ export default async function handler(req: any, res: any) {
       return response;
     };
 
-    let geminiRes = await callGeminiModel('gemini-1.5-flash');
+    // Supported models verified from Google AI Studio / API:
+    const candidateModels = [
+      'gemini-2.5-flash',
+      'gemini-flash-latest',
+      'gemini-flash-lite-latest',
+      'gemini-2.5-pro',
+      'gemini-pro-latest'
+    ];
+
+    let geminiRes: any = null;
     let lastErrBody = '';
     let lastStatus = 200;
 
-    if (!geminiRes.ok) {
-      lastErrBody = await geminiRes.text();
-      lastStatus = geminiRes.status;
-      // Try gemini-2.0-flash
-      geminiRes = await callGeminiModel('gemini-2.0-flash');
-    }
-
-    if (!geminiRes.ok) {
-      lastErrBody = await geminiRes.text();
-      lastStatus = geminiRes.status;
-      // Try gemini-1.5-pro
-      geminiRes = await callGeminiModel('gemini-1.5-pro');
+    for (const model of candidateModels) {
+      try {
+        const res = await callGeminiModel(model);
+        if (res.ok) {
+          geminiRes = res;
+          break;
+        } else {
+          lastErrBody = await res.text();
+          lastStatus = res.status;
+        }
+      } catch (e: any) {
+        lastErrBody = e?.message || 'Network error';
+      }
     }
 
     if (!geminiRes.ok) {
