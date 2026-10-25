@@ -35,7 +35,7 @@ export interface ChatMessage {
 
 class GeminiServiceClient {
   private lastRequestTime: number = 0;
-  private readonly THROTTLE_MS: number = 2000; // 2 seconds between AI calls
+  private readonly THROTTLE_MS: number = 600; // 600ms between calls for ultra-fast, responsive chat
 
   /**
    * Helper to dispatch task to serverless backend with Supabase Edge Function fallback

@@ -788,7 +788,7 @@ export function App() {
         </div>
       )}
       {/* AI Customer Support Chatbot Floating Assistant */}
-      <CustomerSupportChatbot lang={lang} />
+      <CustomerSupportChatbot lang={lang} onNavigate={handleNavigate} />
     </div>
   );
 }

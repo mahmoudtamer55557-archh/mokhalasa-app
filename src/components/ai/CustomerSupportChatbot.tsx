@@ -3,29 +3,32 @@ import { geminiService, ChatMessage } from '../../services/geminiService';
 import MokhalasaSvgLogo from '../brand/MokhalasaSvgLogo';
 import { 
   MessageSquare, Sparkles, X, Send, Bot, User, 
-  HelpCircle, ExternalLink, ShieldCheck, PhoneCall 
+  HelpCircle, ExternalLink, ShieldCheck, PhoneCall,
+  ChevronLeft, AlertCircle
 } from 'lucide-react';
 
 interface CustomerSupportChatbotProps {
   lang?: 'ar' | 'en';
+  onNavigate?: (view: string) => void;
 }
 
 const QUICK_QUESTIONS = [
-  'كيف تعمل منصة مخلصة للتسوية البنكية؟',
-  'ما هي خطوات بيع سيارة عليها حظر بيع؟',
-  'كيف يضمن المشتري حقه عند سداد المديونية؟',
-  'ما هي الأوراق الرسمية المطلوبة لتوثيق الإعلان؟'
+  'خطوات بيع سيارة عليها حظر بنكي وأقساط',
+  'عايز اشتري سيارة مفحوصة من المعرض',
+  'كيف تضمن مخلصة سداد البنك وفك الحظر؟',
+  'عندي شكوى عاجلة وعايز أكلم الإدارة'
 ];
 
 export const CustomerSupportChatbot: React.FC<CustomerSupportChatbotProps> = ({
-  lang = 'ar'
+  lang = 'ar',
+  onNavigate
 }) => {
   const isAr = lang === 'ar';
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
-      text: 'أهلاً بك في مخلصة! أنا المساعد الذكي للمنصة. كيف يمكنني مساعدتك اليوم بخصوص بيع أو شراء سيارات التقسيط والتسوية البنكية المباشرة؟'
+      text: 'أهلاً بك في مخلصة! أنا مستشارك الذكي لخدمات بيع وشراء سيارات التقسيط والتسويات البنكية بمصر. كيف يمكنني خدمتك اليوم؟'
     }
   ]);
   const [inputText, setInputText] = useState('');
@@ -63,10 +66,71 @@ export const CustomerSupportChatbot: React.FC<CustomerSupportChatbotProps> = ({
         ...prev,
         {
           role: 'assistant',
-          text: res.message || 'عذراً، لم أتمكن من الحصول على إجابة حالياً. يمكنك التواصل المباشر مع مستشاري مخلصة عبر واتساب على 01018898144.'
+          text: res.message || 'نعتذر لحضرتك جداً، يمكنك التواصل المباشر مع مستشاري مخلصة لحل استفسارك فوراً عبر [واتساب المستشارين](https://wa.me/201018898144).'
         }
       ]);
     }
+  };
+
+  /**
+   * Helper to format markdown links [title](url) as interactive clickable badges/pills
+   */
+  const renderFormattedMessage = (text: string) => {
+    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = linkRegex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(text.substring(lastIndex, match.index));
+      }
+
+      const label = match[1];
+      const url = match[2];
+      const isInternal = url.startsWith('/') || url.startsWith('#');
+      const isWhatsApp = url.includes('wa.me') || url.includes('whatsapp');
+
+      parts.push(
+        <button
+          key={`link-${match.index}`}
+          type="button"
+          onClick={() => {
+            if (isInternal) {
+              const cleanView = url.replace(/^[/#]+/, '');
+              if (onNavigate) {
+                onNavigate(cleanView);
+              } else {
+                window.location.hash = `#/${cleanView}`;
+              }
+            } else {
+              window.open(url, '_blank', 'noopener,noreferrer');
+            }
+          }}
+          className={`inline-flex items-center gap-1 mx-1 px-2.5 py-1 rounded-xl text-2xs font-extrabold transition shadow-xs active:scale-95 ${
+            isWhatsApp
+              ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+              : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300'
+          }`}
+          title={isInternal ? `الانتقال إلى: ${label}` : label}
+        >
+          <span>{label}</span>
+          {isInternal ? (
+            <ChevronLeft className="w-3 h-3 text-emerald-700 rotate-180" />
+          ) : (
+            <ExternalLink className="w-2.5 h-2.5 text-white" />
+          )}
+        </button>
+      );
+
+      lastIndex = linkRegex.lastIndex;
+    }
+
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+
+    return parts.length > 0 ? parts : text;
   };
 
   return (
@@ -94,7 +158,7 @@ export const CustomerSupportChatbot: React.FC<CustomerSupportChatbotProps> = ({
 
       {/* Chat Dialog Drawer */}
       {isOpen && (
-        <div className="bg-white rounded-3xl w-[92vw] sm:w-[380px] h-[520px] shadow-2xl border border-slate-200/90 flex flex-col overflow-hidden animate-scaleUp">
+        <div className="bg-white rounded-3xl w-[92vw] sm:w-[390px] h-[530px] shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-scaleUp">
           {/* Header */}
           <div className="p-4 bg-brand-navy text-white flex items-center justify-between border-b border-slate-800">
             <div className="flex items-center gap-2.5">
@@ -104,11 +168,11 @@ export const CustomerSupportChatbot: React.FC<CustomerSupportChatbotProps> = ({
               <div>
                 <h4 className="font-black text-xs flex items-center gap-1.5">
                   <span>مساعد مخلصة الذكي</span>
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-3xs font-mono font-bold">Gemini AI</span>
+                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-3xs font-mono font-bold">Fast AI</span>
                 </h4>
                 <p className="text-3xs text-slate-400 flex items-center gap-1">
                   <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                  <span>دعم سياسات وإجراءات المنصة الرسمية</span>
+                  <span>دعم رسمي فوري لإجراءات المنصة وفك الحظر</span>
                 </p>
               </div>
             </div>
@@ -123,26 +187,26 @@ export const CustomerSupportChatbot: React.FC<CustomerSupportChatbotProps> = ({
           </div>
 
           {/* Messages Area */}
-          <div className="flex-1 p-4 overflow-y-auto space-y-3.5 bg-slate-50/50 text-xs">
+          <div className="flex-1 p-4 overflow-y-auto space-y-3.5 bg-slate-50/60 text-xs">
             {messages.map((m, idx) => (
               <div
                 key={idx}
                 className={`flex gap-2.5 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {m.role === 'assistant' && (
-                  <div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-2xs">
                     <Bot className="w-4 h-4 text-brand-green" />
                   </div>
                 )}
 
                 <div
-                  className={`max-w-[82%] p-3 rounded-2xl leading-relaxed whitespace-pre-wrap text-2xs ${
+                  className={`max-w-[85%] p-3.5 rounded-2xl leading-relaxed text-2xs ${
                     m.role === 'user'
-                      ? 'bg-brand-navy text-white rounded-br-none shadow-sm'
+                      ? 'bg-brand-navy text-white rounded-br-none shadow-sm whitespace-pre-wrap'
                       : 'bg-white text-slate-800 border border-slate-200/90 rounded-bl-none shadow-2xs'
                   }`}
                 >
-                  {m.text}
+                  {m.role === 'assistant' ? renderFormattedMessage(m.text) : m.text}
                 </div>
 
                 {m.role === 'user' && (
@@ -154,16 +218,16 @@ export const CustomerSupportChatbot: React.FC<CustomerSupportChatbotProps> = ({
             ))}
 
             {isLoading && (
-              <div className="flex gap-2 items-center text-slate-400 text-3xs p-2 animate-pulse">
-                <Bot className="w-4 h-4 text-emerald-500" />
-                <span>جاري البحث في سياسات وإجراءات مخلصة...</span>
+              <div className="flex gap-2 items-center text-slate-500 text-3xs p-2 animate-pulse bg-emerald-50/50 rounded-xl border border-emerald-100">
+                <Bot className="w-4 h-4 text-emerald-500 animate-spin" />
+                <span>جاري إعداد الإجابة السريعة...</span>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
           {/* Quick Question Pills */}
-          {messages.length <= 3 && (
+          {messages.length <= 4 && (
             <div className="px-3 py-2 bg-white border-t border-slate-100 flex gap-1.5 overflow-x-auto no-scrollbar">
               {QUICK_QUESTIONS.map((q, i) => (
                 <button
@@ -171,7 +235,7 @@ export const CustomerSupportChatbot: React.FC<CustomerSupportChatbotProps> = ({
                   type="button"
                   onClick={() => handleSendMessage(q)}
                   disabled={isLoading}
-                  className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-emerald-50 hover:text-emerald-900 border border-slate-200 text-slate-700 text-3xs font-bold whitespace-nowrap transition"
+                  className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-emerald-50 hover:text-emerald-950 border border-slate-200 text-slate-700 text-3xs font-bold whitespace-nowrap transition"
                 >
                   {q}
                 </button>
@@ -179,19 +243,19 @@ export const CustomerSupportChatbot: React.FC<CustomerSupportChatbotProps> = ({
             </div>
           )}
 
-          {/* Human Support Fallback */}
-          <div className="px-3 py-1.5 bg-emerald-50/70 border-t border-emerald-100 flex items-center justify-between text-3xs text-emerald-950 font-bold">
-            <span className="flex items-center gap-1">
-              <HelpCircle className="w-3 h-3 text-emerald-600" />
-              <span>تحتاج تفاوضاً خاصاً أو استشارة؟</span>
+          {/* De-escalation & Urgent Support Header */}
+          <div className="px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-amber-50 border-t border-slate-100 flex items-center justify-between text-3xs text-slate-700 font-bold">
+            <span className="flex items-center gap-1 text-slate-600">
+              <AlertCircle className="w-3 h-3 text-amber-600" />
+              <span>مشكلة أو شكوى عاجلة؟</span>
             </span>
             <a
-              href="https://wa.me/201018898144?text=مرحباً%20مخلصة،%20أحتاج%20استشارة%20بخصوص%20تسوية%20سيارة."
+              href="https://wa.me/201018898144?text=مرحباً%20إدارة%20مخلصة،%20لدي%20شكوى%20أو%20استفسار%20عاجل%20أرجو%20المتابعة."
               target="_blank"
               rel="noreferrer"
-              className="text-emerald-800 hover:text-emerald-950 underline flex items-center gap-0.5"
+              className="text-emerald-800 hover:text-emerald-950 font-black underline flex items-center gap-1"
             >
-              <span>واتساب المستشارين</span>
+              <span>مستشار الإدارة المباشر</span>
               <ExternalLink className="w-2.5 h-2.5" />
             </a>
           </div>
@@ -208,7 +272,7 @@ export const CustomerSupportChatbot: React.FC<CustomerSupportChatbotProps> = ({
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="اكتب استفسارك عن بيع أو شراء سيارات التقسيط..."
+              placeholder="اكتب سؤالك، وسأساعدك بروابط المنصة فوراً..."
               disabled={isLoading}
               className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-brand-green focus:outline-none"
             />
