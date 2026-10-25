@@ -54,7 +54,8 @@ const LIFECYCLE_STATUS_LABELS: Record<CaseLifecycleStatus, { labelAr: string; co
   needs_changes: { labelAr: 'مطلوب تعديل', color: 'bg-amber-100 text-amber-800' },
   pending_review: { labelAr: 'قيد التدقيق', color: 'bg-blue-100 text-blue-800' },
   approved: { labelAr: 'معتمد', color: 'bg-emerald-100 text-emerald-800' },
-  rejected: { labelAr: 'مرفوض', color: 'bg-rose-100 text-rose-800' }
+  rejected: { labelAr: 'مرفوض', color: 'bg-rose-100 text-rose-800' },
+  withdrawn: { labelAr: 'مسحوب من المعرض', color: 'bg-slate-100 text-slate-800' }
 };
 
 export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProps> = ({
@@ -393,6 +394,49 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
       alert(`خطأ: ${res.message}`);
     }
   };
+
+  // Handle Toggle Visibility (Hide/Unhide listing temporarily during meeting/agreement)
+  const handleToggleVisibility = async (listingId: string, hide: boolean) => {
+    const res = await listingService.toggleListingVisibility(
+      listingId,
+      hide,
+      currentStaffUser?.name || 'مسؤول العمليات'
+    );
+    if (res.success) {
+      setDbListings(prev => prev.map(l => l.id === listingId ? { ...l, is_hidden: hide } : l));
+      if (selectedModerationListing && selectedModerationListing.id === listingId) {
+        setSelectedModerationListing(prev => prev ? { ...prev, is_hidden: hide } : null);
+      }
+      alert(`✅ ${res.message}`);
+      await loadModerationListings();
+    } else {
+      alert(`خطأ: ${res.message}`);
+    }
+  };
+
+  // Handle Verify Documents (Grant or Revoke Verified Trust Badge)
+  const handleVerifyDocuments = async (listingId: string, isVerified: boolean, notes?: string) => {
+    const res = await listingService.verifyListingDocuments(
+      listingId,
+      isVerified,
+      notes,
+      currentStaffUser?.name || 'مسؤول مراجعة المستندات'
+    );
+    if (res.success) {
+      setDbListings(prev => prev.map(l => l.id === listingId ? { ...l, documents_verified: isVerified } : l));
+      if (selectedModerationListing && selectedModerationListing.id === listingId) {
+        setSelectedModerationListing(prev => prev ? { ...prev, documents_verified: isVerified } : null);
+      }
+      alert(`✅ ${res.message}`);
+      await loadModerationListings();
+    } else {
+      alert(`خطأ: ${res.message}`);
+    }
+  };
+
+  // Document Lightbox Preview State
+  const [docPreviewUrl, setDocPreviewUrl] = useState<string | null>(null);
+  const [docPreviewTitle, setDocPreviewTitle] = useState<string>('');
 
   // Filters & Search
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -1422,6 +1466,17 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                           {item.case_reference || (`MK-${item.id.slice(0, 8).toUpperCase()}`)}
                         </span>
                         <span className="text-slate-600">|</span>
+                        <span className="text-slate-400">المرور:</span>
+                        <span className="font-bold text-amber-300">{item.traffic_unit || 'مرور فيصل'}</span>
+                        {item.is_hidden && (
+                          <>
+                            <span className="text-slate-600">|</span>
+                            <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-amber-500/20 text-amber-300 border border-amber-500/50">
+                              👁️ مخفي مؤقتاً عن المعرض
+                            </span>
+                          </>
+                        )}
+                        <span className="text-slate-600">|</span>
                         <span className="text-slate-400">البائع:</span>
                         <span className="font-bold text-white">{item.seller_name || 'مالك أول'}</span>
                         <span className="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 font-mono text-3xs border border-emerald-800/60" dir="ltr">
@@ -1459,7 +1514,23 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                           );
                         })()}
                       </div>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {/* Temporary Hide / Unhide Toggle */}
+                        {(item.status === 'published' || item.status === 'approved' || item.is_hidden) && (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleVisibility(item.id, !item.is_hidden)}
+                            className={`px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 text-3xs border ${
+                              item.is_hidden
+                                ? 'bg-amber-950/80 hover:bg-amber-900 text-amber-300 border-amber-700/60 animate-pulse'
+                                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                            }`}
+                            title={item.is_hidden ? 'إعادة إظهار الإعلان بالمعرض العام' : 'إخفاء الإعلان مؤقتاً عن المعرض (حجز / جاري المقابلة)'}
+                          >
+                            <Eye className="w-3 h-3 text-amber-400" />
+                            <span>{item.is_hidden ? '✨ إعادة إظهار بالمعرض' : '👁️ إخفاء مؤقت عن المعرض'}</span>
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => onNavigate('marketplace')}
@@ -1511,10 +1582,15 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
 
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {/* Documents Status / Request Button */}
-                        {item.documents_submitted ? (
+                        {item.documents_verified ? (
                           <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-3xs font-bold flex items-center gap-1">
-                            <FileText className="w-3 h-3 text-emerald-400" />
-                            ✓ المستندات مرفقة
+                            <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                            ✓ الأوراق موثقة ومضمونة
+                          </span>
+                        ) : item.documents_submitted ? (
+                          <span className="px-2.5 py-1 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/40 text-3xs font-bold flex items-center gap-1">
+                            <FileText className="w-3 h-3 text-sky-400" />
+                            📄 أوراق مرفوعة بانتظار فحصك
                           </span>
                         ) : item.documents_requested ? (
                           <span className="px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/40 text-3xs font-bold flex items-center gap-1">
@@ -2038,61 +2114,148 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
             </div>
 
             {/* Official Documents Box */}
-            <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5 text-xs">
-              <div className="flex items-center justify-between">
+            <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-extrabold text-white flex items-center gap-1.5">
                   <FileText className="w-4 h-4 text-brand-green" />
-                  <span>الأوراق والمستندات الرسمية (الرخصة / البطاقة / بيان البنك):</span>
+                  <span>الأوراق والمستندات الرسمية المحمية (خاصة بإدارة مخلصة فقط):</span>
                 </span>
-                {selectedModerationListing.documents_submitted ? (
-                  <span className="px-2.5 py-0.5 rounded-full text-3xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                    ✓ تم رفع المستندات
-                  </span>
-                ) : selectedModerationListing.documents_requested ? (
-                  <span className="px-2.5 py-0.5 rounded-full text-3xs font-black bg-blue-500/20 text-blue-300 border border-blue-500/40">
-                    ⏳ تم إرسال طلب المستندات
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => handleRequestDocuments(selectedModerationListing.id)}
-                    className="px-3 py-1 rounded-lg bg-emerald-950 border border-emerald-700 text-emerald-300 text-3xs font-bold hover:bg-emerald-900 transition flex items-center gap-1"
-                  >
-                    <span>📄 طلب المستندات من العميل</span>
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {selectedModerationListing.documents_verified ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-3xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                      ✓ أوراق موثقة ومضمونة (شارة الثقة مفعلة)
+                    </span>
+                  ) : selectedModerationListing.documents_submitted ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-3xs font-black bg-sky-500/20 text-sky-300 border border-sky-500/40">
+                      ✓ تم رفع المستندات (بانتظار تدقيقك)
+                    </span>
+                  ) : selectedModerationListing.documents_requested ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-3xs font-black bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                      ⏳ تم إرسال طلب المستندات
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleRequestDocuments(selectedModerationListing.id)}
+                      className="px-3 py-1 rounded-lg bg-emerald-950 border border-emerald-700 text-emerald-300 text-3xs font-bold hover:bg-emerald-900 transition flex items-center gap-1"
+                    >
+                      <span>📄 طلب المستندات من العميل</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
-              {selectedModerationListing.official_documents && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-3xs">
+              {selectedModerationListing.official_documents ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-3xs">
+                  {/* License Front */}
                   <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1">
-                    <span className="text-slate-400 block font-bold">رخصة السيارة:</span>
-                    {selectedModerationListing.official_documents.licenseUrl ? (
-                      <a href={selectedModerationListing.official_documents.licenseUrl} target="_blank" rel="noreferrer" className="text-emerald-400 font-bold underline truncate block">
-                        معاينة الرخصة ↗
-                      </a>
+                    <span className="text-slate-400 block font-bold">الرخصة (وجه أمامي):</span>
+                    {(selectedModerationListing.official_documents.licenseFrontUrl || selectedModerationListing.official_documents.licenseUrl) ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDocPreviewUrl(selectedModerationListing.official_documents?.licenseFrontUrl || selectedModerationListing.official_documents?.licenseUrl || null);
+                          setDocPreviewTitle('رخصة السيارة (الوجه الأمامي)');
+                        }}
+                        className="text-emerald-400 hover:text-emerald-300 font-bold underline truncate block text-left w-full text-3xs"
+                      >
+                        معاينة وفحص ↗
+                      </button>
                     ) : (
                       <span className="text-slate-600 block">لم ترفع بعد</span>
                     )}
                   </div>
+
+                  {/* License Back */}
+                  <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1">
+                    <span className="text-slate-400 block font-bold">الرخصة (وجه خلفي):</span>
+                    {selectedModerationListing.official_documents.licenseBackUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDocPreviewUrl(selectedModerationListing.official_documents?.licenseBackUrl || null);
+                          setDocPreviewTitle('رخصة السيارة (الوجه الخلفي)');
+                        }}
+                        className="text-emerald-400 hover:text-emerald-300 font-bold underline truncate block text-left w-full text-3xs"
+                      >
+                        معاينة وفحص ↗
+                      </button>
+                    ) : (
+                      <span className="text-slate-600 block">لم ترفع بعد</span>
+                    )}
+                  </div>
+
+                  {/* National ID */}
                   <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1">
                     <span className="text-slate-400 block font-bold">بطاقة الرقم القومي:</span>
                     {selectedModerationListing.official_documents.nationalIdUrl ? (
-                      <a href={selectedModerationListing.official_documents.nationalIdUrl} target="_blank" rel="noreferrer" className="text-emerald-400 font-bold underline truncate block">
-                        معاينة البطاقة ↗
-                      </a>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDocPreviewUrl(selectedModerationListing.official_documents?.nationalIdUrl || null);
+                          setDocPreviewTitle('بطاقة الرقم القومي للمالك');
+                        }}
+                        className="text-emerald-400 hover:text-emerald-300 font-bold underline truncate block text-left w-full text-3xs"
+                      >
+                        معاينة وفحص ↗
+                      </button>
                     ) : (
                       <span className="text-slate-600 block">لم ترفع بعد</span>
                     )}
                   </div>
+
+                  {/* Bank Payoff / Statement */}
                   <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1">
-                    <span className="text-slate-400 block font-bold">بيان سداد البنك:</span>
+                    <span className="text-slate-400 block font-bold">بيان البنك / المخالصة:</span>
                     {selectedModerationListing.official_documents.bankStatementUrl ? (
-                      <a href={selectedModerationListing.official_documents.bankStatementUrl} target="_blank" rel="noreferrer" className="text-emerald-400 font-bold underline truncate block">
-                        معاينة البيان ↗
-                      </a>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDocPreviewUrl(selectedModerationListing.official_documents?.bankStatementUrl || null);
+                          setDocPreviewTitle('بيان المديونية / مخالصة البنك');
+                        }}
+                        className="text-emerald-400 hover:text-emerald-300 font-bold underline truncate block text-left w-full text-3xs"
+                      >
+                        معاينة وفحص ↗
+                      </button>
                     ) : (
                       <span className="text-slate-600 block">لم يرفع بعد</span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-3xs text-slate-500 text-center">
+                  لم يقم العميل برفع المستندات الرسمية بعد. يمكنك الضغط على «طلب المستندات» لإشعاره.
+                </div>
+              )}
+
+              {/* Admin Verification Controls */}
+              {selectedModerationListing.documents_submitted && (
+                <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 flex flex-wrap items-center justify-between gap-2 pt-2">
+                  <div className="text-2xs text-slate-300">
+                    <strong>إجراء تدقيق المستندات:</strong> بعد مقارنة رقم الشاسيه والموتور واسم المالك بالرخصة والبنك، يمكنك اعتمادها لمنح شارة الأوراق المفحوصة.
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {!selectedModerationListing.documents_verified ? (
+                      <button
+                        type="button"
+                        onClick={() => handleVerifyDocuments(selectedModerationListing.id, true)}
+                        className="px-3 py-1.5 rounded-xl bg-brand-green hover:bg-emerald-500 text-slate-950 font-black text-xs transition flex items-center gap-1 shadow-md"
+                        title="اعتماد المستندات الرسمية ومنح شارة الموثوقية بالمعرض"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5 text-slate-950" />
+                        <span>✓ اعتماد المستندات (منح شارة الأوراق المفحوصة والمضمونة)</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleVerifyDocuments(selectedModerationListing.id, false, 'إلغاء الاعتماد لإعادة الفحص')}
+                        className="px-3 py-1.5 rounded-xl bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 font-bold text-xs transition flex items-center gap-1"
+                      >
+                        <X className="w-3.5 h-3.5 text-rose-400" />
+                        <span>إلغاء توثيق الأوراق</span>
+                      </button>
                     )}
                   </div>
                 </div>
@@ -2112,41 +2275,60 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
             </div>
 
             {/* Action Buttons */}
-            <div className="pt-2 flex flex-wrap items-center justify-end gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => setSelectedModerationListing(null)}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold"
-              >
-                إلغاء
-              </button>
+            <div className="pt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div>
+                {(selectedModerationListing.status === 'published' || selectedModerationListing.status === 'approved' || selectedModerationListing.is_hidden) && (
+                  <button
+                    type="button"
+                    onClick={() => handleToggleVisibility(selectedModerationListing.id, !selectedModerationListing.is_hidden)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border ${
+                      selectedModerationListing.is_hidden
+                        ? 'bg-amber-950/80 hover:bg-amber-900 text-amber-300 border-amber-700/60 animate-pulse'
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                    }`}
+                  >
+                    <Eye className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{selectedModerationListing.is_hidden ? '✨ إعادة إظهار الإعلان بالمعرض' : '👁️ إخفاء مؤقت عن المعرض (حجز / جاري المقابلة)'}</span>
+                  </button>
+                )}
+              </div>
 
-              <button
-                type="button"
-                onClick={() => handleModerate(selectedModerationListing.id, 'needs_changes', adminFeedbackInput.trim() || 'يرجى مراجعة وتدقيق بيانات الإعلان وإعادة إرساله')}
-                disabled={moderationActionLoading}
-                className="px-4 py-2 rounded-xl bg-amber-950 border border-amber-700 text-amber-300 hover:bg-amber-900 font-bold"
-              >
-                طلب تعديل من العميل
-              </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setSelectedModerationListing(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold"
+                >
+                  إلغاء
+                </button>
 
-              <button
-                type="button"
-                onClick={() => handleModerate(selectedModerationListing.id, 'rejected', adminFeedbackInput || 'تم الرفض لعدم توافق الشروط')}
-                disabled={moderationActionLoading}
-                className="px-4 py-2 rounded-xl bg-rose-950 border border-rose-800 text-rose-300 hover:bg-rose-900 font-bold"
-              >
-                رفض الإعلان
-              </button>
+                <button
+                  type="button"
+                  onClick={() => handleModerate(selectedModerationListing.id, 'needs_changes', adminFeedbackInput.trim() || 'يرجى مراجعة وتدقيق بيانات الإعلان وإعادة إرساله')}
+                  disabled={moderationActionLoading}
+                  className="px-4 py-2 rounded-xl bg-amber-950 border border-amber-700 text-amber-300 hover:bg-amber-900 font-bold"
+                >
+                  طلب تعديل من العميل
+                </button>
 
-              <button
-                type="button"
-                onClick={() => handleModerate(selectedModerationListing.id, 'published', adminFeedbackInput)}
-                disabled={moderationActionLoading}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black shadow-md flex items-center gap-1.5"
-              >
-                ✓ اعتماد ونشر بالمعرض (Approve & Publish)
-              </button>
+                <button
+                  type="button"
+                  onClick={() => handleModerate(selectedModerationListing.id, 'rejected', adminFeedbackInput || 'تم الرفض لعدم توافق الشروط')}
+                  disabled={moderationActionLoading}
+                  className="px-4 py-2 rounded-xl bg-rose-950 border border-rose-800 text-rose-300 hover:bg-rose-900 font-bold"
+                >
+                  رفض الإعلان
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleModerate(selectedModerationListing.id, 'published', adminFeedbackInput)}
+                  disabled={moderationActionLoading}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black shadow-md flex items-center gap-1.5"
+                >
+                  ✓ اعتماد ونشر بالمعرض (Approve & Publish)
+                </button>
+              </div>
             </div>
 
           </div>
@@ -2540,6 +2722,41 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL: ADMIN SECURE DOCUMENT LIGHTBOX PREVIEW                  */}
+      {/* ============================================================== */}
+      {docPreviewUrl && (
+        <div className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-950 rounded-3xl border border-slate-800 max-w-2xl w-full p-5 space-y-3 animate-scaleUp">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-800 text-xs">
+              <span className="font-black text-white flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-brand-green" />
+                <span>{docPreviewTitle} — وثيقة رسمية مشفرة ومحمية</span>
+              </span>
+              <button
+                onClick={() => setDocPreviewUrl(null)}
+                className="text-slate-400 hover:text-white p-1 text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="rounded-2xl overflow-hidden border border-slate-800 bg-black flex items-center justify-center max-h-[70vh]">
+              <img src={docPreviewUrl} alt={docPreviewTitle} className="max-h-[70vh] w-auto object-contain" />
+            </div>
+            <div className="flex justify-between items-center text-3xs text-slate-400 pt-1">
+              <span>🔒 سرية تامة — متاحة للتدقيق والمطابقة فقط من مستشاري مخلصة المصرح لهم.</span>
+              <button
+                type="button"
+                onClick={() => setDocPreviewUrl(null)}
+                className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold"
+              >
+                إغلاق المعاينة
+              </button>
+            </div>
           </div>
         </div>
       )}

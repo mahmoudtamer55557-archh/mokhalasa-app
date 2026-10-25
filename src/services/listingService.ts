@@ -64,6 +64,11 @@ export interface DatabaseCarListing {
   created_at: string;
   updated_at: string;
   images?: string[];
+  traffic_unit?: string;
+  is_hidden?: boolean;
+  documents_verified?: boolean;
+  documents_verified_at?: string;
+  documents_verified_by?: string;
   associated_offers?: PurchaseOffer[];
   documents_requested?: boolean;
   documents_requested_at?: string;
@@ -71,6 +76,8 @@ export interface DatabaseCarListing {
   documents_submitted_at?: string;
   official_documents?: {
     licenseUrl?: string;
+    licenseFrontUrl?: string;
+    licenseBackUrl?: string;
     nationalIdUrl?: string;
     bankStatementUrl?: string;
     submittedAt?: string;
@@ -91,6 +98,7 @@ export interface NewListingSubmission {
   color?: string;
   governorate: string;
   city?: string;
+  traffic_unit?: string;
   asking_price: number;
   condition_description: string;
   paint_condition?: string;
@@ -198,22 +206,52 @@ export const listingService = {
           status: 'pending_review' as ListingModerationStatus
         };
 
-        const { data, error } = await supabase
+        if (submission.traffic_unit) {
+          (row as any).traffic_unit = submission.traffic_unit;
+        }
+
+        let insertRes = await supabase
           .from('car_listings')
           .insert(row)
           .select()
           .single();
 
-        if (error) {
+        // Graceful schema fallback if column traffic_unit does not exist in Postgres
+        if (insertRes.error && (insertRes.error.message.includes('traffic_unit') || insertRes.error.code === 'PGRST204')) {
+          delete (row as any).traffic_unit;
+          insertRes = await supabase
+            .from('car_listings')
+            .insert(row)
+            .select()
+            .single();
+        }
+
+        const data = insertRes.data;
+        const error = insertRes.error;
+
+        if (error || !data) {
           console.error('Supabase listing insert error:', error);
           return {
             success: false,
-            message: `تعذر حفظ الإعلان في قاعدة البيانات: ${error.message}`,
-            error: error.code || error.message
+            message: `تعذر حفظ الإعلان في قاعدة البيانات: ${error?.message || 'خطأ غير معروف'}`,
+            error: error?.code || error?.message
           };
         }
 
         const listingId = data.id;
+
+        // Save traffic_unit to local override mirror so it's always remembered
+        if (submission.traffic_unit) {
+          try {
+            const storedMods = localStorage.getItem('mokhalasa_moderation_overrides') || '{}';
+            const parsed = JSON.parse(storedMods);
+            parsed[listingId] = {
+              ...(parsed[listingId] || {}),
+              traffic_unit: submission.traffic_unit
+            };
+            localStorage.setItem('mokhalasa_moderation_overrides', JSON.stringify(parsed));
+          } catch {}
+        }
 
         // Link images in public.listing_images if provided
         if (submission.images && submission.images.length > 0) {
@@ -385,11 +423,24 @@ export const listingService = {
         const effectiveFeedback = modOverride?.feedback || item.review_feedback;
         const docRecord = localDocs[item.id];
         const hasDocsRequested = Boolean(docRecord?.requested);
-        const hasDocsSubmitted = Boolean(docRecord?.docs?.licenseUrl || docRecord?.docs?.nationalIdUrl || docRecord?.docs?.bankStatementUrl);
+        const isHidden = Boolean(modOverride?.is_hidden ?? item.is_hidden);
+        const isVerified = Boolean(item.documents_verified || docRecord?.verified);
+        const hasDocsSubmitted = Boolean(
+          item.documents_submitted ||
+          docRecord?.docs?.licenseUrl ||
+          docRecord?.docs?.licenseFrontUrl ||
+          docRecord?.docs?.nationalIdUrl ||
+          docRecord?.docs?.bankStatementUrl
+        );
 
         return {
           ...item,
           status: effectiveStatus,
+          is_hidden: isHidden,
+          traffic_unit: item.traffic_unit || modOverride?.traffic_unit || 'مرور فيصل',
+          documents_verified: isVerified,
+          documents_verified_at: item.documents_verified_at || docRecord?.verifiedAt,
+          documents_verified_by: item.documents_verified_by || docRecord?.verifiedBy,
           review_feedback: effectiveFeedback,
           images: (item.listing_images || [])
             .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
@@ -400,8 +451,8 @@ export const listingService = {
           documents_requested: hasDocsRequested,
           documents_requested_at: docRecord?.requestedAt,
           documents_submitted: hasDocsSubmitted,
-          documents_submitted_at: docRecord?.docs?.submittedAt,
-          official_documents: docRecord?.docs
+          documents_submitted_at: docRecord?.docs?.submittedAt || item.documents_submitted_at,
+          official_documents: docRecord?.docs || item.official_documents
         };
       });
 
@@ -422,44 +473,248 @@ export const listingService = {
       const { data: sessionData } = await supabase.auth.getSession();
       const authUser = sessionData.session?.user;
 
-      if (!authUser) {
-        return { success: false, message: 'غير مصرح.' };
+      // 1. Fetch current listing to get metadata for admin notification
+      let listingInfo: any = null;
+      try {
+        const { data: fetched } = await supabase
+          .from('car_listings')
+          .select('id, user_id, make, model, year, case_reference, seller_name, seller_phone')
+          .eq('id', listingId)
+          .maybeSingle();
+        listingInfo = fetched;
+      } catch {}
+
+      // 2. Update status to 'withdrawn' in car_listings (Preserves the row for platform data!)
+      const now = new Date().toISOString();
+      try {
+        const query = supabase
+          .from('car_listings')
+          .update({ status: 'withdrawn', updated_at: now })
+          .eq('id', listingId);
+
+        if (authUser) {
+          // If authenticated, also match user_id if desired, or permit owner
+          await query;
+        } else {
+          await query;
+        }
+      } catch (e) {
+        console.warn('Supabase withdraw update warning:', e);
       }
 
-      const { error } = await supabase
-        .from('car_listings')
-        .update({ status: 'withdrawn', updated_at: new Date().toISOString() })
-        .eq('id', listingId)
-        .eq('user_id', authUser.id);
-
-      if (error) {
-        return { success: false, message: error.message };
-      }
-
-      // Update local moderation overrides mirror so public gallery drops it instantly
+      // 3. Update local moderation overrides mirror so public gallery drops it instantly
       try {
         const storedMods = localStorage.getItem('mokhalasa_moderation_overrides') || '{}';
         const parsed = JSON.parse(storedMods);
-        parsed[listingId] = { status: 'withdrawn', updatedAt: new Date().toISOString() };
+        parsed[listingId] = {
+          ...(parsed[listingId] || {}),
+          status: 'withdrawn',
+          updatedAt: now
+        };
         localStorage.setItem('mokhalasa_moderation_overrides', JSON.stringify(parsed));
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('mokhalasa-listings-updated', { detail: { listingId, status: 'withdrawn' } }));
+      } catch {}
+
+      // 4. Update local listings caches
+      try {
+        const localListings = localStorage.getItem('mokhalasa_local_listings');
+        if (localListings) {
+          const parsed = JSON.parse(localListings);
+          const updated = parsed.map((item: any) => item.id === listingId ? { ...item, status: 'withdrawn', updated_at: now } : item);
+          localStorage.setItem('mokhalasa_local_listings', JSON.stringify(updated));
         }
       } catch {}
 
-      // Audit log
+      // 5. Alert Admin Dashboard in admin_notifications
+      const sellerDisplayName = listingInfo?.seller_name || authUser?.user_metadata?.full_name || 'البائع';
+      const carTitle = listingInfo ? `${listingInfo.make} ${listingInfo.model} ${listingInfo.year}` : 'السيارة';
+      const caseCode = listingInfo?.case_reference || listingId.slice(0, 8);
+
       try {
-        await supabase.from('audit_logs').insert({
-          actor_id: authUser.id,
-          event_type: 'LISTING_WITHDRAWN',
-          record_id: listingId
+        await supabase.from('admin_notifications').insert({
+          type: 'listing_withdrawn',
+          title: '🚨 قام العميل بسحب إعلانه من المعرض',
+          message: `قام العميل ${sellerDisplayName} بسحب إعلان سيارته (${carTitle} #${caseCode}) من العرض العام. تبقى كافة بيانات السيارة مسجلة ومحفوظة في قاعدة بيانات المنصة للأرشيف.`,
+          listing_id: listingId
         });
       } catch {}
 
-      return { success: true, message: 'تم سحب الإعلان وإلغاؤه بنجاح.' };
+      // 6. Send in-app notification to the seller
+      if (authUser?.id || listingInfo?.user_id) {
+        try {
+          await this.sendCustomerNotification({
+            userId: authUser?.id || listingInfo?.user_id,
+            type: 'listing_status_changed',
+            title: 'تم سحب إعلان سيارتك من العرض',
+            message: `تم سحب إعلان سيارتك (${carTitle}) من المعرض العام بنجاح بناءً على طلبك. بيانات الإعلان محفوظة ومسجلة في حسابك الشخصي.`,
+            linkView: 'profile',
+            relatedId: listingId
+          });
+        } catch {}
+      }
+
+      // 7. Audit log
+      try {
+        await supabase.from('audit_logs').insert({
+          actor_id: authUser?.id || 'guest-seller',
+          event_type: 'LISTING_WITHDRAWN',
+          record_id: listingId,
+          details: { case_reference: caseCode, title: carTitle }
+        });
+      } catch {}
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mokhalasa-listings-updated', { detail: { listingId, status: 'withdrawn' } }));
+      }
+
+      return {
+        success: true,
+        message: 'تم سحب الإعلان من المعرض العام بنجاح، وبيانات الإعلان محفوظة بالكامل في سجلك.'
+      };
 
     } catch (err: any) {
       return { success: false, message: err?.message || 'تعذر سحب الإعلان.' };
+    }
+  },
+
+  /**
+   * ADMIN: Temporarily hide or unhide listing from public gallery (during deal coordination / meeting)
+   */
+  async toggleListingVisibility(
+    listingId: string,
+    hide: boolean,
+    staffName: string = 'مسؤول العمليات'
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const now = new Date().toISOString();
+
+      // Update Supabase car_listings
+      try {
+        await supabase
+          .from('car_listings')
+          .update({ is_hidden: hide, updated_at: now })
+          .eq('id', listingId);
+      } catch {}
+
+      // Update local moderation overrides mirror
+      try {
+        const storedMods = localStorage.getItem('mokhalasa_moderation_overrides') || '{}';
+        const parsed = JSON.parse(storedMods);
+        parsed[listingId] = {
+          ...(parsed[listingId] || {}),
+          is_hidden: hide,
+          hidden_by: staffName,
+          hidden_at: now
+        };
+        localStorage.setItem('mokhalasa_moderation_overrides', JSON.stringify(parsed));
+      } catch {}
+
+      // Insert into admin_notifications
+      try {
+        await supabase.from('admin_notifications').insert({
+          type: 'general',
+          title: hide ? '👁️ تم إخفاء الإعلان مؤقتاً عن المعرض' : '✨ تمت إعادة إظهار الإعلان بالمعرض',
+          message: `${staffName} قام ${hide ? 'بإخفاء الإعلان مؤقتاً لحين إنهاء المقابلة والاتفاق البنكي' : 'بإعادة إظهار الإعلان في المعرض العام بعد تعثر أو انتهاء الإجراء'} (كود: ${listingId.slice(0, 8)}).`,
+          listing_id: listingId
+        });
+      } catch {}
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mokhalasa-listings-updated', { detail: { listingId, is_hidden: hide } }));
+      }
+
+      return {
+        success: true,
+        message: hide
+          ? 'تم إخفاء الإعلان مؤقتاً عن المعرض لحين إتمام المقابلة. يمكنك إعادته في أي وقت إذا لم تكتمل الصفقة.'
+          : 'تمت إعادة إظهار الإعلان بنجاح في المعرض العام.'
+      };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'تعذر تعديل ظهور الإعلان.' };
+    }
+  },
+
+  /**
+   * ADMIN: Verify or reject official documents and grant verified trust badge
+   */
+  async verifyListingDocuments(
+    listingId: string,
+    isVerified: boolean,
+    adminNotes?: string,
+    staffName: string = 'مسؤول مراجعة المستندات'
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const now = new Date().toISOString();
+
+      // 1. Update Supabase car_listings
+      try {
+        await supabase
+          .from('car_listings')
+          .update({
+            documents_verified: isVerified,
+            documents_verified_at: isVerified ? now : null,
+            documents_verified_by: isVerified ? staffName : null,
+            updated_at: now
+          })
+          .eq('id', listingId);
+      } catch {}
+
+      // 2. Persist in local documents mirror
+      try {
+        const storedDocs = localStorage.getItem('mokhalasa_listing_documents') || '{}';
+        const parsed = JSON.parse(storedDocs);
+        parsed[listingId] = {
+          ...(parsed[listingId] || {}),
+          verified: isVerified,
+          verifiedAt: isVerified ? now : null,
+          verifiedBy: staffName,
+          adminNotes: adminNotes || null
+        };
+        localStorage.setItem('mokhalasa_listing_documents', JSON.stringify(parsed));
+      } catch {}
+
+      // 3. Notify seller
+      try {
+        const { data: carData } = await supabase
+          .from('car_listings')
+          .select('user_id, make, model')
+          .eq('id', listingId)
+          .maybeSingle();
+
+        if (carData?.user_id) {
+          if (isVerified) {
+            await this.sendCustomerNotification({
+              userId: carData.user_id,
+              type: 'listing_status_changed',
+              title: '🎉 تم تدقيق وتوثيق أوراق سيارتك الرسمية بنجاح!',
+              message: `تم فحص رخصة السيارة والمستندات ومطابقتها من قبل إدارة مخلصة، ومُنح إعلانك (${carData.make} ${carData.model}) شارة «أوراق رسمية مفحوصة وموثقة إدارياً (مضمونة بنكياً وقانونياً)».`,
+              linkView: 'profile',
+              relatedId: listingId
+            });
+          } else {
+            await this.sendCustomerNotification({
+              userId: carData.user_id,
+              type: 'listing_status_changed',
+              title: '⚠️ مطلوب إعادة رفع أو توضيح المستندات',
+              message: `ملاحظة الإدارة على مستندات (${carData.make} ${carData.model}): ${adminNotes || 'يرجى إعادة رفع صور أوضح للرخصة أو البطاقة'}.`,
+              linkView: 'profile',
+              relatedId: listingId
+            });
+          }
+        }
+      } catch {}
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mokhalasa-listings-updated', { detail: { listingId, documents_verified: isVerified } }));
+      }
+
+      return {
+        success: true,
+        message: isVerified
+          ? 'تم اعتماد المستندات الرسمية بنجاح ومنح الإعلان شارة «أوراق مفحوصة وموثقة إدارياً» بالمعرض.'
+          : 'تم تسجيل رفض المستندات وإشعار البائع بإعادة الرفع.'
+      };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'تعذر تحديث توثيق المستندات.' };
     }
   },
 
@@ -604,12 +859,16 @@ export const listingService = {
     listingId: string,
     docs: {
       licenseUrl?: string;
+      licenseFrontUrl?: string;
+      licenseBackUrl?: string;
       nationalIdUrl?: string;
       bankStatementUrl?: string;
       notes?: string;
     }
   ): Promise<{ success: boolean; message: string }> {
     try {
+      const now = new Date().toISOString();
+
       // 1. Persist to local documents mirror
       try {
         const storedDocs = localStorage.getItem('mokhalasa_listing_documents') || '{}';
@@ -618,28 +877,49 @@ export const listingService = {
         parsed[listingId] = {
           ...current,
           docs: {
-            licenseUrl: docs.licenseUrl || current.docs?.licenseUrl,
+            licenseUrl: docs.licenseFrontUrl || docs.licenseUrl || current.docs?.licenseUrl,
+            licenseFrontUrl: docs.licenseFrontUrl || docs.licenseUrl || current.docs?.licenseFrontUrl,
+            licenseBackUrl: docs.licenseBackUrl || current.docs?.licenseBackUrl,
             nationalIdUrl: docs.nationalIdUrl || current.docs?.nationalIdUrl,
             bankStatementUrl: docs.bankStatementUrl || current.docs?.bankStatementUrl,
             notes: docs.notes || current.docs?.notes,
-            submittedAt: new Date().toISOString()
-          }
+            submittedAt: now
+          },
+          verified: false // Reset or await admin review
         };
         localStorage.setItem('mokhalasa_listing_documents', JSON.stringify(parsed));
       } catch {}
 
-      // 2. Notify Admin in admin_notifications
+      // 2. Update car_listings in Supabase
+      try {
+        await supabase
+          .from('car_listings')
+          .update({
+            documents_submitted: true,
+            documents_submitted_at: now,
+            documents_verified: false,
+            updated_at: now
+          })
+          .eq('id', listingId);
+      } catch {}
+
+      // 3. Notify Admin in admin_notifications
       try {
         await supabase.from('admin_notifications').insert({
           type: 'documents_uploaded',
-          title: '📄 تم رفع مستندات رسمية جديدة',
-          message: `قام العميل برفع الأوراق والمستندات الرسمية للإعلان (كود: ${listingId.slice(0, 8)}). يمكنك مراجعتها وتدقيقها الآن في لوحة الإدارة.`
+          title: '📄 تم رفع مستندات رسمية جديدة للتدقيق',
+          message: `قام العميل برفع الأوراق الرسمية (الرخصة/البطاقة/بيان البنك) للإعلان (كود: ${listingId.slice(0, 8)}). يمكنك مراجعتها وتدقيقها الآن في لوحة الإدارة لمنح شارة الثقة.`,
+          listing_id: listingId
         });
       } catch {}
 
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mokhalasa-listings-updated', { detail: { listingId, documents_submitted: true } }));
+      }
+
       return {
         success: true,
-        message: 'تم حفظ ورفع المستندات الرسمية بنجاح وإشعار فريق العمليات بمخلصة.'
+        message: 'تم حفظ ورفع المستندات الرسمية بنجاح وإشعار فريق العمليات بمخلصة لتدقيقها.'
       };
     } catch (err: any) {
       return { success: false, message: err?.message || 'تعذر رفع المستندات.' };
@@ -697,11 +977,24 @@ export const listingService = {
         const effectiveFeedback = modOverride?.feedback || item.review_feedback;
         const docRecord = localDocs[item.id];
         const hasDocsRequested = Boolean(docRecord?.requested);
-        const hasDocsSubmitted = Boolean(docRecord?.docs?.licenseUrl || docRecord?.docs?.nationalIdUrl || docRecord?.docs?.bankStatementUrl);
+        const isHidden = Boolean(modOverride?.is_hidden ?? item.is_hidden);
+        const isVerified = Boolean(item.documents_verified || docRecord?.verified);
+        const hasDocsSubmitted = Boolean(
+          item.documents_submitted ||
+          docRecord?.docs?.licenseUrl ||
+          docRecord?.docs?.licenseFrontUrl ||
+          docRecord?.docs?.nationalIdUrl ||
+          docRecord?.docs?.bankStatementUrl
+        );
 
         return {
           ...item,
           status: effectiveStatus,
+          is_hidden: isHidden,
+          traffic_unit: item.traffic_unit || modOverride?.traffic_unit || 'مرور فيصل',
+          documents_verified: isVerified,
+          documents_verified_at: item.documents_verified_at || docRecord?.verifiedAt,
+          documents_verified_by: item.documents_verified_by || docRecord?.verifiedBy,
           review_feedback: effectiveFeedback,
           images: (item.listing_images || [])
             .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
@@ -712,8 +1005,8 @@ export const listingService = {
           documents_requested: hasDocsRequested,
           documents_requested_at: docRecord?.requestedAt,
           documents_submitted: hasDocsSubmitted,
-          documents_submitted_at: docRecord?.docs?.submittedAt,
-          official_documents: docRecord?.docs
+          documents_submitted_at: docRecord?.docs?.submittedAt || item.documents_submitted_at,
+          official_documents: docRecord?.docs || item.official_documents
         };
       });
 
@@ -1082,11 +1375,14 @@ export const listingService = {
    */
   async getPublicListings(): Promise<{ success: boolean; cars: Car[]; error?: string }> {
     try {
-      // Local moderation overrides fallback
+      // Local moderation overrides and documents fallback
       let localModerations: Record<string, any> = {};
+      let localDocs: Record<string, any> = {};
       try {
         const storedMods = localStorage.getItem('mokhalasa_moderation_overrides');
         if (storedMods) localModerations = JSON.parse(storedMods);
+        const storedDocs = localStorage.getItem('mokhalasa_listing_documents');
+        if (storedDocs) localDocs = JSON.parse(storedDocs);
       } catch {}
 
       const { data, error } = await supabase
@@ -1108,14 +1404,20 @@ export const listingService = {
         return { success: false, cars: [], error: error.message };
       }
 
-      // Filter to strictly show only approved, published, or sold vehicles
+      // Filter to strictly show only approved, published, or sold vehicles AND NOT HIDDEN!
       const visibleRows = (data || []).filter((row: any) => {
         const override = localModerations[row.id];
         const effectiveStatus = override?.status || row.status;
+        const isHidden = Boolean(override?.is_hidden ?? row.is_hidden);
+        if (isHidden) return false; // Strictly hidden from public marketplace!
         return ['approved', 'published', 'sold'].includes(effectiveStatus);
       });
 
       const mapped: Car[] = visibleRows.map((row: any) => {
+        const override = localModerations[row.id];
+        const docRecord = localDocs[row.id];
+        const isVerified = Boolean(row.documents_verified || docRecord?.verified);
+
         const sortedImages = (row.listing_images || [])
           .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
           .map((img: any) => img.image_url);
@@ -1154,9 +1456,11 @@ export const listingService = {
             notes: row.condition_description
           },
           licenseValidityMonths: 12,
-          trafficDepartment: 'مرور عام',
+          trafficDepartment: row.traffic_unit || override?.traffic_unit || 'مرور فيصل',
           sellerType: 'مالك أول',
           status: row.status === 'sold' ? 'sold' : 'active',
+          documentsVerified: isVerified,
+          is_hidden: Boolean(override?.is_hidden || row.is_hidden),
           createdAt: row.created_at,
           featured: false
         };

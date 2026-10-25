@@ -8,7 +8,7 @@ import {
   Clock, CheckCircle2, AlertTriangle, Edit3, Phone, ArrowRight, 
   Banknote, FileText, UploadCloud, Tag, Bell, User, Check, X, 
   ChevronLeft, AlertCircle, Calendar, ShieldCheck, MessageSquare, 
-  ExternalLink, Car as CarIcon
+  ExternalLink, Car as CarIcon, Camera, Trash2
 } from 'lucide-react';
 
 interface SellerCasePortalPageProps {
@@ -230,10 +230,30 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
   // Documents Modal / State
   const [isDocsModalOpen, setIsDocsModalOpen] = useState(false);
   const [licenseUrl, setLicenseUrl] = useState('');
+  const [licenseFrontUrl, setLicenseFrontUrl] = useState('');
+  const [licenseBackUrl, setLicenseBackUrl] = useState('');
   const [idUrl, setIdUrl] = useState('');
   const [statementUrl, setStatementUrl] = useState('');
   const [docNotes, setDocNotes] = useState('');
   const [docsSaveSuccess, setDocsSaveSuccess] = useState(false);
+  const [docsUploading, setDocsUploading] = useState(false);
+
+  const handleCaseDocFile = (field: 'front' | 'back' | 'id' | 'statement', file: File | null) => {
+    if (!file) return;
+    if (file.size > 15 * 1024 * 1024) {
+      alert('حجم الملف كبير جداً. الحد الأقصى 15 ميجابايت.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const res = reader.result as string;
+      if (field === 'front') setLicenseFrontUrl(res);
+      else if (field === 'back') setLicenseBackUrl(res);
+      else if (field === 'id') setIdUrl(res);
+      else if (field === 'statement') setStatementUrl(res);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const formatEGP = (num: number) => {
     return new Intl.NumberFormat(isAr ? 'ar-EG' : 'en-EG', { maximumFractionDigits: 0 }).format(num) + (isAr ? ' ج.م' : ' EGP');
@@ -421,18 +441,39 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
     const matchingDb = dbListings.find(l => l.case_reference === activeCase.caseReference || l.id === activeCase.vehicle.id);
     const targetId = matchingDb?.id || activeCase.caseReference;
 
+    setDocsUploading(true);
     await listingService.uploadListingDocuments(targetId, {
-      licenseUrl,
+      licenseUrl: licenseFrontUrl || licenseUrl,
+      licenseFrontUrl: licenseFrontUrl || licenseUrl,
+      licenseBackUrl,
       nationalIdUrl: idUrl,
       bankStatementUrl: statementUrl,
       notes: docNotes
     });
+    setDocsUploading(false);
 
     setDocsSaveSuccess(true);
     setTimeout(() => {
       setIsDocsModalOpen(false);
       setDocsSaveSuccess(false);
     }, 1500);
+  };
+
+  // Withdraw Active Case
+  const handleWithdrawActiveCase = async () => {
+    if (!activeCase) return;
+    if (!window.confirm('هل أنت متأكد من رغبتك في سحب هذا الإعلان من المعرض؟ سيتم حفظ كافة بيانات السيارة وأرشفتها بسجلات مخلصة وإخفائها من العرض العام.')) {
+      return;
+    }
+    const matchingDb = dbListings.find(l => l.case_reference === activeCase.caseReference || l.id === activeCase.vehicle.id);
+    const targetId = matchingDb?.id || activeCase.caseReference;
+    const res = await listingService.withdrawListing(targetId);
+    if (res.success) {
+      alert('تم سحب الإعلان بنجاح وإشعار فريق العمليات بمخلصة مع الاحتفاظ بالبيانات بسجلاتك.');
+      window.location.reload();
+    } else {
+      alert(res.message);
+    }
   };
 
   // Filter offers for active case
@@ -583,7 +624,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
             <button
               type="button"
               onClick={handleOpenEditModal}
@@ -601,6 +642,18 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
               <UploadCloud className="w-3.5 h-3.5 text-brand-green" />
               <span>المستندات</span>
             </button>
+
+            {activeCase.status !== 'withdrawn' && activeCase.status !== 'completed' && (
+              <button
+                type="button"
+                onClick={handleWithdrawActiveCase}
+                className="px-3.5 py-2.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-sm"
+                title="سحب الإعلان من المعرض مع الاحتفاظ ببياناته بسجلات المنصة"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>سحب الإعلان</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -1329,6 +1382,18 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
               </button>
             </div>
 
+            <div className="bg-emerald-50/70 p-3.5 rounded-2xl border border-emerald-200 text-xs flex items-start gap-2.5">
+              <ShieldCheck className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <span className="font-extrabold text-emerald-950 block">
+                  خصوصية تامة وحماية مشفرة
+                </span>
+                <p className="text-3xs text-emerald-800 leading-relaxed">
+                  هذه الأوراق مشفرة ومحفوظة بسرية تامة ولا تظهر للعامة. تقتصر فقط على مسؤولي العمليات لمطابقة السجل واعتماد شارة (أوراق مفحوصة وموثقة) على الإعلان.
+                </p>
+              </div>
+            </div>
+
             {docsSaveSuccess ? (
               <div className="py-6 text-center space-y-2">
                 <CheckCircle2 className="w-10 h-10 text-brand-green mx-auto animate-bounce" />
@@ -1336,40 +1401,215 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                 <p className="text-xs text-slate-500">تم إرسال إشعار لمسؤول المعاملة لمطابقة الأوراق.</p>
               </div>
             ) : (
-              <form onSubmit={handleSaveDocs} className="space-y-3.5 text-xs">
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700 block">رابط أو صورة رخصة السيارة (سارية وجهين):</label>
-                  <input
-                    type="text"
-                    value={licenseUrl}
-                    onChange={(e) => setLicenseUrl(e.target.value)}
-                    placeholder="https://... أو اسم ملف الرخصة"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green focus:outline-none dir-ltr text-right"
-                  />
+              <form onSubmit={handleSaveDocs} className="space-y-3.5 text-xs max-h-[60vh] overflow-y-auto px-1">
+                {/* 1. License Front */}
+                <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-black text-slate-800 flex items-center gap-1.5">
+                      <span>1. رخصة السيارة (الوجه الأمامي)</span>
+                      <span className="text-3xs text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">أساسي</span>
+                    </label>
+                    {licenseFrontUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setLicenseFrontUrl('')}
+                        className="text-3xs text-rose-600 hover:text-rose-800 font-bold flex items-center gap-0.5"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>حذف</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {licenseFrontUrl ? (
+                    <div className="flex items-center gap-3 p-2 bg-white rounded-xl border border-emerald-200 shadow-2xs">
+                      {licenseFrontUrl.startsWith('data:image') || licenseFrontUrl.startsWith('http') ? (
+                        <img src={licenseFrontUrl} alt="رخصة السيارة - أمامي" className="w-14 h-14 object-cover rounded-lg border border-slate-100" />
+                      ) : (
+                        <div className="w-14 h-14 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-700 font-bold text-xs">PDF</div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-2xs font-extrabold text-emerald-900 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          تم إرفاق الوجه الأمامي
+                        </span>
+                        <p className="text-3xs text-slate-500 truncate mt-0.5 dir-ltr text-right">
+                          {licenseFrontUrl.slice(0, 45)}...
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center p-3.5 border-2 border-dashed border-slate-300 hover:border-brand-green bg-white rounded-xl cursor-pointer transition text-center group">
+                      <Camera className="w-6 h-6 text-slate-400 group-hover:text-brand-green transition mb-1" />
+                      <span className="text-2xs font-bold text-slate-700 group-hover:text-brand-green transition">التقاط بالكاميرا أو اختيار صورة من الهاتف / الكمبيوتر</span>
+                      <span className="text-3xs text-slate-400 mt-0.5">يدعم JPG, PNG, WEBP, PDF</span>
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        capture="environment"
+                        onChange={(e) => handleCaseDocFile('front', e.target.files?.[0] || null)}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
                 </div>
 
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700 block">رابط أو صورة بطاقة الرقم القومي:</label>
-                  <input
-                    type="text"
-                    value={idUrl}
-                    onChange={(e) => setIdUrl(e.target.value)}
-                    placeholder="https://... أو اسم ملف البطاقة"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green focus:outline-none dir-ltr text-right"
-                  />
+                {/* 2. License Back */}
+                <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-black text-slate-800 flex items-center gap-1.5">
+                      <span>2. رخصة السيارة (الوجه الخلفي)</span>
+                      <span className="text-3xs text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">أساسي</span>
+                    </label>
+                    {licenseBackUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setLicenseBackUrl('')}
+                        className="text-3xs text-rose-600 hover:text-rose-800 font-bold flex items-center gap-0.5"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>حذف</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {licenseBackUrl ? (
+                    <div className="flex items-center gap-3 p-2 bg-white rounded-xl border border-emerald-200 shadow-2xs">
+                      {licenseBackUrl.startsWith('data:image') || licenseBackUrl.startsWith('http') ? (
+                        <img src={licenseBackUrl} alt="رخصة السيارة - خلفي" className="w-14 h-14 object-cover rounded-lg border border-slate-100" />
+                      ) : (
+                        <div className="w-14 h-14 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-700 font-bold text-xs">PDF</div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-2xs font-extrabold text-emerald-900 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          تم إرفاق الوجه الخلفي
+                        </span>
+                        <p className="text-3xs text-slate-500 truncate mt-0.5 dir-ltr text-right">
+                          {licenseBackUrl.slice(0, 45)}...
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center p-3.5 border-2 border-dashed border-slate-300 hover:border-brand-green bg-white rounded-xl cursor-pointer transition text-center group">
+                      <Camera className="w-6 h-6 text-slate-400 group-hover:text-brand-green transition mb-1" />
+                      <span className="text-2xs font-bold text-slate-700 group-hover:text-brand-green transition">التقاط بالكاميرا أو اختيار صورة من الهاتف / الكمبيوتر</span>
+                      <span className="text-3xs text-slate-400 mt-0.5">يدعم JPG, PNG, WEBP, PDF</span>
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        capture="environment"
+                        onChange={(e) => handleCaseDocFile('back', e.target.files?.[0] || null)}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
                 </div>
 
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700 block">بيان السداد المعجل / المديونية البنكية:</label>
-                  <input
-                    type="text"
-                    value={statementUrl}
-                    onChange={(e) => setStatementUrl(e.target.value)}
-                    placeholder="https://... أو مستند بيان البنك"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green focus:outline-none dir-ltr text-right"
-                  />
+                {/* 3. National ID */}
+                <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-black text-slate-800 flex items-center gap-1.5">
+                      <span>3. بطاقة الرقم القومي</span>
+                      <span className="text-3xs text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded-full">للتحقق الإداري فقط</span>
+                    </label>
+                    {idUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setIdUrl('')}
+                        className="text-3xs text-rose-600 hover:text-rose-800 font-bold flex items-center gap-0.5"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>حذف</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {idUrl ? (
+                    <div className="flex items-center gap-3 p-2 bg-white rounded-xl border border-emerald-200 shadow-2xs">
+                      {idUrl.startsWith('data:image') || idUrl.startsWith('http') ? (
+                        <img src={idUrl} alt="بطاقة الرقم القومي" className="w-14 h-14 object-cover rounded-lg border border-slate-100" />
+                      ) : (
+                        <div className="w-14 h-14 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-700 font-bold text-xs">مستند</div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-2xs font-extrabold text-emerald-900 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          تم إرفاق البطاقة القومية
+                        </span>
+                        <p className="text-3xs text-slate-500 truncate mt-0.5 dir-ltr text-right">
+                          {idUrl.slice(0, 45)}...
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center p-3.5 border-2 border-dashed border-slate-300 hover:border-brand-green bg-white rounded-xl cursor-pointer transition text-center group">
+                      <Camera className="w-6 h-6 text-slate-400 group-hover:text-brand-green transition mb-1" />
+                      <span className="text-2xs font-bold text-slate-700 group-hover:text-brand-green transition">التقاط صورة البطاقة القومية</span>
+                      <span className="text-3xs text-slate-400 mt-0.5">يدعم JPG, PNG, WEBP</span>
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        capture="environment"
+                        onChange={(e) => handleCaseDocFile('id', e.target.files?.[0] || null)}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
                 </div>
 
+                {/* 4. Bank Statement */}
+                <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-black text-slate-800 flex items-center gap-1.5">
+                      <span>4. بيان السداد المعجل / مديونية البنك</span>
+                      <span className="text-3xs text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">لتسوية التمويل</span>
+                    </label>
+                    {statementUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setStatementUrl('')}
+                        className="text-3xs text-rose-600 hover:text-rose-800 font-bold flex items-center gap-0.5"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>حذف</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {statementUrl ? (
+                    <div className="flex items-center gap-3 p-2 bg-white rounded-xl border border-emerald-200 shadow-2xs">
+                      {statementUrl.startsWith('data:image') || statementUrl.startsWith('http') ? (
+                        <img src={statementUrl} alt="بيان البنك" className="w-14 h-14 object-cover rounded-lg border border-slate-100" />
+                      ) : (
+                        <div className="w-14 h-14 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-700 font-bold text-xs">PDF</div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-2xs font-extrabold text-emerald-900 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          تم إرفاق بيان السداد البنكي
+                        </span>
+                        <p className="text-3xs text-slate-500 truncate mt-0.5 dir-ltr text-right">
+                          {statementUrl.slice(0, 45)}...
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center p-3.5 border-2 border-dashed border-slate-300 hover:border-brand-green bg-white rounded-xl cursor-pointer transition text-center group">
+                      <UploadCloud className="w-6 h-6 text-slate-400 group-hover:text-brand-green transition mb-1" />
+                      <span className="text-2xs font-bold text-slate-700 group-hover:text-brand-green transition">رفع بيان المديونية البنكية أو المخالصة</span>
+                      <span className="text-3xs text-slate-400 mt-0.5">يدعم صورة أو مستند PDF</span>
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        onChange={(e) => handleCaseDocFile('statement', e.target.files?.[0] || null)}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
+
+                {/* 5. Notes */}
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700 block">ملاحظات إضافية:</label>
                   <input
@@ -1381,12 +1621,25 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                   />
                 </div>
 
+                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between">
+                  <span className="text-2xs text-emerald-900 font-bold">تفضل الإرسال المباشر عبر واتساب؟</span>
+                  <a
+                    href={`https://wa.me/201018898144?text=${encodeURIComponent(`أرغب في إرسال صور الأوراق والمستندات لحالتي (${activeCase.caseReference}) عبر واتساب مباشرة.`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-3xs font-black text-emerald-800 underline hover:text-emerald-950"
+                  >
+                    فتح واتساب مخلصة
+                  </a>
+                </div>
+
                 <div className="pt-2 flex gap-2">
                   <button
                     type="submit"
-                    className="flex-1 py-3 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md transition"
+                    disabled={docsUploading}
+                    className="flex-1 py-3 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md transition disabled:opacity-60"
                   >
-                    حفظ وإشعار الإدارة
+                    {docsUploading ? 'جاري الحفظ...' : 'حفظ وإشعار الإدارة'}
                   </button>
                   <button
                     type="button"

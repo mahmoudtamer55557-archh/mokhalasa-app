@@ -69,6 +69,7 @@ export type CaseLifecycleStatus =
   | 'rejected_ineligible'             // 23. مرفوض - غير مؤهل
   | 'cancelled'                       // 24. ملغي
   | 'on_hold'                         // 25. معلق / وجود عجز مالي
+  | 'withdrawn'                       // تم سحب الإعلان
   | 'published'                       // منشورة
   | 'needs_changes'                   // مطلوب تعديل
   | 'pending_review'                  // قيد المراجعة
@@ -180,6 +181,8 @@ export interface Car {
   trafficDepartment: string;
   sellerType: 'مالك أول' | 'مالك ثانٍ' | 'توكيل';
   status: ListingStatus;
+  documentsVerified?: boolean;
+  is_hidden?: boolean;
   createdAt: string;
   featured?: boolean;
   description: string;

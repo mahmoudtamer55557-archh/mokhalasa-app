@@ -5,7 +5,7 @@ import {
   ArrowRight, ShieldCheck, Heart, Share2, MapPin, Gauge, 
   Banknote, FileCheck, CheckCircle2, 
   PhoneCall, ChevronLeft, ChevronRight,
-  AlertTriangle, Lock, FileText, Tag, Send
+  AlertTriangle, Lock, FileText, Tag, Send, Clock
 } from 'lucide-react';
 
 interface CarDetailPageProps {
@@ -539,15 +539,23 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
                 </div>
                 <div>
                   <span className="font-bold text-brand-navy block">{car.sellerType}</span>
-                  <span className="text-[11px] text-slate-400">
-                    رخصة سارية حتى {car.licenseValidityMonths} شهر ({car.trafficDepartment})
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    رخصة سارية حتى {car.licenseValidityMonths} شهر • {car.trafficDepartment}
                   </span>
                 </div>
               </div>
-              <span className="text-emerald-600 font-bold flex items-center gap-1 text-[11px]">
-                <FileCheck className="w-3.5 h-3.5" />
-                <span>مفحوصة الأوراق</span>
-              </span>
+
+              {car.documentsVerified ? (
+                <span className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-300 font-black flex items-center gap-1.5 text-xs shadow-sm">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <span>أوراق رسمية مفحوصة وموثقة إدارياً (مضمونة بنكياً وقانونياً)</span>
+                </span>
+              ) : (
+                <span className="px-2.5 py-1 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold flex items-center gap-1 text-[11px]">
+                  <Clock className="w-3.5 h-3.5 text-slate-400" />
+                  <span>بانتظار توثيق المستندات الرسمية</span>
+                </span>
+              )}
             </div>
 
             {/* 4-Step Settlement Process Summary */}

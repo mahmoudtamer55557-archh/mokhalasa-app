@@ -82,6 +82,14 @@ export const CarCard: React.FC<CarCardProps> = ({
               <span>{isAr ? `فحص ${car.inspection.score}%` : `Inspected ${car.inspection.score}%`}</span>
             </span>
           )}
+
+          {/* Verified Official Documents Badge */}
+          {car.documentsVerified && (
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-600 text-white shadow-md flex items-center gap-1 border border-emerald-400/50">
+              <ShieldCheck className="w-3 h-3 text-white" />
+              <span>{isAr ? 'أوراق مفحوصة وموثقة' : 'Verified Docs'}</span>
+            </span>
+          )}
         </div>
       </div>
 

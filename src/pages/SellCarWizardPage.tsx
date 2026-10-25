@@ -91,6 +91,9 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
   const [color, setColor] = useState('فضي ميتاليك');
   const [paintCondition, setPaintCondition] = useState<'فابريكا بالكامل' | 'رش رفرفين نظافة' | 'رش إكصدامات فقط' | 'رش خارجي نظافة' | 'أخرى'>('فابريكا بالكامل');
   const [chassisVin, setChassisVin] = useState('');
+  const [trafficUnit, setTrafficUnit] = useState('مرور فيصل');
+  const [sellerType, setSellerType] = useState<'مالك أول' | 'مالك ثانٍ' | 'توكيل'>('مالك أول');
+  const [licenseValidityMonths, setLicenseValidityMonths] = useState<number>(12);
 
   // Required Large Arabic textarea condition story (prompt requirement)
   const [sellerConditionStory, setSellerConditionStory] = useState(
@@ -277,6 +280,10 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
       }
       if (!mileage || mileage <= 0) {
         setValidationError('يرجى إدخال قراءة العداد الحالية.');
+        return false;
+      }
+      if (!trafficUnit.trim()) {
+        setValidationError('يرجى كتابة أو اختيار وحدة المرور التابع لها الترخيص (حقل إجباري).');
         return false;
       }
       if (!sellerConditionStory.trim() || sellerConditionStory.trim().length < 20) {
@@ -470,9 +477,9 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
         disclosedDefects: selectedIssues,
         notes: sellerConditionStory
       },
-      licenseValidityMonths: 12,
-      trafficDepartment: 'مرور التجمع',
-      sellerType: 'مالك أول',
+      licenseValidityMonths,
+      trafficDepartment: trafficUnit.trim() || 'مرور فيصل',
+      sellerType,
       status: 'under_review',
       createdAt: new Date().toISOString().split('T')[0],
       featured: false,
@@ -555,6 +562,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
       color,
       governorate: location.governorate,
       city: location.city,
+      traffic_unit: trafficUnit.trim() || 'مرور فيصل',
       asking_price: sellerExpectedPrice || valuation.suggestedAskingPrice,
       condition_description: sellerConditionStory,
       paint_condition: paintCondition,
@@ -913,6 +921,70 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
               setChassisVin={setChassisVin}
               lang={lang}
             />
+
+            {/* MANDATORY LICENSE & TRAFFIC UNIT SECTION */}
+            <div className="bg-slate-50/80 rounded-2xl p-5 border border-slate-200 space-y-4">
+              <div className="border-b border-slate-200/80 pb-2">
+                <h3 className="font-extrabold text-xs text-brand-navy flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-brand-green" />
+                  <span>بيانات الترخيص ووحدة المرور المسجل بها السيارة</span>
+                </h3>
+                <p className="text-3xs text-slate-500 mt-0.5">
+                  بيانات رسمية أساسية لتنسيق إجراءات الاستعلام واستخراج شهادة المخالصة ونقل القيد.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                {/* Traffic Unit (Mandatory) */}
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="block font-black text-brand-navy text-2xs">
+                    وحدة المرور التابع لها الترخيص <span className="text-red-500">* (إجباري)</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={trafficUnit}
+                    onChange={(e) => setTrafficUnit(e.target.value)}
+                    placeholder="مثال: مرور فيصل، مرور مدينة نصر، مرور التجمع..."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-green"
+                  />
+                  {/* Quick Suggestions Pills */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-3xs text-slate-400 font-bold">اختيار سريع:</span>
+                    {['مرور فيصل', 'مرور مدينة نصر', 'مرور التجمع', 'مرور القطامية', 'مرور الدقي', 'مرور 6 أكتوبر', 'مرور المعادي', 'مرور النزهة', 'مرور الشروق'].map((unit) => (
+                      <button
+                        key={unit}
+                        type="button"
+                        onClick={() => setTrafficUnit(unit)}
+                        className={`px-2 py-0.5 rounded-lg text-3xs font-bold transition border ${
+                          trafficUnit === unit
+                            ? 'bg-brand-green text-slate-950 border-brand-green'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        {unit}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Seller Type */}
+                <div className="space-y-1.5">
+                  <label className="block font-black text-brand-navy text-2xs">
+                    صفة البائع بالرخصة
+                  </label>
+                  <select
+                    value={sellerType}
+                    onChange={(e) => setSellerType(e.target.value as any)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-green"
+                  >
+                    <option value="مالك أول">مالك أول</option>
+                    <option value="مالك ثانٍ">مالك ثانٍ</option>
+                    <option value="توكيل">توكيل رسمي بالشهر العقاري</option>
+                  </select>
+                </div>
+              </div>
+            </div>
 
             {/* MANDATORY LARGE ARABIC TEXTAREA PROMPT (Prompt Specification) */}
             <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-3">
