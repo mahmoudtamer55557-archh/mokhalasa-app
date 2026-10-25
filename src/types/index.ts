@@ -8,7 +8,9 @@ export type FinancingType =
   | 'islamic_murabaha'  // مرابحة إسلامية
   | 'personal_loan'     // قرض شخصي نقدي (التزام شخصي على البائع)
   | 'financial_lease'   // تأجير تمويلي (حق انتفاع)
-  | 'fully_owned';      // للتوجيه والتحقق فقط (غير مؤهل للخدمة)
+  | 'direct_installment' // تقسيط مباشر بدون بنوك (معارض وأفراد)
+  | 'cash'              // بيع كاش ملكية خالصة
+  | 'fully_owned';      // سيارة مملوكة بالكامل كاش
 
 export type ListingVehicleStatus = 
   | 'bank_loan'                    // سيارة عليها أقساط قائمة لدى بنك (حظر بيع)
@@ -17,7 +19,20 @@ export type ListingVehicleStatus =
   | 'personal_loan_free_license'   // سيارة مشتراة بقرض شخصي نقدي بدون حظر بيع بالرخصة
   | 'settlement_or_arrears'        // سيارة في مرحلة تسوية أو تعثر أو متأخرات معلقة
   | 'other_review'                 // موقف تمويلي آخر يحتاج إلى مراجعة خاصة
-  | 'fully_owned';                 // غير مؤهل - يحال لصفحة الاعتذار والدعم
+  | 'direct_installment'           // تقسيط مباشر بدون بنوك (معارض وأفراد)
+  | 'cash_only'                    // بيع كاش عادي (ملكية خالصة)
+  | 'fully_owned';                 // سيارة مملوكة بالكامل كاش
+
+export type SaleType = 'cash' | 'direct_installment' | 'bank_settlement';
+
+export interface DirectInstallmentDetails {
+  downPayment: number;             // المقدم المطلوب (مثال: 150,000 ج.م)
+  monthlyInstallment: number;      // القسط الشهري (مثال: 7,500 ج.م)
+  installmentMonths: number;       // مدة التقسيط بالشهور (مثال: 24، 36، 48)
+  totalInstallmentPrice?: number;  // إجمالي السعر بالتقسيط
+  requiredGuarantees: string[];    // الضمانات المطلوبة (شيكات بنكية، إيصالات أمانة، حظر بيع بالرخصة، عقد معتمد)
+  sellerType?: 'showroom' | 'individual'; // معرض سيارات أو مالك فردي
+}
 
 export type DistressReason =
   | 'installment_burden'     // عجز عن تحمل عبء القسط الشهري
@@ -171,6 +186,8 @@ export interface Car {
   price?: number;
   estimatedMarketValue: number; // V
   images: string[];
+  saleType?: SaleType;
+  directInstallment?: DirectInstallmentDetails;
   financingType: FinancingType;
   vehicleStatus?: ListingVehicleStatus;
   distressReason?: DistressReason;

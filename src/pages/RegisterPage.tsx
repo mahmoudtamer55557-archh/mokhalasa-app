@@ -54,7 +54,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
     switch (field) {
       case 'email': {
         const v = (val !== undefined ? val : email).trim();
-        if (!v) return 'البريد الإلكتروني مطلوب';
+        if (!v) return undefined; // Email is optional in Mokhalasa; phone number is primary!
         // RFC-compliant email regex
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
         if (!emailRegex.test(v)) {
@@ -133,10 +133,12 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
     setIsSubmitting(true);
 
     try {
+      const cleanPhone = normalizeEgyptianPhone(phone);
+      const effectiveEmail = email.trim() || `${cleanPhone}@customer.mokhalasa.com`;
       // Call Supabase Auth service
       const response = await authService.registerWithEmail({
-        email: email.trim(),
-        phone: phone.trim(),
+        email: effectiveEmail,
+        phone: cleanPhone,
         password
       });
 
@@ -250,13 +252,13 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
           {/* Registration Form */}
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
 
-            {/* 1. البريد الإلكتروني — Email Input */}
+            {/* 1. البريد الإلكتروني — Email Input (اختياري) */}
             <div className="space-y-1 text-right">
               <label 
                 htmlFor="register-email" 
                 className="block text-xs font-bold text-slate-700"
               >
-                البريد الإلكتروني <span className="text-rose-500">*</span>
+                البريد الإلكتروني <span className="text-slate-400 font-normal">(اختياري — رقم الهاتف أساسي)</span>
               </label>
               <div className="relative">
                 <input

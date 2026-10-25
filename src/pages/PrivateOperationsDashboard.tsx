@@ -1556,16 +1556,35 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                           )}
                         </div>
                         <div className="space-y-1">
-                          <h4 className="font-black text-sm text-white flex items-center gap-2">
+                          <h4 className="font-black text-sm text-white flex flex-wrap items-center gap-2">
                             <span>{item.make} {item.model} — {item.year}</span>
                             <span className="font-mono text-3xs text-slate-400 font-normal">#{item.id.slice(0, 8)}</span>
+                            {item.is_direct_installment || item.sale_type === 'direct_installment' ? (
+                              <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                                🟡 تقسيط مباشر
+                              </span>
+                            ) : item.sale_type === 'cash' || item.financing_type === 'fully_owned' ? (
+                              <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                                🟢 بيع كاش
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                                🏦 تسوية بنكية
+                              </span>
+                            )}
                           </h4>
                           <div className="text-2xs text-slate-400 font-medium flex flex-wrap items-center gap-2">
                             <span>المحافظة: {item.governorate}</span>
                             <span>•</span>
                             <span>العداد: {Number(item.mileage).toLocaleString('ar-EG')} كم</span>
                             <span>•</span>
-                            <span>جهة التمويل: {item.financing_provider || 'غير محدد'}</span>
+                            {item.is_direct_installment || item.sale_type === 'direct_installment' ? (
+                              <span className="text-amber-300 font-bold">
+                                مقدم: {Number(item.down_payment || 0).toLocaleString('ar-EG')} ج.م | قسط: {Number(item.monthly_installment || 0).toLocaleString('ar-EG')} ج.م
+                              </span>
+                            ) : (
+                              <span>جهة التمويل: {item.financing_provider || 'غير محدد'}</span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -2199,6 +2218,14 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                 <span className="font-black text-brand-green font-mono">{Number(selectedModerationListing.asking_price).toLocaleString('ar-EG')} ج.م</span>
               </div>
               <div>
+                <span className="text-slate-400 block text-3xs">نظام وطريقة البيع:</span>
+                <span className="font-bold text-white">
+                  {selectedModerationListing.is_direct_installment || selectedModerationListing.sale_type === 'direct_installment' ? '🟡 تقسيط مباشر' :
+                   selectedModerationListing.sale_type === 'cash' || selectedModerationListing.financing_type === 'fully_owned' ? '🟢 بيع كاش' :
+                   '🏦 تسوية بنكية'}
+                </span>
+              </div>
+              <div>
                 <span className="text-slate-400 block text-3xs">قراءة العداد:</span>
                 <span className="font-bold text-white">{Number(selectedModerationListing.mileage).toLocaleString('ar-EG')} كم</span>
               </div>
@@ -2206,18 +2233,37 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                 <span className="text-slate-400 block text-3xs">المحافظة والمدينة:</span>
                 <span className="font-bold text-white">{selectedModerationListing.governorate} — {selectedModerationListing.city || 'المركز'}</span>
               </div>
-              <div>
-                <span className="text-slate-400 block text-3xs">جهة التمويل / البنك:</span>
-                <span className="font-bold text-amber-400">{selectedModerationListing.financing_provider || 'غير محدد'}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 block text-3xs">أصل الدين المتبقي:</span>
-                <span className="font-bold text-white font-mono">{Number(selectedModerationListing.outstanding_amount || 0).toLocaleString('ar-EG')} ج.م</span>
-              </div>
-              <div>
-                <span className="text-slate-400 block text-3xs">القسط الشهري:</span>
-                <span className="font-bold text-white font-mono">{Number(selectedModerationListing.monthly_installment || 0).toLocaleString('ar-EG')} ج.م</span>
-              </div>
+              {(selectedModerationListing.is_direct_installment || selectedModerationListing.sale_type === 'direct_installment') ? (
+                <>
+                  <div>
+                    <span className="text-slate-400 block text-3xs">أقل مقدم مطلوب:</span>
+                    <span className="font-bold text-amber-400 font-mono">{Number(selectedModerationListing.down_payment || 0).toLocaleString('ar-EG')} ج.م</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-3xs">القسط الشهري:</span>
+                    <span className="font-bold text-amber-400 font-mono">{Number(selectedModerationListing.monthly_installment || 0).toLocaleString('ar-EG')} ج.م</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-3xs">مدة التقسيط بالشهور:</span>
+                    <span className="font-bold text-white font-mono">{selectedModerationListing.installment_period_months || 36} شهراً</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <span className="text-slate-400 block text-3xs">جهة التمويل / البنك:</span>
+                    <span className="font-bold text-amber-400">{selectedModerationListing.financing_provider || 'غير محدد'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-3xs">أصل الدين المتبقي:</span>
+                    <span className="font-bold text-white font-mono">{Number(selectedModerationListing.outstanding_amount || 0).toLocaleString('ar-EG')} ج.م</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-3xs">القسط الشهري:</span>
+                    <span className="font-bold text-white font-mono">{Number(selectedModerationListing.monthly_installment || 0).toLocaleString('ar-EG')} ج.م</span>
+                  </div>
+                </>
+              )}
               <div>
                 <span className="text-slate-400 block text-3xs">اسم البائع:</span>
                 <span className="font-bold text-white">{selectedModerationListing.seller_name || 'مالك السيارة'}</span>

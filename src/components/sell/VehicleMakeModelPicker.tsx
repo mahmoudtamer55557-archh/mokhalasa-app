@@ -36,6 +36,8 @@ interface VehicleMakeModelPickerProps {
   chassisVin: string;
   setChassisVin: (vin: string) => void;
   lang?: 'ar' | 'en';
+  fieldErrors?: Record<string, string>;
+  onClearFieldError?: (fieldId: string) => void;
 }
 
 const COMMON_COLORS = [
@@ -76,7 +78,9 @@ export const VehicleMakeModelPicker: React.FC<VehicleMakeModelPickerProps> = ({
   setPaintCondition,
   chassisVin,
   setChassisVin,
-  lang: _lang = 'ar'
+  lang: _lang = 'ar',
+  fieldErrors,
+  onClearFieldError
 }) => {
 
   // Search filter states for dropdowns
@@ -126,6 +130,7 @@ export const VehicleMakeModelPicker: React.FC<VehicleMakeModelPickerProps> = ({
     setIsCustomTrim(false);
     setShowMakeDropdown(false);
     setMakeSearch('');
+    onClearFieldError?.('make');
   };
 
   // When Model changes, reset Trim
@@ -135,6 +140,7 @@ export const VehicleMakeModelPicker: React.FC<VehicleMakeModelPickerProps> = ({
     setIsCustomTrim(false);
     setShowModelDropdown(false);
     setModelSearch('');
+    onClearFieldError?.('model');
   };
 
   // When Trim is picked from catalog, auto-populate transmission & engine if available
@@ -172,19 +178,34 @@ export const VehicleMakeModelPicker: React.FC<VehicleMakeModelPickerProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         
         {/* A. MAKE DROPDOWN */}
-        <div className="relative">
+        <div className="relative" id="field-make">
           <label className="block text-xs font-bold text-slate-700 mb-1.5">
             1. الماركة (الشركة المصنعة) <span className="text-red-500">*</span>
           </label>
-          <div
-            onClick={() => setShowMakeDropdown(!showMakeDropdown)}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white font-bold text-xs text-slate-800 flex items-center justify-between cursor-pointer hover:border-brand-green focus:ring-2 focus:ring-brand-green"
+          <button
+            type="button"
+            id="field-make-trigger"
+            onClick={() => {
+              setShowMakeDropdown(!showMakeDropdown);
+              onClearFieldError?.('make');
+            }}
+            className={`w-full px-3.5 py-2.5 rounded-xl border font-bold text-xs flex items-center justify-between cursor-pointer focus:outline-none transition ${
+              fieldErrors?.make
+                ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/20 text-red-900'
+                : 'border-slate-200 bg-white text-slate-800 hover:border-brand-green focus:ring-2 focus:ring-brand-green'
+            }`}
           >
             <span>
               {selectedMakeObj ? `${selectedMakeObj.nameAr} (${selectedMakeObj.nameEn})` : 'اختر ماركة السيارة...'}
             </span>
             <ChevronDown className="w-4 h-4 text-slate-400" />
-          </div>
+          </button>
+          {fieldErrors?.make && (
+            <div className="text-3xs font-extrabold text-red-600 flex items-center gap-1 mt-1 animate-fadeIn">
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>{fieldErrors.make}</span>
+            </div>
+          )}
 
           {showMakeDropdown && (
             <div className="absolute top-full mt-1.5 w-full bg-white rounded-2xl border border-slate-200 shadow-xl z-50 max-h-64 overflow-hidden flex flex-col animate-fadeIn">
@@ -226,18 +247,25 @@ export const VehicleMakeModelPicker: React.FC<VehicleMakeModelPickerProps> = ({
         </div>
 
         {/* B. MODEL DROPDOWN (Dependent on Make) */}
-        <div className="relative">
+        <div className="relative" id="field-model">
           <label className="block text-xs font-bold text-slate-700 mb-1.5">
             2. الموديل (الطراز) <span className="text-red-500">*</span>
           </label>
-          <div
+          <button
+            type="button"
+            id="field-model-trigger"
             onClick={() => {
-              if (selectedMakeId) setShowModelDropdown(!showModelDropdown);
+              if (selectedMakeId) {
+                setShowModelDropdown(!showModelDropdown);
+                onClearFieldError?.('model');
+              }
             }}
-            className={`w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-bold text-xs flex items-center justify-between cursor-pointer transition ${
-              !selectedMakeId 
-                ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
-                : 'bg-white text-slate-800 hover:border-brand-green'
+            className={`w-full px-3.5 py-2.5 rounded-xl border font-bold text-xs flex items-center justify-between cursor-pointer transition focus:outline-none ${
+              fieldErrors?.model
+                ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/20 text-red-900'
+                : !selectedMakeId 
+                ? 'bg-slate-100 text-slate-400 cursor-not-allowed border-slate-200' 
+                : 'bg-white text-slate-800 hover:border-brand-green focus:ring-2 focus:ring-brand-green'
             }`}
           >
             <span>
@@ -248,7 +276,13 @@ export const VehicleMakeModelPicker: React.FC<VehicleMakeModelPickerProps> = ({
                   : 'اختر موديل السيارة...'}
             </span>
             <ChevronDown className="w-4 h-4 text-slate-400" />
-          </div>
+          </button>
+          {fieldErrors?.model && (
+            <div className="text-3xs font-extrabold text-red-600 flex items-center gap-1 mt-1 animate-fadeIn">
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>{fieldErrors.model}</span>
+            </div>
+          )}
 
           {showModelDropdown && selectedMakeId && (
             <div className="absolute top-full mt-1.5 w-full bg-white rounded-2xl border border-slate-200 shadow-xl z-50 max-h-64 overflow-hidden flex flex-col animate-fadeIn">
@@ -292,14 +326,22 @@ export const VehicleMakeModelPicker: React.FC<VehicleMakeModelPickerProps> = ({
         </div>
 
         {/* C. YEAR DROPDOWN (>= 2018 Only, No Default) */}
-        <div>
+        <div id="field-year-wrapper">
           <label className="block text-xs font-bold text-slate-700 mb-1.5">
             3. سنة الصنع (الموديل) <span className="text-red-500">*</span>
           </label>
           <select
+            id="field-year"
             value={selectedYear || ''}
-            onChange={(e) => onSelectYear(e.target.value ? Number(e.target.value) : null)}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-bold text-xs text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green"
+            onChange={(e) => {
+              onSelectYear(e.target.value ? Number(e.target.value) : null);
+              onClearFieldError?.('year');
+            }}
+            className={`w-full px-3.5 py-2.5 rounded-xl border font-bold text-xs bg-white focus:outline-none transition ${
+              fieldErrors?.year
+                ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/20 text-red-900'
+                : 'border-slate-200 text-slate-800 focus:ring-2 focus:ring-brand-green'
+            }`}
           >
             <option value="">-- اختر سنة الصنع (من 2018 فما بعد) --</option>
             {ALLOWED_MODEL_YEARS.map((y) => (
@@ -308,6 +350,12 @@ export const VehicleMakeModelPicker: React.FC<VehicleMakeModelPickerProps> = ({
               </option>
             ))}
           </select>
+          {fieldErrors?.year && (
+            <div className="text-3xs font-extrabold text-red-600 flex items-center gap-1 mt-1 animate-fadeIn">
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>{fieldErrors.year}</span>
+            </div>
+          )}
           <div className="text-3xs text-slate-400 mt-1">
             * المنصة تقبل سيارات موديل 2018 حتى 2026 فقط لضمان سهولة الفحص والتمويل.
           </div>
@@ -350,21 +398,33 @@ export const VehicleMakeModelPicker: React.FC<VehicleMakeModelPickerProps> = ({
 
             {/* Conditional Manual Trim Field if "الفئة غير مدرجة" */}
             {isCustomTrim && (
-              <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3 space-y-2 animate-fadeIn">
+              <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3 space-y-2 animate-fadeIn" id="field-customTrim-wrapper">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800">
                   <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-                  <span>اكتب اسم الفئة وتجهيزها كما هو مدون في رخصة السيارة أو كتيب الضمان:</span>
+                  <span>اكتب اسم الفئة وتجهيزها كما هو مدون في رخصة السيارة أو كتيب الضمان: <span className="text-red-500">*</span></span>
                 </div>
                 <input
+                  id="field-customTrim"
                   type="text"
                   placeholder="مثال: خليجي بانوراما جلد، سبورت بلس، فئة خاصة، ليمتد..."
                   value={customTrimText}
                   onChange={(e) => {
                     setCustomTrimText(e.target.value);
                     onSelectTrim(e.target.value);
+                    onClearFieldError?.('customTrim');
                   }}
-                  className="w-full px-3 py-2 rounded-lg border border-amber-300 font-bold text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                  className={`w-full px-3 py-2 rounded-lg border font-bold text-xs text-slate-800 focus:outline-none focus:ring-2 bg-white transition ${
+                    fieldErrors?.customTrim
+                      ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/20 text-red-900'
+                      : 'border-amber-300 focus:ring-amber-500'
+                  }`}
                 />
+                {fieldErrors?.customTrim && (
+                  <div className="text-3xs font-extrabold text-red-600 flex items-center gap-1 mt-1 animate-fadeIn">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>{fieldErrors.customTrim}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -423,15 +483,31 @@ export const VehicleMakeModelPicker: React.FC<VehicleMakeModelPickerProps> = ({
           </div>
 
           {/* Mileage */}
-          <div>
-            <label className="block font-bold text-slate-700 mb-1">قراءة العداد الحالية (كم):</label>
+          <div id="field-mileage-wrapper">
+            <label className="block font-bold text-slate-700 mb-1">
+              قراءة العداد الحالية (كم): <span className="text-red-500">*</span>
+            </label>
             <input
+              id="field-mileage"
               type="number"
               value={mileage || ''}
-              onChange={(e) => setMileage(Number(e.target.value))}
+              onChange={(e) => {
+                setMileage(Number(e.target.value));
+                onClearFieldError?.('mileage');
+              }}
               placeholder="مثال: 45000"
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green"
+              className={`w-full px-3 py-2 rounded-xl border font-bold bg-white focus:outline-none transition ${
+                fieldErrors?.mileage
+                  ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/20 text-red-900'
+                  : 'border-slate-200 text-slate-800 focus:ring-2 focus:ring-brand-green'
+              }`}
             />
+            {fieldErrors?.mileage && (
+              <div className="text-3xs font-extrabold text-red-600 flex items-center gap-1 mt-1 animate-fadeIn">
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>{fieldErrors.mileage}</span>
+              </div>
+            )}
           </div>
 
         </div>

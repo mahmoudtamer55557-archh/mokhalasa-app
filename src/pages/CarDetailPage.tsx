@@ -427,8 +427,78 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
                 </div>
               </div>
 
+              {/* Direct Installment Plan Box */}
+              {(car.directInstallment || car.saleType === 'direct_installment') && (
+                <div className="bg-amber-50/80 rounded-2xl p-4.5 border border-amber-200/90 text-xs space-y-3">
+                  <div className="flex justify-between items-center pb-2 border-b border-amber-200">
+                    <span className="font-bold text-amber-950 flex items-center gap-1.5">
+                      <Banknote className="w-4 h-4 text-amber-600" />
+                      <span>{isAr ? 'نظام التقسيط المباشر (بدون بنك):' : 'Direct Installment Plan:'}</span>
+                    </span>
+                    <span className="bg-amber-100 text-amber-900 font-black px-2.5 py-0.5 rounded-full text-[10px]">
+                      {car.directInstallment?.sellerType === 'showroom' ? 'معرض سيارات معتمد' : 'مالك مباشر'}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 text-slate-700">
+                    <div className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-amber-100">
+                      <span className="font-bold text-amber-950">{isAr ? 'أقل مقدم مطلوب (Down Payment):' : 'Down Payment:'}</span>
+                      <span className="font-black text-amber-800 text-sm">
+                        {formatEGP(car.directInstallment?.downPayment || Math.round(car.askingPrice * 0.3))}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="bg-white p-2 rounded-xl border border-amber-100">
+                        <span className="text-slate-400 block text-[10px]">{isAr ? 'القسط الشهري' : 'Monthly Installment'}</span>
+                        <span className="font-black text-slate-800">
+                          {formatEGP(car.directInstallment?.monthlyInstallment || 0)}/شهر
+                        </span>
+                      </div>
+                      <div className="bg-white p-2 rounded-xl border border-amber-100">
+                        <span className="text-slate-400 block text-[10px]">{isAr ? 'مدة التقسيط' : 'Duration'}</span>
+                        <span className="font-black text-slate-800">
+                          {car.directInstallment?.installmentMonths || 36} شهراً
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Guarantees */}
+                    {car.directInstallment?.requiredGuarantees && car.directInstallment.requiredGuarantees.length > 0 && (
+                      <div className="pt-1 space-y-1">
+                        <span className="text-3xs font-bold text-slate-500 block">الضمانات المطلوبة من المشتري:</span>
+                        <div className="flex flex-wrap gap-1">
+                          {car.directInstallment.requiredGuarantees.map((g, idx) => (
+                            <span key={idx} className="px-2 py-0.5 rounded-md bg-amber-100/70 text-amber-950 text-3xs font-bold border border-amber-200">
+                              ✓ {g}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-amber-100/50 border border-amber-200 text-[10.5px] text-amber-900 leading-relaxed">
+                    💡 <strong>ميزة مباشرة:</strong> لا يشترط استعلام بنكي أو مفردات مرتب (HR Letter). الاتفاق يتم مباشرة مع المعرض/البائع بشيكات بنكية أو إيصالات أمانة معتمدة.
+                  </div>
+                </div>
+              )}
+
+              {/* Cash Sale Box */}
+              {(car.saleType === 'cash' || car.financingType === 'fully_owned') && !car.directInstallment && (
+                <div className="bg-emerald-50/70 rounded-2xl p-4 border border-emerald-200 text-xs space-y-2">
+                  <div className="flex items-center gap-1.5 font-extrabold text-emerald-950">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>سيارة ملكية خالصة حرة (بيع كاش)</span>
+                  </div>
+                  <p className="text-2xs text-slate-600 leading-relaxed">
+                    السيارة خالية من أي أقساط أو حظر بيع بالرخصة. البيع نقداً بالكامل، والتنازل فوري للمشتري بالشهر العقاري ونقل القيد بوحدة المرور دون أي انتظار بنكي.
+                  </p>
+                </div>
+              )}
+
               {/* Financing Transparency Box */}
-              {hasFinancing && car.financingDetails && (
+              {hasFinancing && car.financingDetails && !car.directInstallment && car.saleType !== 'cash' && (
                 <div className="bg-slate-50 rounded-2xl p-4.5 border border-slate-200 text-xs space-y-3">
                   <div className="flex justify-between items-center pb-2 border-b border-slate-200">
                     <span className="font-bold text-brand-navy flex items-center gap-1.5">

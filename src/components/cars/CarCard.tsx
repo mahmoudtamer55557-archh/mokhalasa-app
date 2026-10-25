@@ -1,6 +1,6 @@
 import React from 'react';
 import { Car } from '../../types';
-import { ShieldCheck, Heart, MapPin, Gauge, Banknote } from 'lucide-react';
+import { ShieldCheck, Heart, MapPin, Gauge, Banknote, CheckCircle2 } from 'lucide-react';
 
 interface CarCardProps {
   car: Car;
@@ -54,19 +54,24 @@ export const CarCard: React.FC<CarCardProps> = ({
 
         {/* Financing Status Badge */}
         <div className="absolute top-3 right-3 flex flex-col gap-1.5 items-end">
-          {car.financingType === 'bank_loan' && (
+          {(car.saleType === 'direct_installment' || car.financingType === 'direct_installment' || car.directInstallment) && (
+            <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-500 text-slate-950 backdrop-blur-md shadow-md border border-amber-300">
+              {isAr ? '🟡 تقسيط مباشر (بدون بنك)' : 'Direct Installment'}
+            </span>
+          )}
+          {(car.saleType === 'cash' || car.financingType === 'fully_owned' || car.vehicleStatus === 'cash_only') && (
+            <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-600 text-white backdrop-blur-md shadow-md">
+              {isAr ? '🟢 بيع كاش (ملكية خالصة)' : 'Cash Sale'}
+            </span>
+          )}
+          {car.financingType === 'bank_loan' && car.saleType !== 'direct_installment' && car.saleType !== 'cash' && (
             <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-brand-navy/90 text-white backdrop-blur-md shadow-sm">
               {isAr ? 'حظر بيع بنكي' : 'Bank Lien'}
             </span>
           )}
-          {car.financingType === 'consumer_finance' && (
+          {car.financingType === 'consumer_finance' && car.saleType !== 'direct_installment' && car.saleType !== 'cash' && (
             <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-600/90 text-white backdrop-blur-md shadow-sm">
               {isAr ? 'تقسيط تمويل استهلاكي' : 'Consumer Finance'}
-            </span>
-          )}
-          {car.financingType === 'fully_owned' && (
-            <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-700/90 text-white backdrop-blur-md shadow-sm">
-              {isAr ? 'حرة بالكامل (كاش)' : 'Fully Owned'}
             </span>
           )}
           {car.financingType === 'personal_loan' && (
@@ -123,8 +128,35 @@ export const CarCard: React.FC<CarCardProps> = ({
           </div>
         </div>
 
-        {/* Financing Breakdown Box (If Financed) */}
-        {hasFinancing && car.financingDetails && (
+        {/* Direct Installment Highlight Box */}
+        {car.directInstallment && (
+          <div className="bg-amber-50/90 rounded-xl p-2.5 text-[11px] border border-amber-200 space-y-1">
+            <div className="flex justify-between items-center text-amber-950">
+              <span className="font-bold flex items-center gap-1">
+                <Banknote className="w-3.5 h-3.5 text-amber-700" />
+                {isAr ? 'أقل مقدم مطلوب:' : 'Down Payment:'}
+              </span>
+              <span className="font-black text-amber-900">
+                {formatEGP(car.directInstallment.downPayment)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center text-slate-600 text-[10px] font-semibold">
+              <span>القسط: {formatEGP(car.directInstallment.monthlyInstallment)}/شهر</span>
+              <span>المدة: {car.directInstallment.installmentMonths} شهر</span>
+            </div>
+          </div>
+        )}
+
+        {/* Cash Sale Clean Title Box */}
+        {(car.saleType === 'cash' || car.financingType === 'fully_owned') && !car.directInstallment && (
+          <div className="bg-emerald-50/80 rounded-xl p-2 text-[10.5px] border border-emerald-200/80 flex items-center gap-1.5 text-emerald-800 font-bold">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+            <span>{isAr ? 'ملكية حرة — جاهزة للتسليم والتنازل الفوري' : 'Clean title, immediate handover'}</span>
+          </div>
+        )}
+
+        {/* Bank Financing Breakdown Box (If Bank Financed) */}
+        {hasFinancing && car.financingDetails && !car.directInstallment && car.saleType !== 'cash' && (
           <div className="bg-brand-surface/60 rounded-xl p-2.5 text-[11px] border border-brand-border/60 space-y-1">
             <div className="flex justify-between items-center text-slate-700">
               <span className="font-medium flex items-center gap-1">

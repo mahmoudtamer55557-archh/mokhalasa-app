@@ -42,6 +42,12 @@ export interface DatabaseCarListing {
   condition_description: string;
   paint_condition?: string;
   disclosed_defects: string[];
+  sale_type?: 'cash' | 'direct_installment' | 'bank_settlement';
+  down_payment?: number;
+  installment_period_months?: number;
+  required_guarantees?: string[];
+  is_direct_installment?: boolean;
+  direct_installment_seller_type?: 'showroom' | 'individual';
   has_financing: boolean;
   financing_type?: string;
   financing_provider?: string;
@@ -112,6 +118,12 @@ export interface NewListingSubmission {
   condition_description: string;
   paint_condition?: string;
   disclosed_defects?: string[];
+  sale_type?: 'cash' | 'direct_installment' | 'bank_settlement';
+  down_payment?: number;
+  installment_period_months?: number;
+  required_guarantees?: string[];
+  is_direct_installment?: boolean;
+  direct_installment_seller_type?: 'showroom' | 'individual';
   has_financing?: boolean;
   financing_type?: string;
   financing_provider?: string;
@@ -205,7 +217,7 @@ export const listingService = {
           paint_condition: submission.paint_condition || 'فابريكا بالكامل',
           disclosed_defects: submission.disclosed_defects || [],
           has_financing: submission.has_financing ?? true,
-          financing_type: submission.financing_type || 'bank_loan',
+          financing_type: submission.financing_type || (submission.sale_type === 'direct_installment' ? 'direct_installment' : (submission.sale_type === 'cash' ? 'fully_owned' : 'bank_loan')),
           financing_provider: submission.financing_provider || '',
           outstanding_amount: submission.outstanding_amount || 0,
           monthly_installment: submission.monthly_installment || 0,
@@ -213,6 +225,15 @@ export const listingService = {
           seller_name: submission.seller_name || authUser.user_metadata?.full_name || 'مالك السيارة',
           seller_phone: submission.seller_phone || authUser.user_metadata?.phone || '',
           status: 'pending_review' as ListingModerationStatus
+        };
+
+        const directInstallmentFields = {
+          sale_type: submission.sale_type || (submission.is_direct_installment ? 'direct_installment' : (submission.has_financing ? 'bank_settlement' : 'cash')),
+          down_payment: submission.down_payment || 0,
+          installment_period_months: submission.installment_period_months || 0,
+          required_guarantees: submission.required_guarantees || [],
+          is_direct_installment: Boolean(submission.is_direct_installment || submission.sale_type === 'direct_installment'),
+          direct_installment_seller_type: submission.direct_installment_seller_type || 'individual'
         };
 
         if (submission.traffic_unit) {
@@ -249,18 +270,17 @@ export const listingService = {
 
         const listingId = data.id;
 
-        // Save traffic_unit to local override mirror so it's always remembered
-        if (submission.traffic_unit) {
-          try {
-            const storedMods = localStorage.getItem('mokhalasa_moderation_overrides') || '{}';
-            const parsed = JSON.parse(storedMods);
-            parsed[listingId] = {
-              ...(parsed[listingId] || {}),
-              traffic_unit: submission.traffic_unit
-            };
-            localStorage.setItem('mokhalasa_moderation_overrides', JSON.stringify(parsed));
-          } catch {}
-        }
+        // Save traffic_unit and sale type/installment details to local override mirror so it's always remembered
+        try {
+          const storedMods = localStorage.getItem('mokhalasa_moderation_overrides') || '{}';
+          const parsed = JSON.parse(storedMods);
+          parsed[listingId] = {
+            ...(parsed[listingId] || {}),
+            traffic_unit: submission.traffic_unit || 'مرور فيصل',
+            ...directInstallmentFields
+          };
+          localStorage.setItem('mokhalasa_moderation_overrides', JSON.stringify(parsed));
+        } catch {}
 
         // Link images in public.listing_images if provided
         if (submission.images && submission.images.length > 0) {
@@ -461,7 +481,13 @@ export const listingService = {
           documents_requested_at: docRecord?.requestedAt,
           documents_submitted: hasDocsSubmitted,
           documents_submitted_at: docRecord?.docs?.submittedAt || item.documents_submitted_at,
-          official_documents: docRecord?.docs || item.official_documents
+          official_documents: docRecord?.docs || item.official_documents,
+          sale_type: modOverride?.sale_type || item.sale_type || (modOverride?.is_direct_installment || item.is_direct_installment || item.financing_type === 'direct_installment' ? 'direct_installment' : (item.financing_type === 'fully_owned' || item.financing_type === 'cash' ? 'cash' : 'bank_settlement')),
+          down_payment: modOverride?.down_payment ?? item.down_payment,
+          installment_period_months: modOverride?.installment_period_months ?? item.installment_period_months,
+          required_guarantees: modOverride?.required_guarantees || item.required_guarantees || [],
+          is_direct_installment: Boolean(modOverride?.is_direct_installment ?? item.is_direct_installment ?? (item.financing_type === 'direct_installment')),
+          direct_installment_seller_type: modOverride?.direct_installment_seller_type || item.direct_installment_seller_type
         };
       });
 
@@ -1343,7 +1369,13 @@ export const listingService = {
           documents_requested_at: docRecord?.requestedAt,
           documents_submitted: hasDocsSubmitted,
           documents_submitted_at: docRecord?.docs?.submittedAt || item.documents_submitted_at,
-          official_documents: docRecord?.docs || item.official_documents
+          official_documents: docRecord?.docs || item.official_documents,
+          sale_type: modOverride?.sale_type || item.sale_type || (modOverride?.is_direct_installment || item.is_direct_installment || item.financing_type === 'direct_installment' ? 'direct_installment' : (item.financing_type === 'fully_owned' || item.financing_type === 'cash' ? 'cash' : 'bank_settlement')),
+          down_payment: modOverride?.down_payment ?? item.down_payment,
+          installment_period_months: modOverride?.installment_period_months ?? item.installment_period_months,
+          required_guarantees: modOverride?.required_guarantees || item.required_guarantees || [],
+          is_direct_installment: Boolean(modOverride?.is_direct_installment ?? item.is_direct_installment ?? (item.financing_type === 'direct_installment')),
+          direct_installment_seller_type: modOverride?.direct_installment_seller_type || item.direct_installment_seller_type
         };
       });
 
@@ -1759,6 +1791,22 @@ export const listingService = {
           .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
           .map((img: any) => img.image_url);
 
+        const effectiveSaleType = (override?.sale_type || row.sale_type || (
+          override?.is_direct_installment || row.is_direct_installment || row.financing_type === 'direct_installment'
+            ? 'direct_installment'
+            : (row.financing_type === 'fully_owned' || row.financing_type === 'cash' ? 'cash' : 'bank_settlement')
+        )) as 'cash' | 'direct_installment' | 'bank_settlement';
+
+        const isDirect = effectiveSaleType === 'direct_installment';
+        const directDetails = isDirect ? {
+          downPayment: Number(override?.down_payment ?? row.down_payment) || Math.round((Number(row.asking_price) || 0) * 0.3),
+          monthlyInstallment: Number(override?.monthly_installment ?? row.monthly_installment) || 0,
+          installmentMonths: Number(override?.installment_period_months ?? row.installment_period_months ?? row.remaining_months) || 36,
+          totalInstallmentPrice: Number(row.asking_price) || 0,
+          requiredGuarantees: override?.required_guarantees || row.required_guarantees || ['شيكات بنكية', 'إيصالات أمانة', 'حظر بيع بالرخصة'],
+          sellerType: (override?.direct_installment_seller_type || row.direct_installment_seller_type || 'showroom') as 'showroom' | 'individual'
+        } : undefined;
+
         return {
           id: row.id,
           make: row.make,
@@ -1775,8 +1823,10 @@ export const listingService = {
           askingPrice: Number(row.asking_price) || 0,
           estimatedMarketValue: Number(row.asking_price) || 0,
           images: sortedImages.length > 0 ? sortedImages : ['https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80'],
-          financingType: row.financing_type || 'bank_loan',
-          vehicleStatus: row.financing_type || 'bank_loan',
+          saleType: effectiveSaleType,
+          directInstallment: directDetails,
+          financingType: (effectiveSaleType === 'direct_installment' ? 'direct_installment' : (effectiveSaleType === 'cash' ? 'fully_owned' : (row.financing_type || 'bank_loan'))) as any,
+          vehicleStatus: (effectiveSaleType === 'direct_installment' ? 'direct_installment' : (effectiveSaleType === 'cash' ? 'cash_only' : (row.financing_type || 'bank_loan'))) as any,
           disclosedProblems: row.disclosed_defects || [],
           sellerConditionStory: row.condition_description,
           description: row.condition_description,

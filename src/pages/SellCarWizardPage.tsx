@@ -3,7 +3,7 @@ import {
   Car, ListingVehicleStatus, VehicleLocation, 
   RequiredDocumentMetadata, PhotoSlotItem, 
   DistressReason, UrgencyLevel, OwnerRelationship, DistressedVehicleCase,
-  CustomerUser
+  CustomerUser, SaleType
 } from '../types';
 import { COMPREHENSIVE_BANK_DATABASE } from '../data/bankDatabase';
 import { getDocumentsForStatus } from '../data/documentChecklistData';
@@ -64,6 +64,44 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
   // Step state: 1 to 7, plus 8 for confirmation
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [lastErrorTarget, setLastErrorTarget] = useState<{ key: string; domId: string; step?: number } | null>(null);
+
+  const clearFieldError = useCallback((fieldKey: string) => {
+    setFieldErrors(prev => {
+      if (!prev[fieldKey]) return prev;
+      const next = { ...prev };
+      delete next[fieldKey];
+      return next;
+    });
+    setValidationError(null);
+  }, []);
+
+  const reportMissingField = useCallback((fieldKey: string, domId: string, errorMsg: string, targetStep?: number) => {
+    setValidationError(errorMsg);
+    setFieldErrors({ [fieldKey]: errorMsg });
+    setLastErrorTarget({ key: fieldKey, domId, step: targetStep });
+
+    if (targetStep && currentStep !== targetStep) {
+      setCurrentStep(targetStep);
+    }
+
+    // Smooth scroll and focus after render/step transition
+    setTimeout(() => {
+      const el = document.getElementById(domId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (typeof (el as HTMLElement).focus === 'function') {
+          (el as HTMLElement).focus();
+        }
+        // Visual attention ring
+        el.classList.add('ring-4', 'ring-red-500/40');
+        setTimeout(() => {
+          el.classList.remove('ring-4', 'ring-red-500/40');
+        }, 2200);
+      }
+    }, 150);
+  }, [currentStep]);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [createdCaseReference, setCreatedCaseReference] = useState<string | null>(null);
   const [createdListingId, setCreatedListingId] = useState<string | null>(null);
@@ -83,10 +121,24 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
   const [isGeneratingAiDesc, setIsGeneratingAiDesc] = useState(false);
   const [aiFeedbackMsg, setAiFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // PRIMARY SALE TRACK: 'direct_installment' | 'cash' | 'bank_settlement'
+  const [saleType, setSaleType] = useState<SaleType>('direct_installment');
+
+  // DIRECT INSTALLMENT SPECIFIC STATES
+  const [directDownPayment, setDirectDownPayment] = useState<number>(150000);
+  const [directMonthlyInstallment, setDirectMonthlyInstallment] = useState<number>(7500);
+  const [directInstallmentMonths, setDirectInstallmentMonths] = useState<number>(36);
+  const [directGuarantees, setDirectGuarantees] = useState<string[]>([
+    'شيكات بنكية موقعة',
+    'إيصالات أمانة',
+    'حظر بيع بالرخصة (عرفي)'
+  ]);
+  const [directSellerType, setDirectSellerType] = useState<'showroom' | 'individual'>('showroom');
+
   // STEP 1: Financing Eligibility & Distress Cause
   const [distressReason, setDistressReason] = useState<DistressReason>('installment_burden');
   const [urgency, setUrgency] = useState<UrgencyLevel>('very_urgent');
-  const [vehicleStatus, setVehicleStatus] = useState<ListingVehicleStatus>('bank_loan');
+  const [vehicleStatus, setVehicleStatus] = useState<ListingVehicleStatus>('direct_installment');
   const [ownerRelationship, setOwnerRelationship] = useState<OwnerRelationship>('direct_owner');
   const [hasContactedLender, setHasContactedLender] = useState<boolean | 'not_sure'>(true);
   const [hasOfficialQuote, setHasOfficialQuote] = useState<boolean | 'not_sure'>('not_sure');
@@ -426,51 +478,90 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
     });
   };
 
-  // Check Ineligibility Filter
+  // Status & Track Change Handler
   const handleStatusChange = (status: ListingVehicleStatus) => {
-    if (status === 'fully_owned') {
-      setShowIneligibleModal(true);
+    if (status === 'fully_owned' || status === 'cash_only') {
+      setSaleType('cash');
+      setVehicleStatus('fully_owned');
+      setDocuments(getDocumentsForStatus('fully_owned').map(d => ({ ...d, isRequired: false })));
       return;
     }
+    if (status === 'direct_installment') {
+      setSaleType('direct_installment');
+      setVehicleStatus('direct_installment');
+      setDocuments(getDocumentsForStatus('fully_owned').map(d => ({ ...d, isRequired: false })));
+      return;
+    }
+    setSaleType('bank_settlement');
     setVehicleStatus(status);
     setDocuments(getDocumentsForStatus(status).map(d => ({ ...d, isRequired: false })));
   };
 
-  // Validation
+  // Validation with automatic jump, scroll, focus, and red highlight
   const validateStep = (step: number): boolean => {
     setValidationError(null);
 
     if (step === 1) {
-      if (vehicleStatus === 'fully_owned') {
-        setShowIneligibleModal(true);
-        return false;
-      }
+      // Step 1: All tracks are eligible
+      return true;
     }
 
     if (step === 2) {
-      if (!selectedMakeId || !selectedModelId || !selectedYear) {
-        setValidationError('يرجى اختيار الماركة والموديل وسنة الصنع.');
+      if (!selectedMakeId) {
+        reportMissingField('make', 'field-make-trigger', 'يرجى اختيار ماركة السيارة (الشركة المصنعة).', 2);
+        return false;
+      }
+      if (!selectedModelId) {
+        reportMissingField('model', 'field-model-trigger', 'يرجى اختيار موديل السيارة (الطراز).', 2);
+        return false;
+      }
+      if (!selectedYear) {
+        reportMissingField('year', 'field-year', 'يرجى اختيار سنة الصنع (الموديل من 2018 فما بعد).', 2);
+        return false;
+      }
+      if (isCustomTrim && !customTrimText.trim()) {
+        reportMissingField('customTrim', 'field-customTrim', 'يرجى كتابة اسم الفئة وتجهيزها المدون بالرخصة.', 2);
         return false;
       }
       if (!mileage || mileage <= 0) {
-        setValidationError('يرجى إدخال قراءة العداد الحالية.');
+        reportMissingField('mileage', 'field-mileage', 'يرجى إدخال قراءة العداد الحالية للسيارة بالكيلومتر.', 2);
         return false;
       }
       if (!trafficUnit.trim()) {
-        setValidationError('يرجى كتابة أو اختيار وحدة المرور التابع لها الترخيص (حقل إجباري).');
+        reportMissingField('trafficUnit', 'field-trafficUnit', 'يرجى كتابة أو اختيار وحدة المرور التابع لها الترخيص (حقل إجباري).', 2);
         return false;
       }
       if (!sellerConditionStory.trim() || sellerConditionStory.trim().length < 20) {
-        setValidationError('يرجى كتابة وصف تفصيلي لحالة السيارة وأي ملاحظات تود مشاركتها (20 حرفاً على الأقل).');
+        reportMissingField('conditionStory', 'field-conditionStory', 'يرجى كتابة وصف تفصيلي لحالة السيارة وأي ملاحظات تود مشاركتها (20 حرفاً على الأقل).', 2);
         return false;
       }
     }
 
     if (step === 3) {
-      if (vehicleStatus === 'bank_loan' || vehicleStatus === 'consumer_finance') {
-        if (!outstandingPrincipal || outstandingPrincipal <= 0) {
-          setValidationError('يرجى إدخال أصل الدين المتبقي التقريبي.');
+      if (saleType === 'cash') {
+        if (!sellerExpectedPrice || sellerExpectedPrice <= 0) {
+          reportMissingField('cashPrice', 'field-cashPrice', 'يرجى تحديد السعر المطلوب للبيع كاش.', 3);
           return false;
+        }
+      } else if (saleType === 'direct_installment') {
+        if (!sellerExpectedPrice || sellerExpectedPrice <= 0) {
+          reportMissingField('installmentTotal', 'field-installmentTotal', 'يرجى تحديد إجمالي سعر السيارة بالتقسيط.', 3);
+          return false;
+        }
+        if (!directDownPayment || directDownPayment <= 0) {
+          reportMissingField('downPayment', 'field-downPayment', 'يرجى إدخال أقل قيمة للمقدم المطلوب بالتقسيط.', 3);
+          return false;
+        }
+        if (!directMonthlyInstallment || directMonthlyInstallment <= 0) {
+          reportMissingField('monthlyInstallment', 'field-monthlyInstallment', 'يرجى إدخال قيمة القسط الشهري بالتقسيط المباشر.', 3);
+          return false;
+        }
+      } else {
+        if (vehicleStatus === 'bank_loan' || vehicleStatus === 'consumer_finance') {
+          if (!outstandingPrincipal || outstandingPrincipal <= 0) {
+            reportMissingField('outstandingPrincipal', 'field-outstandingPrincipal', 'يرجى إدخال أصل الدين المتبقي التقريبي.', 3);
+            return false;
+          }
         }
       }
     }
@@ -478,18 +569,25 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
     if (step === 4) {
       const uploadedPhotosCount = photoSlots.filter((p) => !!p.previewUrl).length;
       if (uploadedPhotosCount < 4) {
-        setValidationError(`يلزم رفع 4 صور رئيسية على الأقل للسيارة للمراجعة. (تم رفع ${uploadedPhotosCount} فقط).`);
+        reportMissingField('photos', 'field-photosSection', `يلزم رفع 4 صور رئيسية على الأقل للسيارة للمراجعة. (تم رفع ${uploadedPhotosCount} فقط).`, 4);
         return false;
       }
     }
 
     if (step === 6) {
       if (!sellerName.trim()) {
-        setValidationError('يرجى إدخال اسمك.');
+        reportMissingField('sellerName', 'field-sellerName', 'يرجى إدخال اسمك بالكامل.', 6);
         return false;
       }
       if (!sellerPhone.trim() || !/^01[0125][0-9]{8}$/.test(sellerPhone.trim())) {
-        setValidationError('يرجى إدخال رقم هاتف محمول مصري صحيح (11 رقماً يبدأ بـ 01).');
+        reportMissingField('sellerPhone', 'field-sellerPhone', 'يرجى إدخال رقم هاتف محمول مصري صحيح (11 رقماً يبدأ بـ 01).', 6);
+        return false;
+      }
+    }
+
+    if (step === 7) {
+      if (!agreedToTerms) {
+        reportMissingField('agreedToTerms', 'field-agreedToTerms', 'يرجى الموافقة على شروط المراجعة والإقرار بصحة البيانات المدخلة.', 7);
         return false;
       }
     }
@@ -585,6 +683,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
     setIsGeneratingAiDesc(false);
     if (res.success && res.description) {
       setSellerConditionStory(res.description);
+      clearFieldError('conditionStory');
       setAiFeedbackMsg({
         type: 'success',
         text: 'تمت صياغة وصف الإعلان بنجاح بواسطة الذكاء الاصطناعي! يمكنك مراجعته وتعديل أي تفاصيل بحرية قبل المتابعة.'
@@ -600,8 +699,14 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
   const handleFinalSubmit = useCallback(async () => {
     if (isSubmitting) return;
 
+    // Cross-step validation to guarantee no mandatory text bars are missing anywhere
+    if (!validateStep(2)) return;
+    if (!validateStep(3)) return;
+    if (!validateStep(4)) return;
+    if (!validateStep(6)) return;
+
     if (!agreedToTerms) {
-      setValidationError('يرجى الموافقة على شروط المراجعة والإقرار بصحة البيانات المدخلة.');
+      reportMissingField('agreedToTerms', 'field-agreedToTerms', 'يرجى الموافقة على شروط المراجعة والإقرار بصحة البيانات المدخلة.', 7);
       return;
     }
 
@@ -651,8 +756,17 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
       askingPrice: sellerExpectedPrice || valuation.suggestedAskingPrice,
       estimatedMarketValue: valuation.suggestedAskingPrice,
       images: uploadedImages.length > 0 ? uploadedImages : ['https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=1200&q=80'],
-      financingType: vehicleStatus === 'consumer_finance' ? 'consumer_finance' : 'bank_loan',
-      vehicleStatus,
+      saleType,
+      directInstallment: saleType === 'direct_installment' ? {
+        downPayment: directDownPayment,
+        monthlyInstallment: directMonthlyInstallment,
+        installmentMonths: directInstallmentMonths,
+        totalInstallmentPrice: sellerExpectedPrice || (directDownPayment + directMonthlyInstallment * directInstallmentMonths),
+        requiredGuarantees: directGuarantees,
+        sellerType: directSellerType
+      } : undefined,
+      financingType: (saleType === 'direct_installment' ? 'direct_installment' : (saleType === 'cash' ? 'fully_owned' : vehicleStatus)) as any,
+      vehicleStatus: (saleType === 'direct_installment' ? 'direct_installment' : (saleType === 'cash' ? 'cash_only' : vehicleStatus)) as any,
       distressReason,
       urgency,
       disclosedProblems: selectedIssues,
@@ -859,12 +973,18 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
       condition_description: sellerConditionStory,
       paint_condition: paintCondition,
       disclosed_defects: selectedIssues.filter(i => i !== NO_ISSUES_OPTION),
-      has_financing: vehicleStatus === 'bank_loan' || vehicleStatus === 'consumer_finance',
-      financing_type: vehicleStatus,
-      financing_provider: selectedBank.bankNameAr,
-      outstanding_amount: outstandingPrincipal,
-      monthly_installment: monthlyInstallment,
-      remaining_months: remainingMonths,
+      sale_type: saleType,
+      is_direct_installment: saleType === 'direct_installment',
+      down_payment: saleType === 'direct_installment' ? directDownPayment : 0,
+      installment_period_months: saleType === 'direct_installment' ? directInstallmentMonths : remainingMonths,
+      required_guarantees: saleType === 'direct_installment' ? directGuarantees : [],
+      direct_installment_seller_type: directSellerType,
+      has_financing: saleType === 'bank_settlement',
+      financing_type: saleType === 'direct_installment' ? 'direct_installment' : (saleType === 'cash' ? 'fully_owned' : vehicleStatus),
+      financing_provider: saleType === 'bank_settlement' ? selectedBank.bankNameAr : (saleType === 'direct_installment' ? 'تقسيط مباشر بدون بنوك' : 'ملكية خالصة'),
+      outstanding_amount: saleType === 'bank_settlement' ? outstandingPrincipal : 0,
+      monthly_installment: saleType === 'direct_installment' ? directMonthlyInstallment : (saleType === 'bank_settlement' ? monthlyInstallment : 0),
+      remaining_months: saleType === 'direct_installment' ? directInstallmentMonths : remainingMonths,
       seller_name: sellerName,
       seller_phone: sellerPhone,
       images: uploadedImages
@@ -906,9 +1026,9 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
   ]);
 
   const stepLabels = [
-    'الأهلية وسبب البيع',
+    'طريقة البيع والأهلية',
     'السيارة وإفصاح العيوب',
-    'المديونية والأقساط',
+    saleType === 'cash' ? 'السعر الكاش' : (saleType === 'direct_installment' ? 'خطة التقسيط المباشر' : 'المديونية والأقساط'),
     'صور السيارة',
     'المستندات (مرحلية)',
     'الموقع والتواصل',
@@ -1015,91 +1135,235 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
 
         {/* Global Error Banner */}
         {validationError && (
-          <div className="bg-red-50 border border-red-300 text-red-900 rounded-2xl p-4 text-xs font-bold flex items-start gap-3 shadow-sm animate-fadeIn">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">{validationError}</div>
+          <div className="bg-red-50 border-2 border-red-300 text-red-900 rounded-2xl p-4 text-xs font-bold flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md animate-fadeIn">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+              <div className="flex-1 font-black leading-relaxed">{validationError}</div>
+            </div>
+            {lastErrorTarget && (
+              <button
+                type="button"
+                onClick={() => {
+                  reportMissingField(lastErrorTarget.key, lastErrorTarget.domId, validationError, lastErrorTarget.step);
+                }}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-2xs shadow-sm transition flex items-center gap-1.5 flex-shrink-0 self-end sm:self-auto cursor-pointer"
+              >
+                <span>انتقل للحقل المطلوب الآن</span>
+                <ArrowLeft className="w-3.5 h-3.5 rtl:rotate-0" />
+              </button>
+            )}
           </div>
         )}
 
-        {/* ================= STEP 1: ELIGIBILITY & DISTRESS REASON ================= */}
+        {/* ================= STEP 1: ELIGIBILITY & TRACK SELECTION ================= */}
         {currentStep === 1 && (
           <div className="bg-white rounded-3xl p-6 sm:p-8 border border-brand-border shadow-card space-y-6 animate-fadeIn">
             <div className="border-b border-slate-100 pb-3">
               <h2 className="text-base font-extrabold text-brand-navy flex items-center gap-2">
                 <Banknote className="w-5 h-5 text-brand-green" />
-                <span>الخطوة 1: أسباب البيع والأهلية التمويلية للسيارة</span>
+                <span>الخطوة 1: اختيار طريقة البيع وموقف السيارة</span>
               </h2>
               <p className="text-2xs text-slate-500 mt-1">
-                مخلصة متخصصة حصرياً في مساعدة ملاك السيارات التي عليها التزامات بنكية أو تمويلية
+                اختر النظام الأنسب لسيارتك سواء كان تقسيطاً مباشراً بدون بنك، بيع كاش ملكية خالصة، أو تسوية مديونية بنكية
               </p>
             </div>
 
-            {/* Regulatory & Bank Financing Disclaimer Banner (Prompt Requirement) */}
-            <div className="bg-amber-50/80 border border-amber-200/90 rounded-2xl p-4 flex items-start gap-3 text-xs text-amber-950">
-              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <span className="font-extrabold text-amber-900 block">إقرار وتنبيه قانوني هام بخصوص التمويل وحظر البيع:</span>
-                <p className="text-2xs text-amber-800 leading-relaxed">
-                  إن بيع سيارة محملة بأقساط أو حظر بيع يتطلب وجوباً الحصول على موافقة رسمية من البنك أو جهة التمويل الدائنة وإيداع حصيلة المخالصة بالفرع المانح. تتولى منصة «مخلصة» الإشراف والتنسيق الفني والقانوني الميداني ولا تقوم بنقل المديونية دون موافقة كتابية رسمية من الجهة الممولة.
-                </p>
+            {/* PRIMARY 3-WAY TRACK SELECTOR */}
+            <div className="space-y-2">
+              <label className="block font-black text-sm text-brand-navy mb-2">
+                اختر طريقة ونظام عرض السيارة للبيع: <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* 1. Direct Installment Track */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSaleType('direct_installment');
+                    setVehicleStatus('direct_installment');
+                  }}
+                  className={`p-4 rounded-2xl border text-right transition flex flex-col justify-between gap-3 relative ${
+                    saleType === 'direct_installment'
+                      ? 'border-amber-500 bg-amber-50/70 text-brand-navy ring-2 ring-amber-500/30 shadow-sm'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-start justify-between w-full">
+                    <span className="p-2 rounded-xl bg-amber-100 text-amber-900 font-black text-xs">
+                      🟡 تقسيط مباشر
+                    </span>
+                    {saleType === 'direct_installment' && <Check className="w-5 h-5 text-amber-600" />}
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-xs text-slate-900">بدون بنوك (معارض وأفراد)</h3>
+                    <p className="text-3xs text-slate-500 mt-1 leading-relaxed">
+                      بيع سيارتك بنظام التقسيط المباشر بشيكات أو إيصالات أمانة، للسيارات التي ترفضها البنوك وبدون تعقيدات ائتمانية.
+                    </p>
+                  </div>
+                </button>
+
+                {/* 2. Pure Cash Sale Track */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSaleType('cash');
+                    setVehicleStatus('fully_owned');
+                  }}
+                  className={`p-4 rounded-2xl border text-right transition flex flex-col justify-between gap-3 relative ${
+                    saleType === 'cash'
+                      ? 'border-emerald-500 bg-emerald-50/70 text-brand-navy ring-2 ring-emerald-500/30 shadow-sm'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-start justify-between w-full">
+                    <span className="p-2 rounded-xl bg-emerald-100 text-emerald-900 font-black text-xs">
+                      🟢 بيع كاش عادي
+                    </span>
+                    {saleType === 'cash' && <Check className="w-5 h-5 text-emerald-600" />}
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-xs text-slate-900">ملكية خالصة حرة</h3>
+                    <p className="text-3xs text-slate-500 mt-1 leading-relaxed">
+                      سيارة ملكك بالكامل بدون أي أقساط أو حظر بيع بالرخصة، واستلام قيمتها كاش بالكامل فوراً.
+                    </p>
+                  </div>
+                </button>
+
+                {/* 3. Bank Debt Settlement Track */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSaleType('bank_settlement');
+                    if (vehicleStatus === 'fully_owned' || vehicleStatus === 'direct_installment') {
+                      setVehicleStatus('bank_loan');
+                    }
+                  }}
+                  className={`p-4 rounded-2xl border text-right transition flex flex-col justify-between gap-3 relative ${
+                    saleType === 'bank_settlement'
+                      ? 'border-blue-600 bg-blue-50/70 text-brand-navy ring-2 ring-blue-600/30 shadow-sm'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-start justify-between w-full">
+                    <span className="p-2 rounded-xl bg-blue-100 text-blue-900 font-black text-xs">
+                      🏦 تسوية بنكية
+                    </span>
+                    {saleType === 'bank_settlement' && <Check className="w-5 h-5 text-blue-600" />}
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-xs text-slate-900">عليها حظر بيع / أقساط</h3>
+                    <p className="text-3xs text-slate-500 mt-1 leading-relaxed">
+                      خدمة مخلصة الأصلية لفك الحظر وحساب السداد المعجل والتخارج الآمن من قسط السيارة.
+                    </p>
+                  </div>
+                </button>
               </div>
             </div>
+
+            {/* Direct Installment Extra Settings */}
+            {saleType === 'direct_installment' && (
+              <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-4.5 space-y-3">
+                <span className="font-extrabold text-amber-950 block text-xs">
+                  صفة البائع لعرض التقسيط المباشر:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setDirectSellerType('showroom')}
+                    className={`p-3 rounded-xl border text-right font-bold text-xs flex items-center justify-between ${
+                      directSellerType === 'showroom'
+                        ? 'border-amber-600 bg-white text-amber-900 shadow-xs ring-1 ring-amber-500'
+                        : 'border-amber-200/70 bg-amber-50/40 text-amber-800 hover:bg-white'
+                    }`}
+                  >
+                    <span>معرض سيارات / تاجر معتمد</span>
+                    {directSellerType === 'showroom' && <Check className="w-4 h-4 text-amber-600" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDirectSellerType('individual')}
+                    className={`p-3 rounded-xl border text-right font-bold text-xs flex items-center justify-between ${
+                      directSellerType === 'individual'
+                        ? 'border-amber-600 bg-white text-amber-900 shadow-xs ring-1 ring-amber-500'
+                        : 'border-amber-200/70 bg-amber-50/40 text-amber-800 hover:bg-white'
+                    }`}
+                  >
+                    <span>فرد / مالك مباشر يبيع بالتقسيط المباشر</span>
+                    {directSellerType === 'individual' && <Check className="w-4 h-4 text-amber-600" />}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Bank Debt Settlement Regulatory Notice & Status */}
+            {saleType === 'bank_settlement' && (
+              <>
+                <div className="bg-blue-50/80 border border-blue-200/90 rounded-2xl p-4 flex items-start gap-3 text-xs text-blue-950">
+                  <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <span className="font-extrabold text-blue-900 block">إقرار وتنبيه قانوني بخصوص التمويل وحظر البيع:</span>
+                    <p className="text-2xs text-blue-800 leading-relaxed">
+                      بيع سيارة محملة بأقساط أو حظر بيع يتطلب الحصول على موافقة رسمية من البنك أو جهة التمويل وإيداع حصيلة المخالصة بالفرع المانح. تتولى منصة «مخلصة» الإشراف والتنسيق الفني والميداني.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Vehicle financing status */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1.5 text-xs">
+                    ما هو الموقف الحالي للسيارة من التمويل والأقساط؟ <span className="text-red-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {[
+                      { id: 'bank_loan', label: 'سيارة عليها أقساط بنكية (حظر بيع بالرخصة)' },
+                      { id: 'consumer_finance', label: 'تمويل شركة تقسيط (كونتكت، فاليو، درايف، سهولة)' },
+                      { id: 'settlement_or_arrears', label: 'أقساط متأخرة أو مفاوضات تسوية مع التحصيل' },
+                      { id: 'loan_paid_pending_clearance', label: 'تم سداد القرض وبانتظار خطاب فك الحظر' },
+                      { id: 'personal_loan_free_license', label: 'قرض شخصي نقدي (الرخصة حرة بدون حظر)' }
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => handleStatusChange(item.id as ListingVehicleStatus)}
+                        className={`p-3 rounded-xl border text-right text-xs font-bold transition flex items-center justify-between ${
+                          vehicleStatus === item.id
+                            ? 'border-brand-green bg-emerald-50 text-brand-navy ring-2 ring-brand-green/20'
+                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                        }`}
+                      >
+                        <span>{item.label}</span>
+                        {vehicleStatus === item.id && <Check className="w-4 h-4 text-brand-green flex-shrink-0" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="space-y-4 text-xs">
               
               {/* Reason for selling */}
               <div>
                 <label className="block font-bold text-slate-700 mb-1.5">
-                  ما هو السبب الرئيسي الذي يجعلك تحتاج لبيع السيارة الآن؟ <span className="text-red-500">*</span>
+                  ما هو السبب الرئيسي الذي يجعلك تبيع السيارة الآن؟ <span className="text-slate-400 font-normal">(اختياري)</span>
                 </label>
                 <select
                   value={distressReason}
                   onChange={(e) => setDistressReason(e.target.value as DistressReason)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green"
                 >
-                  <option value="installment_burden">عجز عن سداد الأقساط الشهرية وتراكم الضغوط</option>
-                  <option value="accumulating_interest">الرغبة في التخلص من الفوائد البنكية المرتفعة بالسداد المعجل</option>
-                  <option value="emergency_expenses">وجود التزامات أو ديون مالية طارئة ومفاجئة</option>
-                  <option value="relocation_travel">سفر مفاجئ للخارج أو تغيير محل الإقامة</option>
-                  <option value="reducing_overhead">تقليل النفقات والمصاريف الشهرية</option>
-                  <option value="downsizing_car">الاستبدال بسيارة أصغر كاش وتوفير سيولة</option>
+                  <option value="installment_burden">توفير سيولة أو تخفيف أعباء والتزامات مالية</option>
+                  <option value="downsizing_car">الاستبدال بسيارة أخرى أو تجديد الموديل</option>
+                  <option value="relocation_travel">سفر للخارج أو تغيير محل الإقامة</option>
+                  <option value="accumulating_interest">التخلص من الفوائد بالسداد المعجل (للسيارات الممولة)</option>
+                  <option value="emergency_expenses">التزامات أو استثمارات شخصية طارئة</option>
+                  <option value="reducing_overhead">تقليل النفقات والمصاريف التشغيلية</option>
                   <option value="other">سبب آخر</option>
                 </select>
               </div>
 
-              {/* Vehicle financing status */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1.5">
-                  ما هو الموقف الحالي للسيارة من التمويل والأقساط؟ <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {[
-                    { id: 'bank_loan', label: 'سيارة عليها أقساط بنكية (حظر بيع بالرخصة)' },
-                    { id: 'consumer_finance', label: 'تمويل شركة تقسيط (كونتكت، فاليو، درايف، سهولة)' },
-                    { id: 'settlement_or_arrears', label: 'أقساط متأخرة أو مفاوضات تسوية مع التحصيل' },
-                    { id: 'loan_paid_pending_clearance', label: 'تم سداد القرض وبانتظار خطاب فك الحظر' },
-                    { id: 'personal_loan_free_license', label: 'قرض شخصي نقدي (الرخصة حرة بدون حظر)' },
-                    { id: 'fully_owned', label: 'سيارة مملوكة بالكامل كاش بدون أي أقساط أو ديون' }
-                  ].map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => handleStatusChange(item.id as ListingVehicleStatus)}
-                      className={`p-3 rounded-xl border text-right text-xs font-bold transition flex items-center justify-between ${
-                        vehicleStatus === item.id
-                          ? 'border-brand-green bg-emerald-50 text-brand-navy ring-2 ring-brand-green/20'
-                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                      }`}
-                    >
-                      <span>{item.label}</span>
-                      {vehicleStatus === item.id && <Check className="w-4 h-4 text-brand-green flex-shrink-0" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Registered owner relationship */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1.5">
                     هل رخصة السيارة مسجلة باسمك مباشرة؟
@@ -1126,91 +1390,93 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                     onChange={(e) => setUrgency(e.target.value as UrgencyLevel)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green"
                   >
-                    <option value="very_urgent">عاجل جداً (خلال 7 إلى 10 أيام لتفادي قسط جديد)</option>
+                    <option value="very_urgent">عاجل جداً (خلال أسبوع إلى 10 أيام)</option>
                     <option value="urgent">عاجل (خلال أسبوعين إلى شهر)</option>
-                    <option value="flexible">مرن (أكثر من شهر - البحث عن أعلى سعر)</option>
+                    <option value="flexible">مرن (أكثر من شهر - البحث عن أفضل عائد)</option>
                   </select>
                 </div>
               </div>
 
-              {/* Contacted lender & Statement availability */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                  <label className="block font-bold text-slate-700 mb-1">
-                    هل تواصلت مع البنك/الجهة بشأن السداد المعجل؟
-                  </label>
-                  <div className="flex items-center gap-4 mt-2">
-                    <label className="flex items-center gap-1.5 font-bold cursor-pointer">
-                      <input
-                        type="radio"
-                        name="contactedLender"
-                        checked={hasContactedLender === true}
-                        onChange={() => setHasContactedLender(true)}
-                        className="accent-brand-green"
-                      />
-                      <span>نعم، تواصلت</span>
+              {/* Contacted lender & Statement availability (Only for bank settlement) */}
+              {saleType === 'bank_settlement' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <label className="block font-bold text-slate-700 mb-1">
+                      هل تواصلت مع البنك/الجهة بشأن السداد المعجل؟
                     </label>
-                    <label className="flex items-center gap-1.5 font-bold cursor-pointer">
-                      <input
-                        type="radio"
-                        name="contactedLender"
-                        checked={hasContactedLender === false}
-                        onChange={() => setHasContactedLender(false)}
-                        className="accent-brand-green"
-                      />
-                      <span>لا، لم أتواصل</span>
-                    </label>
-                    <label className="flex items-center gap-1.5 font-bold cursor-pointer text-slate-500">
-                      <input
-                        type="radio"
-                        name="contactedLender"
-                        checked={hasContactedLender === 'not_sure'}
-                        onChange={() => setHasContactedLender('not_sure')}
-                        className="accent-brand-green"
-                      />
-                      <span>مش متأكد</span>
-                    </label>
+                    <div className="flex items-center gap-4 mt-2">
+                      <label className="flex items-center gap-1.5 font-bold cursor-pointer">
+                        <input
+                          type="radio"
+                          name="contactedLender"
+                          checked={hasContactedLender === true}
+                          onChange={() => setHasContactedLender(true)}
+                          className="accent-brand-green"
+                        />
+                        <span>نعم، تواصلت</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 font-bold cursor-pointer">
+                        <input
+                          type="radio"
+                          name="contactedLender"
+                          checked={hasContactedLender === false}
+                          onChange={() => setHasContactedLender(false)}
+                          className="accent-brand-green"
+                        />
+                        <span>لا، لم أتواصل</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 font-bold cursor-pointer text-slate-500">
+                        <input
+                          type="radio"
+                          name="contactedLender"
+                          checked={hasContactedLender === 'not_sure'}
+                          onChange={() => setHasContactedLender('not_sure')}
+                          className="accent-brand-green"
+                        />
+                        <span>مش متأكد</span>
+                      </label>
+                    </div>
                   </div>
-                </div>
 
-                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                  <label className="block font-bold text-slate-700 mb-1">
-                    هل لديك بيان مديونية أو استعلام سداد معجل حديث؟
-                  </label>
-                  <div className="flex items-center gap-4 mt-2">
-                    <label className="flex items-center gap-1.5 font-bold cursor-pointer">
-                      <input
-                        type="radio"
-                        name="hasQuote"
-                        checked={hasOfficialQuote === true}
-                        onChange={() => setHasOfficialQuote(true)}
-                        className="accent-brand-green"
-                      />
-                      <span>نعم، لدي ورقة مختومة</span>
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <label className="block font-bold text-slate-700 mb-1">
+                      هل لديك بيان مديونية أو استعلام سداد معجل حديث؟
                     </label>
-                    <label className="flex items-center gap-1.5 font-bold cursor-pointer">
-                      <input
-                        type="radio"
-                        name="hasQuote"
-                        checked={hasOfficialQuote === false}
-                        onChange={() => setHasOfficialQuote(false)}
-                        className="accent-brand-green"
-                      />
-                      <span>لا، لست متأكداً</span>
-                    </label>
-                    <label className="flex items-center gap-1.5 font-bold cursor-pointer text-slate-500">
-                      <input
-                        type="radio"
-                        name="hasQuote"
-                        checked={hasOfficialQuote === 'not_sure'}
-                        onChange={() => setHasOfficialQuote('not_sure')}
-                        className="accent-brand-green"
-                      />
-                      <span>مش متأكد</span>
-                    </label>
+                    <div className="flex items-center gap-4 mt-2">
+                      <label className="flex items-center gap-1.5 font-bold cursor-pointer">
+                        <input
+                          type="radio"
+                          name="hasQuote"
+                          checked={hasOfficialQuote === true}
+                          onChange={() => setHasOfficialQuote(true)}
+                          className="accent-brand-green"
+                        />
+                        <span>نعم، لدي ورقة مختومة</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 font-bold cursor-pointer">
+                        <input
+                          type="radio"
+                          name="hasQuote"
+                          checked={hasOfficialQuote === false}
+                          onChange={() => setHasOfficialQuote(false)}
+                          className="accent-brand-green"
+                        />
+                        <span>لا، لست متأكداً</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 font-bold cursor-pointer text-slate-500">
+                        <input
+                          type="radio"
+                          name="hasQuote"
+                          checked={hasOfficialQuote === 'not_sure'}
+                          onChange={() => setHasOfficialQuote('not_sure')}
+                          className="accent-brand-green"
+                        />
+                        <span>مش متأكد</span>
+                      </label>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
             </div>
 
@@ -1269,6 +1535,8 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
               chassisVin={chassisVin}
               setChassisVin={setChassisVin}
               lang={lang}
+              fieldErrors={fieldErrors}
+              onClearFieldError={clearFieldError}
             />
 
             {/* MANDATORY LICENSE & TRAFFIC UNIT SECTION */}
@@ -1285,18 +1553,32 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                 {/* Traffic Unit (Mandatory) */}
-                <div className="space-y-1.5 sm:col-span-2">
+                <div className="space-y-1.5 sm:col-span-2" id="field-trafficUnit-wrapper">
                   <label className="block font-black text-brand-navy text-2xs">
                     وحدة المرور التابع لها الترخيص <span className="text-red-500">* (إجباري)</span>
                   </label>
                   <input
+                    id="field-trafficUnit"
                     type="text"
                     required
                     value={trafficUnit}
-                    onChange={(e) => setTrafficUnit(e.target.value)}
+                    onChange={(e) => {
+                      setTrafficUnit(e.target.value);
+                      clearFieldError('trafficUnit');
+                    }}
                     placeholder="مثال: مرور فيصل، مرور مدينة نصر، مرور التجمع..."
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-green"
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold bg-white focus:outline-none transition ${
+                      fieldErrors.trafficUnit
+                        ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/20 text-red-900'
+                        : 'border-slate-300 text-slate-800 focus:ring-2 focus:ring-brand-green'
+                    }`}
                   />
+                  {fieldErrors.trafficUnit && (
+                    <div className="text-3xs font-extrabold text-red-600 flex items-center gap-1 mt-1 animate-fadeIn">
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>{fieldErrors.trafficUnit}</span>
+                    </div>
+                  )}
                   {/* Quick Suggestions Pills */}
                   <div className="flex flex-wrap items-center gap-1.5 pt-1">
                     <span className="text-3xs text-slate-400 font-bold">اختيار سريع:</span>
@@ -1304,7 +1586,10 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                       <button
                         key={unit}
                         type="button"
-                        onClick={() => setTrafficUnit(unit)}
+                        onClick={() => {
+                          setTrafficUnit(unit);
+                          clearFieldError('trafficUnit');
+                        }}
                         className={`px-2 py-0.5 rounded-lg text-3xs font-bold transition border ${
                           trafficUnit === unit
                             ? 'bg-brand-green text-slate-950 border-brand-green'
@@ -1336,7 +1621,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
             </div>
 
             {/* MANDATORY LARGE ARABIC TEXTAREA PROMPT (Prompt Specification) */}
-            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-3">
+            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-3" id="field-conditionStory-wrapper">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-start gap-2">
                   <MessageSquare className="w-4 h-4 text-brand-green flex-shrink-0 mt-0.5" />
@@ -1372,13 +1657,27 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
               )}
 
               <textarea
+                id="field-conditionStory"
                 rows={4}
                 required
                 value={sellerConditionStory}
-                onChange={(e) => setSellerConditionStory(e.target.value)}
+                onChange={(e) => {
+                  setSellerConditionStory(e.target.value);
+                  clearFieldError('conditionStory');
+                }}
                 placeholder="اكتب كل الملاحظات بصراحة، أو اضغط زر (ساعدني في كتابة الإعلان) لتوليد مسودة بناءً على بيانات السيارة ثم عدلها بحرية..."
-                className="w-full p-3.5 rounded-xl border border-slate-300 font-semibold text-xs text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green"
+                className={`w-full p-3.5 rounded-xl border font-semibold text-xs bg-white focus:outline-none transition ${
+                  fieldErrors.conditionStory
+                    ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/20 text-red-900'
+                    : 'border-slate-300 text-slate-800 focus:ring-2 focus:ring-brand-green'
+                }`}
               />
+              {fieldErrors.conditionStory && (
+                <div className="text-3xs font-extrabold text-red-600 flex items-center gap-1 mt-1 animate-fadeIn">
+                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>{fieldErrors.conditionStory}</span>
+                </div>
+              )}
             </div>
 
             {/* Common Issues Checkboxes */}
@@ -1451,129 +1750,420 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
           </div>
         )}
 
-        {/* ================= STEP 3: FINANCING DETAILS & UNVERIFIED ESTIMATE ================= */}
+        {/* ================= STEP 3: FINANCIAL CONDITIONS & PRICING ================= */}
         {currentStep === 3 && (
           <div className="bg-white rounded-3xl p-6 sm:p-8 border border-brand-border shadow-card space-y-6 animate-fadeIn">
+            
+            {/* Header dynamically tailored to track */}
             <div className="border-b border-slate-100 pb-3">
               <h2 className="text-base font-extrabold text-brand-navy flex items-center gap-2">
                 <Banknote className="w-5 h-5 text-brand-green" />
-                <span>الخطوة 3: بيانات الجهة الدائنة والأقساط التقديرية</span>
+                <span>
+                  {saleType === 'cash'
+                    ? 'الخطوة 3: السعر المطلوب للبيع كاش (ملكية خالصة)'
+                    : saleType === 'direct_installment'
+                    ? 'الخطوة 3: شروط وخطة التقسيط المباشر والضمانات'
+                    : 'الخطوة 3: بيانات الجهة الدائنة والأقساط التقديرية'}
+                </span>
               </h2>
               <p className="text-2xs text-slate-500 mt-1">
-                تسجيل بيانات القسط التقريبية لمساعدتك في استخراج بيان المديونية الرسمي لاحقاً
+                {saleType === 'cash'
+                  ? 'حدد السعر الذي ترغب في استلامه نقداً دون أي تعقيدات بنكية'
+                  : saleType === 'direct_installment'
+                  ? 'حدد أقل مقدم تقبله، وقيمة القسط الشهري، والضمانات المطلوبة من المشتري'
+                  : 'تسجيل بيانات القسط التقريبية لمساعدتك في استخراج بيان المديونية الرسمي لاحقاً'}
               </p>
             </div>
 
-            {/* Clear Unverified Estimate Notice (Prompt Specification) */}
-            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-start gap-3 text-xs text-blue-950">
-              <Clock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <span className="font-bold">تنبيه: الأرقام المدخلة هنا هي تقدير مبدئي من البائع (غير معتمدة رسمياً)</span>
-                <p className="text-2xs text-blue-800 leading-relaxed">
-                  لا نعتمد هذه المبالغ كأرقام تسوية نهائية؛ بل سيقوم فريق مخلصة بمراجعة بيان المديونية الرسمي (Payoff Quote) الصادر والمختوم من فرع البنك قبل توقيع أي اتفاق مع المشتري.
-                </p>
-              </div>
-            </div>
+            {/* TRACK 1: PURE CASH SALE */}
+            {saleType === 'cash' && (
+              <div className="space-y-5">
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-start gap-3 text-xs text-emerald-950">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <span className="font-extrabold text-emerald-900 block">سيارة ملكية حرة (بدون أي التزامات بنكية أو حظر):</span>
+                    <p className="text-2xs text-emerald-800 leading-relaxed">
+                      يتم بيع السيارة نقداً بصورة مباشرة، ويتم التنازل للمشتري في الشهر العقاري واستلام كامل المبلغ دون أي انتظار لخطابات فك حظر أو إجراءات بنكية.
+                    </p>
+                  </div>
+                </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              
-              <div>
-                <label className="block font-bold text-slate-700 mb-1.5">جهة التمويل (البنك أو الشركة الدائنة):</label>
-                <select
-                  value={bankKey}
-                  onChange={(e) => setBankKey(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green"
-                >
-                  {Object.entries(COMPREHENSIVE_BANK_DATABASE).map(([key, b]) => (
-                    <option key={key} value={key}>
-                      {b.bankNameAr} (عمولة سداد معجل {(b.earlySettlementRate * 100).toFixed(1)}%)
-                    </option>
-                  ))}
-                </select>
-              </div>
+                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4" id="field-cashPrice-wrapper">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <label className="block font-black text-slate-800 text-xs">
+                        السعر المطلوب للبيع كاش: <span className="text-red-500">*</span>
+                      </label>
+                      <span className="text-3xs text-slate-500">القيمة النقدية الصافية للسيارة</span>
+                    </div>
+                    <div className="text-lg font-black text-brand-green">
+                      {sellerExpectedPrice > 0 ? formatEGP(sellerExpectedPrice) : 'حدد السعر'}
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1.5">أصل الدين المتبقي التقريبي (Principal):</label>
-                <input
-                  type="number"
-                  step="5000"
-                  value={outstandingPrincipal || ''}
-                  onChange={(e) => setOutstandingPrincipal(Number(e.target.value))}
-                  placeholder="مثال: 250000"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1.5">قيمة القسط الشهري (اختياري):</label>
-                <input
-                  type="number"
-                  step="500"
-                  value={monthlyInstallment || ''}
-                  onChange={(e) => setMonthlyInstallment(Number(e.target.value))}
-                  placeholder="مثال: 9500"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1.5">عدد الشهور/الأقساط المتبقية (اختياري):</label>
-                <input
-                  type="number"
-                  value={remainingMonths || ''}
-                  onChange={(e) => setRemainingMonths(Number(e.target.value))}
-                  placeholder="مثال: 30"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green"
-                />
-              </div>
-
-              {/* Overdue Arrears */}
-              <div className="sm:col-span-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <label className="flex items-center gap-2 font-bold text-slate-800 cursor-pointer">
                   <input
-                    type="checkbox"
-                    checked={hasArrears}
-                    onChange={(e) => setHasArrears(e.target.checked)}
-                    className="w-4 h-4 accent-brand-green"
+                    id="field-cashPrice"
+                    type="number"
+                    step="10000"
+                    value={sellerExpectedPrice || ''}
+                    onChange={(e) => {
+                      setSellerExpectedPrice(Number(e.target.value));
+                      clearFieldError('cashPrice');
+                    }}
+                    placeholder="مثال: 650000"
+                    className={`w-full px-4 py-3 rounded-xl border font-black bg-white text-sm focus:outline-none transition ${
+                      fieldErrors.cashPrice
+                        ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/20 text-red-900'
+                        : 'border-slate-300 text-slate-900 focus:ring-2 focus:ring-brand-green'
+                    }`}
                   />
-                  <span>هل توجد أقساط متأخرة أو غرامات تأخير حالياً؟</span>
-                </label>
+                  {fieldErrors.cashPrice && (
+                    <div className="text-3xs font-extrabold text-red-600 flex items-center gap-1 mt-1 animate-fadeIn">
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>{fieldErrors.cashPrice}</span>
+                    </div>
+                  )}
 
-                {hasArrears && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xs font-bold text-slate-600">المبلغ التقريبي للمتأخرات:</span>
+                  {/* Market estimate guidance */}
+                  {valuation.suggestedAskingPrice > 0 && (
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-white border border-slate-200 text-2xs text-slate-600">
+                      <span>متوسط سعر السوق المقترح للسيارة:</span>
+                      <span className="font-black text-brand-navy">{formatEGP(valuation.suggestedAskingPrice)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TRACK 2: DIRECT INSTALLMENT (SHOWROOMS & INDIVIDUALS) */}
+            {saleType === 'direct_installment' && (
+              <div className="space-y-5">
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 text-xs text-amber-950">
+                  <Clock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <span className="font-extrabold text-amber-900 block">نظام التقسيط المباشر (Direct In-House Financing):</span>
+                    <p className="text-2xs text-amber-800 leading-relaxed">
+                      هذا النظام مخصص للمعارض والتجار والملاك الذين يبيعون سياراتهم بالتقسيط مباشرة للمشتري بدون وساطة بنوك أو شركات تمويل، وتحديد الضمانات (شيكات / إيصالات أمانة / حظر عرفي) لحفظ حقوق الطرفين.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  {/* Total Installment Price */}
+                  <div id="field-installmentTotal-wrapper">
+                    <label className="block font-black text-slate-800 mb-1.5">
+                      إجمالي سعر السيارة بالتقسيط: <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="field-installmentTotal"
+                      type="number"
+                      step="10000"
+                      value={sellerExpectedPrice || ''}
+                      onChange={(e) => {
+                        setSellerExpectedPrice(Number(e.target.value));
+                        clearFieldError('installmentTotal');
+                      }}
+                      placeholder="مثال: 750000"
+                      className={`w-full px-3.5 py-2.5 rounded-xl border font-bold bg-white focus:outline-none transition ${
+                        fieldErrors.installmentTotal
+                          ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/20 text-red-900'
+                          : 'border-slate-300 text-slate-800 focus:ring-2 focus:ring-amber-500'
+                      }`}
+                    />
+                    {fieldErrors.installmentTotal ? (
+                      <div className="text-3xs font-extrabold text-red-600 flex items-center gap-1 mt-1 animate-fadeIn">
+                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>{fieldErrors.installmentTotal}</span>
+                      </div>
+                    ) : (
+                      <span className="text-3xs text-slate-400 mt-0.5 block">إجمالي ثمن البيع شاملاً الفائدة</span>
+                    )}
+                  </div>
+
+                  {/* Minimum Down Payment */}
+                  <div id="field-downPayment-wrapper">
+                    <label className="block font-black text-slate-800 mb-1.5">
+                      أقل مقدم مطلوب (Down Payment): <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="field-downPayment"
+                      type="number"
+                      step="5000"
+                      value={directDownPayment || ''}
+                      onChange={(e) => {
+                        setDirectDownPayment(Number(e.target.value));
+                        clearFieldError('downPayment');
+                      }}
+                      placeholder="مثال: 200000"
+                      className={`w-full px-3.5 py-2.5 rounded-xl border font-bold bg-white focus:outline-none transition ${
+                        fieldErrors.downPayment
+                          ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/20 text-red-900'
+                          : 'border-slate-300 text-slate-800 focus:ring-2 focus:ring-amber-500'
+                      }`}
+                    />
+                    {fieldErrors.downPayment && (
+                      <div className="text-3xs font-extrabold text-red-600 flex items-center gap-1 mt-1 animate-fadeIn">
+                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>{fieldErrors.downPayment}</span>
+                      </div>
+                    )}
+                    <div className="flex gap-1.5 mt-1">
+                      {[0.25, 0.3, 0.4, 0.5].map((pct) => (
+                        <button
+                          key={pct}
+                          type="button"
+                          onClick={() => {
+                            setDirectDownPayment(Math.round((sellerExpectedPrice || 600000) * pct));
+                            clearFieldError('downPayment');
+                          }}
+                          className="px-2 py-0.5 rounded bg-slate-100 text-3xs font-bold text-slate-600 hover:bg-amber-100 hover:text-amber-900 transition"
+                        >
+                          {pct * 100}%
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Monthly Installment */}
+                  <div id="field-monthlyInstallment-wrapper">
+                    <label className="block font-black text-slate-800 mb-1.5">
+                      قيمة القسط الشهري: <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="field-monthlyInstallment"
+                      type="number"
+                      step="500"
+                      value={directMonthlyInstallment || ''}
+                      onChange={(e) => {
+                        setDirectMonthlyInstallment(Number(e.target.value));
+                        clearFieldError('monthlyInstallment');
+                      }}
+                      placeholder="مثال: 8500"
+                      className={`w-full px-3.5 py-2.5 rounded-xl border font-bold bg-white focus:outline-none transition ${
+                        fieldErrors.monthlyInstallment
+                          ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/20 text-red-900'
+                          : 'border-slate-300 text-slate-800 focus:ring-2 focus:ring-amber-500'
+                      }`}
+                    />
+                    {fieldErrors.monthlyInstallment && (
+                      <div className="text-3xs font-extrabold text-red-600 flex items-center gap-1 mt-1 animate-fadeIn">
+                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>{fieldErrors.monthlyInstallment}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Installment Months Duration */}
+                  <div>
+                    <label className="block font-black text-slate-800 mb-1.5">
+                      مدة التقسيط بالشهور: <span className="text-red-500">*</span>
+                    </label>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {[12, 24, 36, 48].map((months) => (
+                        <button
+                          key={months}
+                          type="button"
+                          onClick={() => setDirectInstallmentMonths(months)}
+                          className={`py-2 px-1 rounded-xl border text-center text-xs font-black transition ${
+                            directInstallmentMonths === months
+                              ? 'border-amber-500 bg-amber-500 text-white shadow-xs'
+                              : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                          }`}
+                        >
+                          {months} شهر
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Required Guarantees */}
+                  <div className="sm:col-span-2 bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                    <label className="block font-black text-slate-800 text-xs">
+                      الضمانات المطلوبة من المشتري:
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      {[
+                        'شيكات بنكية موقعة',
+                        'إيصالات أمانة',
+                        'حظر بيع بالرخصة (عرفي)',
+                        'صورة بطاقة سارية وضامن',
+                        'عقد بيع بالتقسيط معتمد وموثق',
+                        'إثبات سكن أو محل إقامة'
+                      ].map((guarantee) => {
+                        const isChecked = directGuarantees.includes(guarantee);
+                        return (
+                          <label
+                            key={guarantee}
+                            className={`p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition ${
+                              isChecked
+                                ? 'border-amber-500 bg-amber-50 text-amber-950 font-bold'
+                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                setDirectGuarantees(prev =>
+                                  prev.includes(guarantee)
+                                    ? prev.filter(g => g !== guarantee)
+                                    : [...prev, guarantee]
+                                );
+                              }}
+                              className="accent-amber-500 w-4 h-4"
+                            />
+                            <span className="text-2xs">{guarantee}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Live Installment Calculation Summary */}
+                  <div className="sm:col-span-2 bg-amber-50/70 p-4 rounded-2xl border border-amber-200/90 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <span className="text-3xs font-extrabold text-amber-900 uppercase block">ملخص خطة التقسيط المباشر:</span>
+                      <div className="font-black text-slate-900 text-sm mt-0.5">
+                        المقدم: {formatEGP(directDownPayment)} + ({formatEGP(directMonthlyInstallment)} × {directInstallmentMonths} شهر)
+                      </div>
+                    </div>
+                    <div className="text-left sm:text-right">
+                      <span className="text-3xs text-slate-500 block">إجمالي سداد المشتري:</span>
+                      <span className="text-base font-black text-amber-700">
+                        {formatEGP(directDownPayment + (directMonthlyInstallment * directInstallmentMonths))}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TRACK 3: BANK DEBT SETTLEMENT */}
+            {saleType === 'bank_settlement' && (
+              <div className="space-y-4 text-xs">
+                {/* Clear Unverified Estimate Notice */}
+                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-start gap-3 text-xs text-blue-950">
+                  <Clock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <span className="font-bold">تنبيه: الأرقام المدخلة هنا هي تقدير مبدئي من البائع (غير معتمدة رسمياً)</span>
+                    <p className="text-2xs text-blue-800 leading-relaxed">
+                      لا نعتمد هذه المبالغ كأرقام تسوية نهائية؛ بل سيقوم فريق مخلصة بمراجعة بيان المديونية الرسمي (Payoff Quote) الصادر والمختوم من فرع البنك قبل توقيع أي اتفاق مع المشتري.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1.5">جهة التمويل (البنك أو الشركة الدائنة):</label>
+                    <select
+                      value={bankKey}
+                      onChange={(e) => setBankKey(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green"
+                    >
+                      {Object.entries(COMPREHENSIVE_BANK_DATABASE).map(([key, b]) => (
+                        <option key={key} value={key}>
+                          {b.bankNameAr} (عمولة سداد معجل {(b.earlySettlementRate * 100).toFixed(1)}%)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div id="field-outstandingPrincipal-wrapper">
+                    <label className="block font-bold text-slate-700 mb-1.5">
+                      أصل الدين المتبقي التقريبي (Principal): <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="field-outstandingPrincipal"
+                      type="number"
+                      step="5000"
+                      value={outstandingPrincipal || ''}
+                      onChange={(e) => {
+                        setOutstandingPrincipal(Number(e.target.value));
+                        clearFieldError('outstandingPrincipal');
+                      }}
+                      placeholder="مثال: 250000"
+                      className={`w-full px-3.5 py-2.5 rounded-xl border font-bold bg-white focus:outline-none transition ${
+                        fieldErrors.outstandingPrincipal
+                          ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/20 text-red-900'
+                          : 'border-slate-300 text-slate-800 focus:ring-2 focus:ring-brand-green'
+                      }`}
+                    />
+                    {fieldErrors.outstandingPrincipal && (
+                      <div className="text-3xs font-extrabold text-red-600 flex items-center gap-1 mt-1 animate-fadeIn">
+                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>{fieldErrors.outstandingPrincipal}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1.5">قيمة القسط الشهري (اختياري):</label>
                     <input
                       type="number"
-                      value={arrearsAmount}
-                      onChange={(e) => setArrearsAmount(Number(e.target.value))}
-                      placeholder="المبلغ"
-                      className="w-32 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-bold bg-white"
+                      step="500"
+                      value={monthlyInstallment || ''}
+                      onChange={(e) => setMonthlyInstallment(Number(e.target.value))}
+                      placeholder="مثال: 9500"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green"
                     />
                   </div>
-                )}
-              </div>
 
-              {/* Seller Expected Price (Optional) */}
-              <div className="sm:col-span-2 pt-2">
-                <div className="flex justify-between items-center mb-1.5">
-                  <label className="font-bold text-slate-700">السعر المتوقع أو المطلوب للسيارة (اختياري):</label>
-                  <span className="text-xs font-black text-brand-green">{sellerExpectedPrice > 0 ? formatEGP(sellerExpectedPrice) : 'غير محدد بعد'}</span>
-                </div>
-                <input
-                  type="range"
-                  min="300000"
-                  max="2500000"
-                  step="25000"
-                  value={sellerExpectedPrice || 500000}
-                  onChange={(e) => setSellerExpectedPrice(Number(e.target.value))}
-                  className="w-full accent-brand-green cursor-pointer"
-                />
-                <div className="text-3xs text-slate-400 mt-1">
-                  * سنقوم في الخطوة القادمة بمطابقة السعر مع بيانات السوق الحقيقية لتحديد السعر العادل وسرعة البيع.
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1.5">عدد الشهور/الأقساط المتبقية (اختياري):</label>
+                    <input
+                      type="number"
+                      value={remainingMonths || ''}
+                      onChange={(e) => setRemainingMonths(Number(e.target.value))}
+                      placeholder="مثال: 30"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green"
+                    />
+                  </div>
+
+                  {/* Overdue Arrears */}
+                  <div className="sm:col-span-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <label className="flex items-center gap-2 font-bold text-slate-800 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={hasArrears}
+                        onChange={(e) => setHasArrears(e.target.checked)}
+                        className="w-4 h-4 accent-brand-green"
+                      />
+                      <span>هل توجد أقساط متأخرة أو غرامات تأخير حالياً؟</span>
+                    </label>
+
+                    {hasArrears && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xs font-bold text-slate-600">المبلغ التقريبي للمتأخرات:</span>
+                        <input
+                          type="number"
+                          value={arrearsAmount}
+                          onChange={(e) => setArrearsAmount(Number(e.target.value))}
+                          placeholder="المبلغ"
+                          className="w-32 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-bold bg-white"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Seller Expected Price */}
+                  <div className="sm:col-span-2 pt-2">
+                    <div className="flex justify-between items-center mb-1.5">
+                      <label className="font-bold text-slate-700">السعر المتوقع أو المطلوب للسيارة (اختياري):</label>
+                      <span className="text-xs font-black text-brand-green">{sellerExpectedPrice > 0 ? formatEGP(sellerExpectedPrice) : 'غير محدد بعد'}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="300000"
+                      max="2500000"
+                      step="25000"
+                      value={sellerExpectedPrice || 500000}
+                      onChange={(e) => setSellerExpectedPrice(Number(e.target.value))}
+                      className="w-full accent-brand-green cursor-pointer"
+                    />
+                  </div>
                 </div>
               </div>
-
-            </div>
+            )}
 
             <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
               <button
@@ -1610,17 +2200,26 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
               </p>
             </div>
 
-            <VehiclePhotoUploader
-              photoSlots={photoSlots}
-              onUploadPhoto={(slotType, file) => {
-                const url = URL.createObjectURL(file);
-                setPhotoSlots(prev => prev.map(s => s.slotType === slotType ? { ...s, previewUrl: url, file } : s));
-              }}
-              onRemovePhoto={(id) => {
-                setPhotoSlots(prev => prev.map(s => s.id === id ? { ...s, previewUrl: undefined, file: undefined } : s));
-              }}
-              lang={lang}
-            />
+            <div id="field-photosSection" className={fieldErrors.photos ? 'p-3 rounded-2xl border-2 border-red-500 bg-red-50/20' : ''}>
+              {fieldErrors.photos && (
+                <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-300 text-red-900 text-xs font-bold flex items-center gap-2 animate-fadeIn">
+                  <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                  <span>{fieldErrors.photos}</span>
+                </div>
+              )}
+              <VehiclePhotoUploader
+                photoSlots={photoSlots}
+                onUploadPhoto={(slotType, file) => {
+                  const url = URL.createObjectURL(file);
+                  setPhotoSlots(prev => prev.map(s => s.slotType === slotType ? { ...s, previewUrl: url, file } : s));
+                  clearFieldError('photos');
+                }}
+                onRemovePhoto={(id) => {
+                  setPhotoSlots(prev => prev.map(s => s.id === id ? { ...s, previewUrl: undefined, file: undefined } : s));
+                }}
+                lang={lang}
+              />
+            </div>
 
             <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
               <button
@@ -1722,28 +2321,56 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
             />
 
             <div className="border-t border-slate-100 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div>
+              <div id="field-sellerName-wrapper">
                 <label className="block font-bold text-slate-700 mb-1.5">اسم البائع بالكامل: <span className="text-red-500">*</span></label>
                 <input
+                  id="field-sellerName"
                   type="text"
                   required
                   value={sellerName}
-                  onChange={(e) => setSellerName(e.target.value)}
+                  onChange={(e) => {
+                    setSellerName(e.target.value);
+                    clearFieldError('sellerName');
+                  }}
                   placeholder="مثال: م. طارق العسلي"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green"
+                  className={`w-full px-3.5 py-2.5 rounded-xl border font-bold bg-white focus:outline-none transition ${
+                    fieldErrors.sellerName
+                      ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/20 text-red-900'
+                      : 'border-slate-300 text-slate-800 focus:ring-2 focus:ring-brand-green'
+                  }`}
                 />
+                {fieldErrors.sellerName && (
+                  <div className="text-3xs font-extrabold text-red-600 flex items-center gap-1 mt-1 animate-fadeIn">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>{fieldErrors.sellerName}</span>
+                  </div>
+                )}
               </div>
 
-              <div>
+              <div id="field-sellerPhone-wrapper">
                 <label className="block font-bold text-slate-700 mb-1.5">رقم الهاتف المحمول (مصر): <span className="text-red-500">*</span></label>
                 <input
+                  id="field-sellerPhone"
                   type="tel"
                   required
                   value={sellerPhone}
-                  onChange={(e) => setSellerPhone(e.target.value)}
+                  onChange={(e) => {
+                    setSellerPhone(e.target.value);
+                    clearFieldError('sellerPhone');
+                  }}
                   placeholder="01012345678"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green font-mono"
+                  className={`w-full px-3.5 py-2.5 rounded-xl border font-bold bg-white focus:outline-none font-mono transition ${
+                    fieldErrors.sellerPhone
+                      ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/20 text-red-900'
+                      : 'border-slate-300 text-slate-800 focus:ring-2 focus:ring-brand-green'
+                  }`}
                 />
+                {fieldErrors.sellerPhone && (
+                  <div className="text-3xs font-extrabold text-red-600 flex items-center gap-1 mt-1 animate-fadeIn">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>{fieldErrors.sellerPhone}</span>
+                  </div>
+                )}
               </div>
 
               <div className="sm:col-span-2">
@@ -1837,15 +2464,43 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
 
               {/* Net Proceeds Calculation Preview */}
               <div className="bg-white/5 p-3.5 rounded-xl border border-white/10 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <span className="font-bold text-slate-300">صافي عائد البائع التقديري بعد تصفية القرض والعمولة:</span>
-                  <div className="text-2xs text-slate-400 mt-0.5">
-                    (سعر البيع {formatEGP(sellerExpectedPrice || valuation.suggestedAskingPrice)} - سداد البنك {formatEGP(outstandingPrincipal + earlySettlementFee)} - عمولة 1.5% {formatEGP(Math.round((sellerExpectedPrice || valuation.suggestedAskingPrice) * 0.015))})
-                  </div>
-                </div>
-                <div className="text-base font-black text-brand-green">
-                  {formatEGP(settlementStatement.netProceedsToSeller)}
-                </div>
+                {saleType === 'cash' ? (
+                  <>
+                    <div>
+                      <span className="font-bold text-slate-300">إجمالي المبلغ النقدي المستحق للبائع عند التنازل:</span>
+                      <div className="text-2xs text-slate-400 mt-0.5">
+                        سيارة ملكية خالصة حرة — تسليم كاش فوري وتنازل بالشهر العقاري
+                      </div>
+                    </div>
+                    <div className="text-base font-black text-emerald-400">
+                      {formatEGP(sellerExpectedPrice || valuation.suggestedAskingPrice)}
+                    </div>
+                  </>
+                ) : saleType === 'direct_installment' ? (
+                  <>
+                    <div>
+                      <span className="font-bold text-slate-300">خطة تحصيل التقسيط المباشر المتفق عليها:</span>
+                      <div className="text-2xs text-slate-400 mt-0.5">
+                        مقدم {formatEGP(directDownPayment)} + ({formatEGP(directMonthlyInstallment)} × {directInstallmentMonths} شهر)
+                      </div>
+                    </div>
+                    <div className="text-base font-black text-amber-400">
+                      إجمالي التحصيل: {formatEGP(directDownPayment + (directMonthlyInstallment * directInstallmentMonths))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <span className="font-bold text-slate-300">صافي عائد البائع التقديري بعد تصفية القرض والعمولة:</span>
+                      <div className="text-2xs text-slate-400 mt-0.5">
+                        (سعر البيع {formatEGP(sellerExpectedPrice || valuation.suggestedAskingPrice)} - سداد البنك {formatEGP(outstandingPrincipal + earlySettlementFee)} - عمولة 1.5% {formatEGP(Math.round((sellerExpectedPrice || valuation.suggestedAskingPrice) * 0.015))})
+                      </div>
+                    </div>
+                    <div className="text-base font-black text-brand-green">
+                      {formatEGP(settlementStatement.netProceedsToSeller)}
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="text-3xs text-slate-400 italic">
@@ -1854,22 +2509,36 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
             </div>
 
             {/* Declarations & Agreement */}
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+            <div id="field-agreedToTerms-wrapper" className={`rounded-2xl p-4 space-y-3 transition ${
+              fieldErrors.agreedToTerms ? 'bg-red-50/70 border-2 border-red-500 shadow-sm' : 'bg-slate-50 border border-slate-200'
+            }`}>
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
+                  id="field-agreedToTerms"
                   type="checkbox"
                   required
                   checked={agreedToTerms}
-                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  onChange={(e) => {
+                    setAgreedToTerms(e.target.checked);
+                    clearFieldError('agreedToTerms');
+                  }}
                   className="w-4 h-4 accent-brand-green mt-0.5 cursor-pointer"
                 />
                 <div className="text-xs text-slate-800 leading-relaxed space-y-1">
-                  <strong>أقر بصحة البيانات وأوافق على شروط المراجعة والتسوية:</strong>
+                  <strong className={fieldErrors.agreedToTerms ? 'text-red-900' : ''}>
+                    أقر بصحة البيانات وأوافق على شروط المراجعة والتسوية: <span className="text-red-500">*</span>
+                  </strong>
                   <p className="text-2xs text-slate-600">
                     أؤكد أنني أفصحت بأمانة عن كافة العيوب المعروفة لي بالسيارة، وأن بيانات القسط تقريبية لحين تدقيقها رسمياً مع البنك، وأعلم بأن تسجيل الطلب لا يضمن البيع بسعر محدد ولا يمثل موافقة بنكية مسبقة، وأن عمولة مخلصة هي 1.5% من إجمالي البيع تستحق فقط عند إتمام الصفقة.
                   </p>
                 </div>
               </label>
+              {fieldErrors.agreedToTerms && (
+                <div className="text-3xs font-extrabold text-red-600 flex items-center gap-1 pt-1 animate-fadeIn">
+                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>{fieldErrors.agreedToTerms}</span>
+                </div>
+              )}
             </div>
 
             <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
@@ -2032,52 +2701,47 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
 
       </div>
 
-      {/* ================= INELIGIBLE MODAL (PROMPT REQUIREMENT) ================= */}
+      {/* ================= OPTIONAL GUIDANCE MODAL ================= */}
       {showIneligibleModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 animate-fadeIn">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-5 text-right">
             
-            <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
-              <AlertCircle className="w-7 h-7" />
+            <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-7 h-7" />
             </div>
 
             <div className="text-center space-y-2">
               <h3 className="font-black text-lg text-brand-navy">
-                «مخلصة» متخصصة حصرياً في سيارات الأقساط والتمويل
+                سيارتك مؤهلة للعرض والبيع في مخلصة!
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
-                نعتذر، منصة مخلصة ليست سوقاً عاماً لسيارات الكاش الخالية من الأقساط؛ خدمتنا تركز حصرياً على حل معضلات القروض البنكية المتعثرة والسداد المعجل وفك حظر البيع.
+                إذا كانت سيارتك ملكية حرة بدون ديون، يمكنك بيعها نقداً كاش فوراً، أو عرضها بنظام التقسيط المباشر للمشترين.
               </p>
             </div>
 
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs text-slate-700 space-y-2">
-              <div className="font-bold text-brand-navy">هل تعتقد أن لديك حالة خاصة؟</div>
-              <p className="text-2xs text-slate-500 leading-relaxed">
-                إذا كانت سيارتك محملة بقرض شخصي، أو بانتظار استكمال فك الحظر، أو تحتاج استشارة خاصة، يسعدنا تواصلك مع فريق الدعم للمساعدة.
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => {
                   setShowIneligibleModal(false);
-                  setVehicleStatus('bank_loan');
+                  setSaleType('cash');
+                  setVehicleStatus('fully_owned');
                 }}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-50"
+                className="w-full px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition"
               >
-                تعديل الموقف واختيار حالة تمويلية
+                بيع كاش (ملكية خالصة)
               </button>
 
               <button
                 type="button"
                 onClick={() => {
                   setShowIneligibleModal(false);
-                  onNavigate('faq');
+                  setSaleType('direct_installment');
+                  setVehicleStatus('direct_installment');
                 }}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-brand-navy text-white font-bold text-xs hover:bg-slate-800"
+                className="w-full px-4 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition"
               >
-                تواصل مع فريق الدعم
+                بيع بالتقسيط المباشر
               </button>
             </div>
 

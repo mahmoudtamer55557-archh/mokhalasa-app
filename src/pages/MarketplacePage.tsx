@@ -23,24 +23,20 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
   const isAr = lang === 'ar';
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [saleTypeFilter, setSaleTypeFilter] = useState<'all' | 'direct_installment' | 'cash' | 'bank_settlement'>('all');
   const [selectedFinancing, setSelectedFinancing] = useState<string>('all');
   const [selectedMake, setSelectedMake] = useState<string>('all');
-  const [maxPrice, setMaxPrice] = useState<number>(2000000);
+  const [maxPrice, setMaxPrice] = useState<number>(3000000);
   const [sortBy, setSortBy] = useState<'featured' | 'price_asc' | 'price_desc' | 'mileage_asc'>('featured');
-
-  // Exclude any ordinary cash cars - Mokhalasa only shows financed / distressed / pending release vehicles
-  const eligibleCars = useMemo(() => {
-    return cars.filter(c => c.financingType !== 'fully_owned' || c.vehicleStatus === 'loan_paid_pending_clearance');
-  }, [cars]);
 
   // Available makes
   const makes = useMemo(() => {
-    return Array.from(new Set(eligibleCars.map(c => c.make)));
-  }, [eligibleCars]);
+    return Array.from(new Set(cars.map(c => c.make)));
+  }, [cars]);
 
   // Filtered and sorted cars
   const filteredCars = useMemo(() => {
-    return eligibleCars
+    return cars
       .filter((car) => {
         const matchSearch =
           car.make.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -48,13 +44,23 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
           car.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
           car.trim.toLowerCase().includes(searchTerm.toLowerCase());
 
+        const isDirect = car.saleType === 'direct_installment' || car.financingType === 'direct_installment' || !!car.directInstallment;
+        const isCash = car.saleType === 'cash' || car.financingType === 'fully_owned' || car.vehicleStatus === 'cash_only';
+        const isBank = !isDirect && !isCash;
+
+        const matchSaleType =
+          saleTypeFilter === 'all' ||
+          (saleTypeFilter === 'direct_installment' && isDirect) ||
+          (saleTypeFilter === 'cash' && isCash) ||
+          (saleTypeFilter === 'bank_settlement' && isBank);
+
         const matchFinancing =
           selectedFinancing === 'all' || car.financingType === selectedFinancing;
 
         const matchMake = selectedMake === 'all' || car.make === selectedMake;
         const matchPrice = car.askingPrice <= maxPrice;
 
-        return matchSearch && matchFinancing && matchMake && matchPrice;
+        return matchSearch && matchSaleType && matchFinancing && matchMake && matchPrice;
       })
       .sort((a, b) => {
         if (sortBy === 'price_asc') return a.askingPrice - b.askingPrice;
@@ -62,7 +68,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
         if (sortBy === 'mileage_asc') return a.mileage - b.mileage;
         return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
       });
-  }, [eligibleCars, searchTerm, selectedFinancing, selectedMake, maxPrice, sortBy]);
+  }, [cars, searchTerm, saleTypeFilter, selectedFinancing, selectedMake, maxPrice, sortBy]);
 
   const formatEGP = (num: number) => {
     return new Intl.NumberFormat(isAr ? 'ar-EG' : 'en-EG', { maximumFractionDigits: 0 }).format(num) + (isAr ? ' ج.م' : ' EGP');
@@ -72,28 +78,28 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
     <div className="min-h-screen bg-brand-bg py-8 px-4 sm:px-6 lg:px-8 animate-fadeIn">
       <div className="max-w-7xl mx-auto space-y-8">
         
-        {/* Marketplace Header — Specialized Distressed Positioning */}
+        {/* Marketplace Header */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-brand-border shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-brand-green text-xs font-bold">
               <ShieldCheck className="w-4 h-4" />
-              <span>فرص سيارات التسوية البنكية المعتمدة</span>
+              <span>معرض مخلصة المعتمد</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-brand-navy">
-              سيارات معتمدة للبيع والتخارج المالي
+              سوق السيارات: بيع كاش، تقسيط مباشر، وتسوية مديونيات
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-              جميع السيارات المعروضة محملة بأقساط أو حظر بيع بنكي وتمت مراجعة مديونيتها وفحصها هندسياً. يتم الإيداع النقدي مباشرة في خزينة البنك الدائن تحت إشراف مخلصة لضمان فك الحظر ونقل الملكية.
+              تصفح سيارات البيع الكاش (ملكية خالصة)، وسيارات التقسيط المباشر بدون تعقيدات البنوك، وفرص سيارات التسوية وفك الحظر البنكي المعتمدة مع الفحص والتوثيق الميداني.
             </p>
           </div>
 
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs text-slate-700 space-y-2 flex-shrink-0 max-w-xs">
             <div className="flex items-center gap-1.5 font-bold text-brand-navy">
               <Banknote className="w-4 h-4 text-brand-green" />
-              <span>إشراف مخلصة المباشر:</span>
+              <span>طرق الشراء المتاحة:</span>
             </div>
             <p className="text-3xs text-slate-500 leading-relaxed">
-              لا يتم التواصل مع البائعين مباشرة لحمايتهم؛ يتولى فريق مخلصة تنسيق موعد المعاينة، وتجهيز العقد الثلاثي، وإجراءات البنك.
+              🟢 كاش ملكية خالصة | 🟡 تقسيط مباشر بشيكات وإيصالات | 🏦 تسوية وفك حظر بنكي مباشر تحت إشراف مخلصة.
             </p>
           </div>
         </div>
@@ -114,19 +120,19 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
               />
             </div>
 
-            {/* Quick Financing Type Filters */}
+            {/* Quick Track Type Filters */}
             <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 text-xs font-bold">
               {[
                 { id: 'all', label: 'الكل' },
-                { id: 'bank_loan', label: 'قروض بنكية (حظر بيع)' },
-                { id: 'consumer_finance', label: 'تمويل استهلاكي (فاليو / كونتكت)' },
-                { id: 'personal_loan', label: 'قروض شخصية حرة' }
+                { id: 'direct_installment', label: '🟡 تقسيط مباشر (بدون بنك)' },
+                { id: 'cash', label: '🟢 كاش (ملكية خالصة)' },
+                { id: 'bank_settlement', label: '🏦 تسوية بنكية (حظر بيع)' }
               ].map((pill) => (
                 <button
                   key={pill.id}
-                  onClick={() => setSelectedFinancing(pill.id)}
+                  onClick={() => setSaleTypeFilter(pill.id as any)}
                   className={`px-3 py-2 rounded-xl whitespace-nowrap transition ${
-                    selectedFinancing === pill.id
+                    saleTypeFilter === pill.id
                       ? 'bg-brand-navy text-white font-extrabold shadow-sm'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
