@@ -15,6 +15,11 @@
 
 import { supabase } from './supabaseClient';
 import { CustomerUser } from '../types';
+import { 
+  isValidEgyptianPhone, 
+  normalizeEgyptianPhone, 
+  getPhoneValidationError 
+} from '../utils/phoneValidator';
 
 export interface RegisterCredentials {
   email: string;
@@ -52,9 +57,12 @@ export function mapSupabaseUserToCustomerUser(supabaseUser: any): CustomerUser {
     (supabaseUser.email ? supabaseUser.email.split('@')[0] : 'عميل مخلصة');
 
   const provider = appMetadata.provider === 'google' ? 'google' : 'email';
+  const rawPhone = metadata.phone || '';
+  const normalizedPhone = rawPhone ? normalizeEgyptianPhone(rawPhone) : '';
+
+  // Separate "phone entered" state from "phone verified via OTP"
   const isVerified = Boolean(
     metadata.phone_verified || 
-    metadata.is_verified || 
     supabaseUser.phone_confirmed_at
   );
 
@@ -62,7 +70,7 @@ export function mapSupabaseUserToCustomerUser(supabaseUser: any): CustomerUser {
     id: supabaseUser.id,
     name,
     email: supabaseUser.email || '',
-    phone: metadata.phone || '',
+    phone: normalizedPhone,
     avatarUrl: metadata.avatar_url,
     provider,
     isVerified,
@@ -87,16 +95,27 @@ export const authService = {
       };
     }
 
+    // Validate phone number format strictly
+    const phoneErr = getPhoneValidationError(phone);
+    if (phoneErr) {
+      return {
+        success: false,
+        errorCode: 'INVALID_PHONE',
+        message: phoneErr
+      };
+    }
+
+    const normalizedPhone = normalizeEgyptianPhone(phone);
     const resolvedName = (fullName && fullName.trim()) || email.trim().split('@')[0];
 
     try {
-      // 1. Sign up user via Supabase Auth with phone in user_metadata
+      // 1. Sign up user via Supabase Auth with normalized phone in user_metadata
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
         options: {
           data: {
-            phone: phone.trim(),
+            phone: normalizedPhone,
             full_name: resolvedName,
             governorate: governorate || '',
             city: city || ''
@@ -304,6 +323,46 @@ export const authService = {
       return { user: null, session: null };
     } catch {
       return { user: null, session: null };
+    }
+  },
+
+  /**
+   * Update Phone for existing customer (e.g., following Google Sign-In)
+   * Safely modifies current user record without duplicate account creation
+   */
+  async updateCustomerPhone(userId: string, rawPhone: string, fullName?: string, governorate?: string): Promise<AuthResponse> {
+    const error = getPhoneValidationError(rawPhone);
+    if (error) {
+      return { success: false, message: error };
+    }
+    const normalized = normalizeEgyptianPhone(rawPhone);
+
+    try {
+      await supabase.auth.updateUser({
+        data: {
+          phone: normalized,
+          ...(fullName ? { full_name: fullName.trim() } : {}),
+          ...(governorate ? { governorate } : {})
+        }
+      });
+
+      await supabase.from('profiles').upsert({
+        id: userId,
+        phone: normalized,
+        ...(fullName ? { full_name: fullName.trim() } : {}),
+        ...(governorate ? { governorate } : {}),
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' });
+
+      return {
+        success: true,
+        message: 'تم حفظ وتحديث رقم الهاتف بنجاح!'
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err?.message || 'تعذر تحديث رقم الهاتف.'
+      };
     }
   },
 

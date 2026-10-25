@@ -13,11 +13,14 @@ import { SellerCasePortalPage } from './pages/SellerCasePortalPage';
 import { PrivateOperationsDashboard } from './pages/PrivateOperationsDashboard';
 import { StaticPages } from './pages/StaticPages';
 import { CustomerLoginModal } from './components/auth/CustomerLoginModal';
+import { CompleteProfileModal } from './components/auth/CompleteProfileModal';
+import { CustomerSupportChatbot } from './components/ai/CustomerSupportChatbot';
 import { RegisterPage } from './pages/RegisterPage';
 import { CustomerProfilePage } from './pages/CustomerProfilePage';
 import { supabase } from './services/supabaseClient';
 import { mapSupabaseUserToCustomerUser } from './services/authService';
 import { listingService } from './services/listingService';
+import { isValidEgyptianPhone } from './utils/phoneValidator';
 import { MessageSquare, CheckCircle2, X, AlertTriangle, ChevronLeft } from 'lucide-react';
 
 // Helper to parse view from URL hash
@@ -66,6 +69,18 @@ export function App() {
 
   // Distressed Cases Global Store
   const [distressedCases, setDistressedCases] = useState<DistressedVehicleCase[]>(INITIAL_DISTRESSED_CASES);
+
+  // Mandatory Phone Completion Modal State (e.g. for Google Sign-In)
+  const [showCompletePhoneModal, setShowCompletePhoneModal] = useState<boolean>(false);
+
+  // Check if authenticated user is missing an Egyptian phone number
+  useEffect(() => {
+    if (customerUser && (!customerUser.phone || !isValidEgyptianPhone(customerUser.phone))) {
+      setShowCompletePhoneModal(true);
+    } else {
+      setShowCompletePhoneModal(false);
+    }
+  }, [customerUser]);
 
   // Global In-App Notifications ("برّه وتوجهني للمشكلة")
   const [globalNotifications, setGlobalNotifications] = useState<InAppNotification[]>([]);
@@ -546,6 +561,7 @@ export function App() {
             isFavorite={favorites.includes(selectedCar.id)}
             onToggleFavorite={handleToggleFavorite}
             customerUser={customerUser}
+            onOpenLogin={() => setCustomerLoginOpen(true)}
             lang={lang}
           />
         )}
@@ -564,6 +580,7 @@ export function App() {
             customerUser={customerUser}
             onListingCreated={handleListingCreated}
             onNavigate={handleNavigate}
+            onRequirePhoneCompletion={() => setShowCompletePhoneModal(true)}
             lang={lang}
           />
         )}
@@ -653,6 +670,19 @@ export function App() {
         initialTab={customerAuthTab}
         lang={lang}
       />
+
+      {/* Mandatory Phone Completion Modal (for Google Sign-In or incomplete profiles) */}
+      {customerUser && (
+        <CompleteProfileModal
+          isOpen={showCompletePhoneModal}
+          customerUser={customerUser}
+          onProfileCompleted={(updated) => {
+            setCustomerUser(updated);
+            setShowCompletePhoneModal(false);
+          }}
+          lang={lang}
+        />
+      )}
 
       {/* Global Consultation Modal ("اسأل فريق مخلصة") */}
       {consultationModalOpen && (
@@ -757,6 +787,8 @@ export function App() {
           </div>
         </div>
       )}
+      {/* AI Customer Support Chatbot Floating Assistant */}
+      <CustomerSupportChatbot lang={lang} />
     </div>
   );
 }

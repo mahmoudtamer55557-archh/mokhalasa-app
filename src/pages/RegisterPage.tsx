@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import MokhalasaSvgLogo from '../components/brand/MokhalasaSvgLogo';
 import { authService } from '../services/authService';
+import { getPhoneValidationError, normalizeEgyptianPhone } from '../utils/phoneValidator';
 import { 
   Eye, EyeOff, Mail, Phone, ShieldCheck, 
   AlertCircle, CheckCircle2, Info
@@ -63,21 +64,9 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
       }
 
       case 'phone': {
-        const v = (val !== undefined ? val : phone).trim();
-        if (!v) return 'رقم التليفون مطلوب';
-        // Normalize: strip whitespace, dashes, and parentheses
-        const cleaned = v.replace(/[\s\-()]/g, '');
-        // Egyptian mobile local format: 010, 011, 012, 015 followed by 8 digits (11 digits total)
-        const isEgyptianLocal = /^01[0125]\d{8}$/.test(cleaned);
-        // Egyptian mobile international format: +20, 0020, or 20 followed by 10, 11, 12, 15 and 8 digits
-        const isEgyptianIntl = /^(\+20|0020|20)1[0125]\d{8}$/.test(cleaned);
-        // Standard international format (E.164: + followed by 7-15 digits)
-        const isGeneralIntl = /^\+?[1-9]\d{7,14}$/.test(cleaned);
-
-        if (!isEgyptianLocal && !isEgyptianIntl && !isGeneralIntl) {
-          return 'يرجى إدخال رقم هاتف مصري صحيح (مثال: 01012345678 أو +201012345678) أو رقم دولي معتمد';
-        }
-        return undefined;
+        const v = val !== undefined ? val : phone;
+        const err = getPhoneValidationError(v);
+        return err || undefined;
       }
 
       case 'password': {

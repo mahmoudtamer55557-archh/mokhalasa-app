@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import MokhalasaSvgLogo from '../brand/MokhalasaSvgLogo';
 import { CustomerUser, CustomerAuthStatus } from '../../types';
 import { authService } from '../../services/authService';
+import { getPhoneValidationError, normalizeEgyptianPhone } from '../../utils/phoneValidator';
 import { 
   X, ShieldCheck, Mail, Eye, EyeOff, Lock, User, Phone, MapPin, 
   CheckCircle2, AlertCircle, ArrowRight
@@ -102,12 +103,13 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
       return;
     }
 
-    const cleanPhone = regPhone.trim();
-    if (!cleanPhone || !/^01[0125][0-9]{8}$/.test(cleanPhone)) {
-      setErrorMessage('يرجى إدخال رقم هاتف محمول مصري صحيح مكون من 11 رقماً (مثال: 01012345678).');
+    const phoneValidationError = getPhoneValidationError(regPhone);
+    if (phoneValidationError) {
+      setErrorMessage(phoneValidationError);
       setAuthStatus('error');
       return;
     }
+    const cleanPhone = normalizeEgyptianPhone(regPhone);
 
     if (!regEmail.trim() || !regEmail.includes('@')) {
       setErrorMessage('يرجى إدخال بريد إلكتروني صحيح.');

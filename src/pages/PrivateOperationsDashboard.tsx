@@ -13,8 +13,9 @@ import {
   User, Search, Check, X, RefreshCw, Eye, 
   Edit3, Scale, UserCheck, ExternalLink,
   Car as CarIcon, Tag, MessageSquare, Send,
-  AlertTriangle, Trash2, Clock
+  AlertTriangle, Trash2, Clock, Sparkles
 } from 'lucide-react';
+import { geminiService } from '../services/geminiService';
 
 interface PrivateOperationsDashboardProps {
   cases: DistressedVehicleCase[];
@@ -127,6 +128,11 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
   const [offersLoading, setOffersLoading] = useState(false);
   const [offerActionMsg, setOfferActionMsg] = useState<string | null>(null);
   const [isPurging, setIsPurging] = useState(false);
+
+  // Gemini AI Executive Summary State
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [isGeneratingAiSummary, setIsGeneratingAiSummary] = useState(false);
+  const [aiSummaryError, setAiSummaryError] = useState<string | null>(null);
 
   // Load Database Listings for Moderation (Loads all so tab counts & filters work instantly)
   const loadModerationListings = useCallback(async () => {
@@ -523,6 +529,36 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
     } catch {}
   };
 
+  // Generate Executive Operations Summary using Gemini AI
+  const handleGenerateExecutiveSummary = async () => {
+    setIsGeneratingAiSummary(true);
+    setAiSummaryError(null);
+    try {
+      const pendingListingsCount = dbListings.filter(l => l.status === 'pending_review').length;
+      const publishedCount = dbListings.filter(l => l.status === 'published' || l.status === 'approved').length;
+      const needsChangesCount = dbListings.filter(l => l.status === 'needs_changes').length;
+      const openOffersCount = purchaseOffers.filter(o => o.status === 'new' || o.status === 'contacted' || o.status === 'communicated_to_seller').length;
+
+      const res = await geminiService.getAdminExecutiveSummary({
+        pendingListingsCount,
+        publishedCount,
+        openOffersCount,
+        needsChangesCount,
+        recentActivity: `ملفات تخارج نشطة: ${authorizedCases.length}، طلبات تعديل بانتظار الاعتماد: ${pendingEditRevisions.length}`
+      });
+
+      if (res.success && res.summary) {
+        setAiSummary(res.summary);
+      } else {
+        setAiSummaryError(res.message || 'تعذر توليد الملخص التنفيذي حالياً.');
+      }
+    } catch (err: any) {
+      setAiSummaryError(err?.message || 'حدث خطأ أثناء الاتصال بالذكاء الاصطناعي.');
+    } finally {
+      setIsGeneratingAiSummary(false);
+    }
+  };
+
   // Approve a Seller Revision
   const handleApproveRevision = useCallback((caseRef: string, revisionId: string) => {
     const targetCase = cases.find(c => c.caseReference === caseRef);
@@ -745,6 +781,16 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
           )}
 
           <button
+            onClick={handleGenerateExecutiveSummary}
+            disabled={isGeneratingAiSummary}
+            className="px-3 py-1.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-700/60 text-purple-200 text-xs font-bold transition flex items-center gap-1.5 disabled:opacity-50"
+            title="توليد ملخص تنفيذي استشاري بالذكاء الاصطناعي (Gemini)"
+          >
+            <Sparkles className={`w-3.5 h-3.5 text-purple-400 ${isGeneratingAiSummary ? 'animate-spin' : ''}`} />
+            <span>{isGeneratingAiSummary ? 'جاري التحليل...' : 'ملخص تنفيذي ذكي'}</span>
+          </button>
+
+          <button
             onClick={() => onNavigate('home')}
             className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition flex items-center gap-1.5"
             title="العودة للموقع العام لـ مخلصة"
@@ -871,8 +917,65 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
           )}
         </div>
 
-        {/* ============================================================== */}
-        {/* TAB 1: CASES QUEUE (STRICTLY AUTHORIZED CASES ONLY)            */}
+        {/* AI Executive Operations Summary Banner */}
+        {(aiSummary || aiSummaryError) && (
+          <div className="bg-gradient-to-br from-slate-900 via-purple-950/40 to-slate-900 border border-purple-500/50 rounded-3xl p-5 shadow-2xl relative animate-fadeIn space-y-3">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-purple-900/40 rounded-2xl border border-purple-700/60 shadow-inner">
+                  <Sparkles className="w-5 h-5 text-purple-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white flex items-center gap-2">
+                    <span>الملخص التنفيذي الاستشاري الذكي</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-900/60 text-purple-200 border border-purple-700/50">Gemini Flash AI</span>
+                  </h3>
+                  <p className="text-2xs text-purple-300">تحليل فوري لحالة لوحة العمليات، الأولويات التشغيلية، ومتابعة المعاملات المتعثرة</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleGenerateExecutiveSummary}
+                  disabled={isGeneratingAiSummary}
+                  className="px-2.5 py-1 text-2xs bg-slate-800 hover:bg-slate-700 text-purple-200 rounded-lg border border-purple-800 transition flex items-center gap-1 disabled:opacity-50"
+                  title="تحديث الملخص"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isGeneratingAiSummary ? 'animate-spin' : ''}`} />
+                  <span>تحديث</span>
+                </button>
+                <button
+                  onClick={() => { setAiSummary(null); setAiSummaryError(null); }}
+                  className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
+                  title="إغلاق التقرير"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {aiSummaryError && (
+              <div className="p-3 bg-red-950/70 border border-red-800/80 text-red-200 rounded-xl text-xs flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                <span>{aiSummaryError}</span>
+              </div>
+            )}
+
+            {aiSummary && (
+              <div className="bg-slate-950/80 p-4 rounded-2xl border border-purple-900/30 text-xs text-slate-200 leading-relaxed whitespace-pre-line font-normal">
+                {aiSummary}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between text-2xs text-slate-400 pt-2 border-t border-slate-800/80">
+              <span className="flex items-center gap-1.5 text-slate-400">
+                <ShieldCheck className="w-3.5 h-3.5 text-brand-green" />
+                <span>تقرير استشاري استدلالي مشتق من إحصاءات المنصة الحالية دون إرسال بيانات شخصية (Zero PII).</span>
+              </span>
+              <span className="text-slate-500 font-mono text-[10px]">Model: Gemini 2.5 Flash</span>
+            </div>
+          </div>
+        )}
         {/* ============================================================== */}
         {activeTab === 'cases' && (
           <div className="space-y-6 animate-fadeIn">

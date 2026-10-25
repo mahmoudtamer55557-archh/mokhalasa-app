@@ -16,6 +16,8 @@ import DocumentChecklist from '../components/sell/DocumentChecklist';
 import VehiclePhotoUploader from '../components/sell/VehiclePhotoUploader';
 import { listingService } from '../services/listingService';
 import { profileService } from '../services/profileService';
+import { geminiService } from '../services/geminiService';
+import { isValidEgyptianPhone, getPhoneValidationError } from '../utils/phoneValidator';
 import { 
   CheckCircle2, ArrowRight, ArrowLeft, Banknote, 
   AlertCircle, FileText, Sparkles, Car as CarIcon, 
@@ -27,6 +29,7 @@ interface SellCarWizardPageProps {
   customerUser?: CustomerUser | null;
   onListingCreated: (newCar: Car, newCase?: DistressedVehicleCase) => void;
   onNavigate: (view: string) => void;
+  onRequirePhoneCompletion?: () => void;
   lang?: 'ar' | 'en';
 }
 
@@ -47,6 +50,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
   customerUser,
   onListingCreated,
   onNavigate,
+  onRequirePhoneCompletion,
   lang = 'ar'
 }) => {
   const isAr = lang === 'ar';
@@ -68,6 +72,10 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
   const [otpCountdown, setOtpCountdown] = useState<number>(0);
   const [otpFeedback, setOtpFeedback] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [isPhoneVerified, setIsPhoneVerified] = useState<boolean>(customerUser?.isVerified || false);
+
+  // AI Ad Writing Assistant States
+  const [isGeneratingAiDesc, setIsGeneratingAiDesc] = useState(false);
+  const [aiFeedbackMsg, setAiFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // STEP 1: Financing Eligibility & Distress Cause
   const [distressReason, setDistressReason] = useState<DistressReason>('installment_burden');
@@ -95,10 +103,8 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
   const [sellerType, setSellerType] = useState<'مالك أول' | 'مالك ثانٍ' | 'توكيل'>('مالك أول');
   const [licenseValidityMonths, setLicenseValidityMonths] = useState<number>(12);
 
-  // Required Large Arabic textarea condition story (prompt requirement)
-  const [sellerConditionStory, setSellerConditionStory] = useState(
-    'العربية فابريكا من الزيرو وصياناتها منتظمة في التوكيل، فيها خربوش بسيط سطحي في الإكصدام الخلفي، ومحتاجة صيانة الـ 40 ألف قريباً. البيع فقط لأن القسط الشهري أصبح عبئاً كبيراً وأرغب في تصفية المديونية بالكامل.'
-  );
+  // Arabic condition story description (reviewed & edited by user, or AI generated)
+  const [sellerConditionStory, setSellerConditionStory] = useState('');
   const [selectedIssues, setSelectedIssues] = useState<string[]>([NO_ISSUES_OPTION]);
 
   // STEP 3: Financing Details
@@ -180,8 +186,8 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
     isGpsLocated: true,
     displayAddress: `${customerUser?.governorate || 'القاهرة'} - ${customerUser?.city || 'التجمع الخامس (القاهرة الجديدة)'}`
   });
-  const [sellerName, setSellerName] = useState(customerUser?.name || 'م. طارق العسلي');
-  const [sellerPhone, setSellerPhone] = useState(customerUser?.phone || '01012345678');
+  const [sellerName, setSellerName] = useState(customerUser?.name || '');
+  const [sellerPhone, setSellerPhone] = useState(customerUser?.phone || '');
   const [preferredContactTime, setPreferredContactTime] = useState('مساءً (من 5 إلى 9 مساءً)');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
@@ -388,6 +394,41 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
     }
   };
 
+  // Feature 1: AI Car Ad Writing Assistant
+  const handleGenerateAiDescription = async () => {
+    setIsGeneratingAiDesc(true);
+    setAiFeedbackMsg(null);
+
+    const selectedMakeObj = VEHICLE_MAKES.find((m) => m.id === selectedMakeId);
+    const selectedModelObj = getModelsByMake(selectedMakeId).find((m) => m.id === selectedModelId);
+
+    const res = await geminiService.generateCarDescription({
+      make: selectedMakeObj ? selectedMakeObj.nameAr : 'سيارة',
+      model: selectedModelObj ? selectedModelObj.nameAr : '',
+      year: selectedYear || 2023,
+      trim: isCustomTrim ? customTrimText : selectedTrim,
+      mileage,
+      paintCondition,
+      disclosedDefects: selectedIssues.filter(i => i !== NO_ISSUES_OPTION),
+      askingPrice: sellerExpectedPrice || valuation.suggestedAskingPrice,
+      trafficUnit
+    });
+
+    setIsGeneratingAiDesc(false);
+    if (res.success && res.description) {
+      setSellerConditionStory(res.description);
+      setAiFeedbackMsg({
+        type: 'success',
+        text: 'تمت صياغة وصف الإعلان بنجاح بواسطة الذكاء الاصطناعي! يمكنك مراجعته وتعديل أي تفاصيل بحرية قبل المتابعة.'
+      });
+    } else {
+      setAiFeedbackMsg({
+        type: 'error',
+        text: res.message || 'تعذر توليد الوصف آلياً. يرجى كتابة وصف حالتك يدوياً.'
+      });
+    }
+  };
+
   const handleFinalSubmit = useCallback(async () => {
     if (isSubmitting) return;
 
@@ -546,6 +587,15 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
       setValidationError('يرجى تسجيل الدخول أو إنشاء حسابك أولاً لحفظ الإعلان في حسابك ومتابعة حالته.');
       setIsSubmitting(false);
       setShowAuthModal(true);
+      return;
+    }
+
+    const effectivePhone = sellerPhone.trim() || customerUser.phone || '';
+    const phoneErr = getPhoneValidationError(effectivePhone);
+    if (phoneErr) {
+      setValidationError(`رقم الهاتف مطلوب لاعتماد الإعلان: ${phoneErr}`);
+      setIsSubmitting(false);
+      if (onRequirePhoneCompletion) onRequirePhoneCompletion();
       return;
     }
 
@@ -988,24 +1038,46 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
 
             {/* MANDATORY LARGE ARABIC TEXTAREA PROMPT (Prompt Specification) */}
             <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-3">
-              <div className="flex items-start gap-2">
-                <MessageSquare className="w-4 h-4 text-brand-green flex-shrink-0 mt-0.5" />
-                <div>
-                  <label className="block text-xs font-black text-brand-navy">
-                    احكيلنا عن العربية بالتفصيل: حالتها إيه؟ فيها أعطال أو حوادث أو دهان؟ إيه اللي محتاج يتصلح؟ وهل فيها أي ملاحظات تحب المشتري يعرفها؟ <span className="text-red-500">*</span>
-                  </label>
-                  <p className="text-3xs text-slate-500 mt-0.5">
-                    الهدف ليس إظهار السيارة كاملة الأوصاف، بل الإفصاح الأمين حتى لا يفشل البيع أثناء الفحص الهندسي.
-                  </p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-2">
+                  <MessageSquare className="w-4 h-4 text-brand-green flex-shrink-0 mt-0.5" />
+                  <div>
+                    <label className="block text-xs font-black text-brand-navy">
+                      احكيلنا عن العربية بالتفصيل: حالتها إيه؟ فيها أعطال أو حوادث أو دهان؟ <span className="text-red-500">*</span>
+                    </label>
+                    <p className="text-3xs text-slate-500 mt-0.5">
+                      الإفصاح الأمين يبني الثقة ويسرع تسوية المديونية واعتماد الإعلان.
+                    </p>
+                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={handleGenerateAiDescription}
+                  disabled={isGeneratingAiDesc}
+                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-2xs shadow-sm transition flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-60 flex-shrink-0"
+                  title="توليد مسودة وصف محايد للإعلان بناءً على بيانات سيارتك"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>{isGeneratingAiDesc ? 'جاري الصياغة...' : 'ساعدني في كتابة الإعلان'}</span>
+                </button>
               </div>
+
+              {aiFeedbackMsg && (
+                <div className={`p-3 rounded-xl border text-xs font-bold animate-fadeIn flex items-center gap-2 ${
+                  aiFeedbackMsg.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-rose-50 border-rose-200 text-rose-900'
+                }`}>
+                  {aiFeedbackMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />}
+                  <span>{aiFeedbackMsg.text}</span>
+                </div>
+              )}
 
               <textarea
                 rows={4}
                 required
                 value={sellerConditionStory}
                 onChange={(e) => setSellerConditionStory(e.target.value)}
-                placeholder="اكتب كل الملاحظات بصراحة: هل رشت؟ هل فيها مشاكل في العفشة أو التكييف؟ هل صيانة التوكيل منتظمة؟ ما سبب البيع الحقيقي؟..."
+                placeholder="اكتب كل الملاحظات بصراحة، أو اضغط زر (ساعدني في كتابة الإعلان) لتوليد مسودة بناءً على بيانات السيارة ثم عدلها بحرية..."
                 className="w-full p-3.5 rounded-xl border border-slate-300 font-semibold text-xs text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green"
               />
             </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Car, BuyerInquiryRecord, CustomerUser } from '../types';
 import { listingService } from '../services/listingService';
+import { getPhoneValidationError, normalizeEgyptianPhone } from '../utils/phoneValidator';
 import { 
   ArrowRight, ShieldCheck, Heart, Share2, MapPin, Gauge, 
   Banknote, FileCheck, CheckCircle2, 
@@ -16,6 +17,7 @@ interface CarDetailPageProps {
   isFavorite?: boolean;
   onToggleFavorite?: (carId: string) => void;
   customerUser?: CustomerUser | null;
+  onOpenLogin?: () => void;
   lang?: 'ar' | 'en';
 }
 
@@ -27,6 +29,7 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
   isFavorite = false,
   onToggleFavorite,
   customerUser,
+  onOpenLogin,
   lang = 'ar'
 }) => {
   const isAr = lang === 'ar';
@@ -61,6 +64,20 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
       return;
     }
 
+    if (!customerUser) {
+      alert(isAr ? 'تقديم عروض الشراء والتفاوض يتطلب تسجيل الدخول بحساب معتمد.' : 'Submitting an offer requires an authenticated account.');
+      if (onOpenLogin) onOpenLogin();
+      return;
+    }
+
+    const rawPhone = buyerPhone.trim() || customerUser.phone || '';
+    const phoneErr = getPhoneValidationError(rawPhone);
+    if (phoneErr) {
+      alert(phoneErr);
+      return;
+    }
+    const cleanBuyerPhone = normalizeEgyptianPhone(rawPhone);
+
     setIsSubmittingOffer(true);
     const finalOfferedPrice = offerMode === 'accept_asking' ? car.askingPrice : Number(offeredPrice) || car.askingPrice;
 
@@ -69,8 +86,8 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
       caseReference: car.id || 'MK-CASE-2026-001',
       carId: car.id,
       carTitle: `${car.make} ${car.model} ${car.year}`,
-      buyerName,
-      buyerPhone,
+      buyerName: buyerName.trim() || customerUser.name || 'مشتري مهتم',
+      buyerPhone: cleanBuyerPhone,
       purchaseIntent: purchaseIntent === 'cash_at_bank' ? 'direct_bank_settlement' : purchaseIntent === 'need_new_financing' ? 'new_financing_requested' : 'cash_full',
       offeredPrice: finalOfferedPrice,
       preferredContactTime,
@@ -89,9 +106,9 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
       carId: car.id,
       carTitle: `${car.make} ${car.model} ${car.year}`,
       caseReference: car.id || 'MK-CASE-2026-001',
-      buyerName: buyerName.trim() || customerUser?.name || 'مشتري مهتم',
-      buyerPhone: buyerPhone.trim() || customerUser?.phone || '',
-      buyerUserId: customerUser?.id,
+      buyerName: buyerName.trim() || customerUser.name || 'مشتري مهتم',
+      buyerPhone: cleanBuyerPhone,
+      buyerUserId: customerUser.id,
       offerType: offerMode === 'accept_asking' ? 'asking_price' : 'negotiated',
       offeredPrice: finalOfferedPrice,
       askingPrice: car.askingPrice,
