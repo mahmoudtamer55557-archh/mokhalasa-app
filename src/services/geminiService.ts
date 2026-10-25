@@ -60,9 +60,12 @@ class GeminiServiceClient {
         body: JSON.stringify({ task, payload })
       });
 
-      if (response.ok) {
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
         const data = await response.json();
-        return data;
+        if (data) {
+          return data;
+        }
       }
     } catch {
       // Vercel /api/gemini might not be running in local vite dev mode without vercel dev
@@ -79,12 +82,56 @@ class GeminiServiceClient {
       }
     } catch {}
 
-    // 3. Graceful offline/local development response when API key is not yet configured
+    // 3. Optional Direct Client Fallback if VITE_GEMINI_API_KEY is provided in local .env
+    const clientKey = (import.meta as any)?.env?.VITE_GEMINI_API_KEY;
+    if (clientKey && typeof clientKey === 'string' && clientKey.trim()) {
+      try {
+        const directResult = await this.callGeminiDirect(clientKey.trim(), task, payload);
+        if (directResult) return directResult;
+      } catch {}
+    }
+
+    // 4. Graceful offline/local development response when API key is not yet configured
     return {
       success: false,
       error: 'GEMINI_NOT_CONFIGURED',
       message: 'مفتاح الذكاء الاصطناعي (GEMINI_API_KEY) غير مهيأ حالياً في الخادم. يرجى إضافته في إعدادات البيئة بالاستضافة (Vercel Environment Variables).'
     };
+  }
+
+  /**
+   * Optional Direct fallback for local dev when VITE_GEMINI_API_KEY is set
+   */
+  private async callGeminiDirect(apiKey: string, task: string, payload: any): Promise<{ success: boolean; result?: any; message?: string }> {
+    let prompt = '';
+    if (task === 'customer_support') {
+      prompt = `أنت مساعد منصة "مخلصة" للسيارات بمصر. أجب بإيجاز:\nسؤال العميل: ${payload?.userQuestion || ''}`;
+    } else if (task === 'generate_car_description') {
+      prompt = `أنت كاتب إعلانات سيارات بمصر. اكتب وصف واقعي مختصر بناءً على:\n${JSON.stringify(payload)}`;
+    } else if (task === 'admin_summary') {
+      prompt = `أنت مستشار لوحة العمليات لمنصة مخلصة. لخص إحصائيات الأرقام:\n${JSON.stringify(payload)}`;
+    } else {
+      return { success: false, message: 'مهمة غير مدعومة' };
+    }
+
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.4, maxOutputTokens: 600 }
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      return { success: false, message: 'Gemini Direct Error: ' + err };
+    }
+
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    return { success: true, result: text };
   }
 
   /**

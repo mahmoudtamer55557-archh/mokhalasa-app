@@ -127,7 +127,7 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // Call Google Gemini API (gemini-2.5-flash with gemini-1.5-flash fallback)
+    // Call Google Gemini API (gemini-1.5-flash with gemini-2.0-flash / gemini-1.5-pro fallback)
     const callGeminiModel = async (modelName: string) => {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
       const response = await fetch(endpoint, {
@@ -149,19 +149,43 @@ export default async function handler(req: any, res: any) {
       return response;
     };
 
-    let geminiRes = await callGeminiModel('gemini-2.5-flash');
+    let geminiRes = await callGeminiModel('gemini-1.5-flash');
+    let lastErrBody = '';
+    let lastStatus = 200;
+
     if (!geminiRes.ok) {
-      // Fallback to gemini-1.5-flash
-      geminiRes = await callGeminiModel('gemini-1.5-flash');
+      lastErrBody = await geminiRes.text();
+      lastStatus = geminiRes.status;
+      // Try gemini-2.0-flash
+      geminiRes = await callGeminiModel('gemini-2.0-flash');
     }
 
     if (!geminiRes.ok) {
-      const errBody = await geminiRes.text();
-      console.error('Gemini API Error:', geminiRes.status, errBody);
-      return res.status(502).json({
+      lastErrBody = await geminiRes.text();
+      lastStatus = geminiRes.status;
+      // Try gemini-1.5-pro
+      geminiRes = await callGeminiModel('gemini-1.5-pro');
+    }
+
+    if (!geminiRes.ok) {
+      lastErrBody = await geminiRes.text();
+      lastStatus = geminiRes.status;
+      console.error('Gemini API Error:', lastStatus, lastErrBody);
+
+      let friendlyMsg = 'حدث خطأ أثناء التواصل مع خادم الذكاء الاصطناعي.';
+      try {
+        const parsed = JSON.parse(lastErrBody);
+        if (parsed?.error?.message) {
+          friendlyMsg = parsed.error.message;
+        }
+      } catch {}
+
+      return res.status(200).json({
         success: false,
         error: 'GEMINI_UPSTREAM_ERROR',
-        message: 'حدث خطأ أثناء التواصل مع خادم الذكاء الاصطناعي. يرجى المحاولة بعد لحظات.'
+        upstreamStatus: lastStatus,
+        upstreamDetails: lastErrBody,
+        message: friendlyMsg
       });
     }
 
