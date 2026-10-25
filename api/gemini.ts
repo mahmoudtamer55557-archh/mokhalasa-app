@@ -43,6 +43,12 @@ export default async function handler(req: any, res: any) {
       });
     }
 
+    if (task === 'list_models') {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+      const d = await r.json();
+      return res.status(200).json({ success: true, models: d });
+    }
+
     let systemInstruction = '';
     let userPrompt = '';
 
