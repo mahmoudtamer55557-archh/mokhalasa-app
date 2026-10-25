@@ -429,7 +429,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
     setSaveLoading(false);
   };
 
-  // Phone OTP Request Handler
+  // Phone OTP Request Handler via WhatsApp API
   const handleRequestOtp = async () => {
     const targetPhone = otpPhone.trim() || profile?.phone || customerUser?.phone || '';
     if (!targetPhone) {
@@ -439,15 +439,15 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
 
     setOtpLoading(true);
     setOtpFeedback(null);
-    const res = await profileService.requestPhoneOtp(targetPhone);
+    const res = await profileService.requestPhoneOtp(targetPhone, customerUser?.id);
     setOtpLoading(false);
 
     if (res.success) {
       setOtpChallengeCode(res.challengeCode || null);
-      setOtpCountdown(60);
+      setOtpCountdown(45);
       setOtpFeedback({
         type: 'info',
-        text: 'تم توليد رمز التحقق (رمز التوثيق التجريبي Staging Provider).'
+        text: `تم إرسال كود التحقق في رسالة واتساب إلى (${targetPhone}).`
       });
     } else {
       setOtpFeedback({ type: 'error', text: res.message });
@@ -459,8 +459,8 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
     e.preventDefault();
     if (!customerUser) return;
 
-    if (otpInput.trim().length !== 6) {
-      setOtpFeedback({ type: 'error', text: 'يرجى إدخال رمز التحقق المكون من 6 أرقام.' });
+    if (otpInput.trim().length < 4 || otpInput.trim().length > 6) {
+      setOtpFeedback({ type: 'error', text: 'يرجى إدخال رمز التحقق المكون من 4 أرقام.' });
       return;
     }
 

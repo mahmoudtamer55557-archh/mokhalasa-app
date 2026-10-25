@@ -8,6 +8,7 @@
 
 import { supabase } from './supabaseClient';
 import { Car, PurchaseOffer, InAppNotification, ListingCallLog } from '../types';
+import { sendWhatsAppMessage } from './whatsappService';
 
 // In-flight submissions mutex set to prevent concurrent duplicate submissions
 const inFlightSubmissions = new Set<string>();
@@ -2484,6 +2485,53 @@ export const listingService = {
         parsed.unshift(newNotif);
         localStorage.setItem('mokhalasa_customer_notifications', JSON.stringify(parsed));
       } catch {}
+
+      // 4. Dispatch real-time WhatsApp alert to recipient phone
+      try {
+        let recipientPhone: string | undefined;
+
+        // Try getting phone from profiles
+        if (isUuid(notif.userId)) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('phone')
+            .eq('id', notif.userId)
+            .maybeSingle();
+          if (profile?.phone) {
+            recipientPhone = profile.phone;
+          }
+        }
+
+        // Fallback: Check car_listings phone
+        if (!recipientPhone && notif.relatedId) {
+          const { data: car } = await supabase
+            .from('car_listings')
+            .select('contact_phone, phone')
+            .eq('id', notif.relatedId)
+            .maybeSingle();
+          recipientPhone = car?.contact_phone || car?.phone;
+        }
+
+        // Fallback: Check active customer user
+        if (!recipientPhone) {
+          try {
+            const raw = localStorage.getItem('mokhalasa_customer_user');
+            if (raw) {
+              const u = JSON.parse(raw);
+              if (u.phone && (u.id === notif.userId || !notif.userId)) {
+                recipientPhone = u.phone;
+              }
+            }
+          } catch {}
+        }
+
+        if (recipientPhone) {
+          const waText = `🚗 *منصة مخلّصة | إشعار جديد*\n\n📌 *${notif.title}*\n${notif.message}\n\n🌐 لمتابعة طلباتك عبر المنصة:\nhttps://mokhalasa.com/my-requests`;
+          sendWhatsAppMessage(recipientPhone, waText).catch(e => console.warn('WhatsApp alert warning:', e));
+        }
+      } catch (waErr) {
+        console.warn('WhatsApp notification dispatch error:', waErr);
+      }
 
       return { success: true };
     } catch {

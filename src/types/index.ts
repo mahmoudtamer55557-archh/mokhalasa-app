@@ -360,7 +360,7 @@ export interface CustomerUser {
   email: string;
   phone?: string;
   avatarUrl?: string;
-  provider: 'google' | 'email';
+  provider: 'google' | 'email' | 'phone_otp';
   isVerified?: boolean;
   governorate?: string;
   city?: string;

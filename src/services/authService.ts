@@ -367,6 +367,74 @@ export const authService = {
   },
 
   /**
+   * Login or Register Customer with verified WhatsApp Phone
+   */
+  async loginWithVerifiedPhone(phone: string, fullName?: string, governorate?: string): Promise<AuthResponse> {
+    const normalized = normalizeEgyptianPhone(phone);
+    try {
+      // 1. Check if user already exists in profiles
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('phone', normalized)
+        .maybeSingle();
+
+      if (profile) {
+        const customer: CustomerUser = {
+          id: profile.id,
+          name: profile.full_name || fullName || 'عميل مخلصة',
+          email: profile.email || `${normalized}@mokhalasa.local`,
+          phone: normalized,
+          avatarUrl: profile.avatar_url,
+          provider: 'phone_otp',
+          isVerified: true,
+          governorate: profile.governorate || governorate,
+          city: profile.city,
+          createdAt: profile.created_at || new Date().toISOString()
+        };
+
+        try {
+          localStorage.setItem('mokhalasa_customer_user', JSON.stringify(customer));
+        } catch {}
+
+        return {
+          success: true,
+          message: 'تم تسجيل الدخول بنجاح عبر كود الواتساب!',
+          user: customer
+        };
+      }
+
+      // 2. New user via verified WhatsApp phone
+      const newId = `user-wa-${Date.now()}`;
+      const newCustomer: CustomerUser = {
+        id: newId,
+        name: fullName || 'عميل مخلصة',
+        email: `${normalized}@mokhalasa.local`,
+        phone: normalized,
+        provider: 'phone_otp',
+        isVerified: true,
+        governorate: governorate || 'القاهرة',
+        createdAt: new Date().toISOString()
+      };
+
+      try {
+        localStorage.setItem('mokhalasa_customer_user', JSON.stringify(newCustomer));
+      } catch {}
+
+      return {
+        success: true,
+        message: 'تم تأكيد رقم هاتفك وتفعيل حسابك بنجاح!',
+        user: newCustomer
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err?.message || 'تعذر تسجيل الدخول بالرقم.'
+      };
+    }
+  },
+
+  /**
    * Sign Out Customer from Supabase Auth
    */
   async signOut(): Promise<void> {

@@ -7,6 +7,8 @@
  */
 
 import { supabase } from './supabaseClient';
+import { otpService } from './otpService';
+import { normalizeEgyptianPhone } from '../utils/phoneValidator';
 
 export interface UserProfileData {
   id: string;
@@ -294,80 +296,50 @@ export const profileService = {
   },
 
   /**
-   * PHONE VERIFICATION: Request OTP challenge code
-   * Implements a safe, fully documented staging provider when external SMS gateway credentials are not configured.
+   * PHONE VERIFICATION: Request OTP via WhatsApp through wapilot engine
    */
-  async requestPhoneOtp(phone: string): Promise<{
+  async requestPhoneOtp(phone: string, userId?: string): Promise<{
     success: boolean;
     challengeCode?: string;
     expiresAt?: number;
     message: string;
     isStagingProvider: boolean;
   }> {
-    const cleaned = phone.replace(/[\s\-()]/g, '');
-    const isEgyptianPhone = /^(\+20|0020|20)?01[0125]\d{8}$/.test(cleaned) || /^01[0125]\d{8}$/.test(cleaned);
-
-    if (!isEgyptianPhone) {
-      return {
-        success: false,
-        isStagingProvider: true,
-        message: 'يرجى إدخال رقم هاتف مصري صحيح يبدأ بـ 01 يتكون من 11 رقماً.'
-      };
-    }
-
-    // Generate secure 6-digit challenge code
-    const challengeCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes validity
-
-    // Save challenge in sessionStorage for current user
-    try {
-      sessionStorage.setItem('mokhalasa_phone_otp_challenge', JSON.stringify({
-        phone: cleaned,
-        code: challengeCode,
-        expiresAt
-      }));
-    } catch {}
+    const res = await otpService.generateAndSendOtp(phone, {
+      userId,
+      purpose: 'verify_phone'
+    });
 
     return {
-      success: true,
-      challengeCode,
-      expiresAt,
-      isStagingProvider: true,
-      message: 'تم إرسال رمز التحقق بنجاح.'
+      success: res.success,
+      challengeCode: res.code,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+      isStagingProvider: false,
+      message: res.message
     };
   },
 
   /**
-   * PHONE VERIFICATION: Verify entered OTP code against challenge
+   * PHONE VERIFICATION: Verify entered OTP code against dynamic challenge
    */
   async verifyPhoneOtp(
     userId: string,
     phone: string,
     inputCode: string
   ): Promise<{ success: boolean; message: string }> {
+    const res = await otpService.verifyOtp(phone, inputCode, { userId });
+    if (!res.success) {
+      return res;
+    }
+
     try {
-      const stored = sessionStorage.getItem('mokhalasa_phone_otp_challenge');
-      if (!stored) {
-        return { success: false, message: 'انتهت صلاحية رمز التحقق، يرجى طلب رمز جديد.' };
-      }
-
-      const challenge = JSON.parse(stored);
-      if (Date.now() > challenge.expiresAt) {
-        sessionStorage.removeItem('mokhalasa_phone_otp_challenge');
-        return { success: false, message: 'انتهت صلاحية رمز التحقق (أكثر من 5 دقائق). يرجى طلب رمز جديد.' };
-      }
-
-      if (challenge.code !== inputCode.trim()) {
-        return { success: false, message: 'رمز التحقق غير صحيح. يرجى مراجعة الرمز والمحاولة مجدداً.' };
-      }
-
-      // Verification passed!
+      const normalized = normalizeEgyptianPhone(phone);
       // 1. Update profiles table in Supabase
       const { error: profileError } = await supabase
         .from('profiles')
         .upsert({
           id: userId,
-          phone: phone.trim(),
+          phone: normalized,
           is_verified: true,
           updated_at: new Date().toISOString()
         }, { onConflict: 'id' });
@@ -379,32 +351,19 @@ export const profileService = {
       // 2. Update user metadata in Supabase Auth
       await supabase.auth.updateUser({
         data: {
-          phone: phone.trim(),
           phone_verified: true,
-          is_verified: true
+          phone: normalized,
+          phone_verified_at: new Date().toISOString()
         }
       });
-
-      // 3. Clear challenge from session
-      sessionStorage.removeItem('mokhalasa_phone_otp_challenge');
-
-      // 4. Log audit log
-      try {
-        await supabase.from('audit_logs').insert({
-          actor_id: userId,
-          event_type: 'PHONE_VERIFIED',
-          record_id: userId,
-          details: { phone: phone.trim(), verified_via: 'OTP_CHALLENGE' }
-        });
-      } catch {}
-
-      return {
-        success: true,
-        message: 'تم التحقق من رقم الهاتف وتأكيد حسابك بنجاح!'
-      };
-    } catch (err: any) {
-      return { success: false, message: err?.message || 'تعذر تأكيد رقم الهاتف.' };
+    } catch (e) {
+      console.warn('Sync verified phone note:', e);
     }
+
+    return {
+      success: true,
+      message: 'تم تأكيد رقم هاتفك بنجاح عبر الواتساب!'
+    };
   },
 
   /**
