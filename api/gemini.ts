@@ -155,13 +155,12 @@ export default async function handler(req: any, res: any) {
       return response;
     };
 
-    // Supported models verified from Google AI Studio / API:
+    // Supported models optimized for low latency and high quality
     const candidateModels = [
-      'gemini-2.5-flash',
-      'gemini-flash-latest',
+      'gemini-2.5-flash-lite',
       'gemini-flash-lite-latest',
-      'gemini-2.5-pro',
-      'gemini-pro-latest'
+      'gemini-2.5-flash',
+      'gemini-flash-latest'
     ];
 
     let geminiRes: any = null;
