@@ -585,6 +585,93 @@ export const listingService = {
   },
 
   /**
+   * SELLER: Reactivate a previously withdrawn listing, resubmitting for review
+   */
+  async reactivateListing(
+    listingId: string
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const authUser = sessionData.session?.user;
+      const now = new Date().toISOString();
+
+      let listingInfo: any = null;
+      try {
+        const { data: fetched } = await supabase
+          .from('car_listings')
+          .select('*')
+          .eq('id', listingId)
+          .maybeSingle();
+        listingInfo = fetched;
+      } catch {}
+
+      // 1. Update Supabase car_listings to pending_review and unhide
+      try {
+        await supabase
+          .from('car_listings')
+          .update({
+            status: 'pending_review',
+            is_hidden: false,
+            updated_at: now
+          })
+          .eq('id', listingId);
+      } catch (e) {
+        console.warn('Supabase reactivate update warning:', e);
+      }
+
+      // 2. Update local moderation overrides mirror
+      try {
+        const storedMods = localStorage.getItem('mokhalasa_moderation_overrides') || '{}';
+        const parsed = JSON.parse(storedMods);
+        parsed[listingId] = {
+          ...(parsed[listingId] || {}),
+          status: 'pending_review',
+          is_hidden: false,
+          updatedAt: now
+        };
+        localStorage.setItem('mokhalasa_moderation_overrides', JSON.stringify(parsed));
+      } catch {}
+
+      // 3. Update local listings cache
+      try {
+        const localListings = localStorage.getItem('mokhalasa_local_listings');
+        if (localListings) {
+          const parsed = JSON.parse(localListings);
+          const updated = parsed.map((item: any) => 
+            item.id === listingId ? { ...item, status: 'pending_review', is_hidden: false, updated_at: now } : item
+          );
+          localStorage.setItem('mokhalasa_local_listings', JSON.stringify(updated));
+        }
+      } catch {}
+
+      // 4. Alert Admin Dashboard in admin_notifications
+      const sellerDisplayName = listingInfo?.seller_name || authUser?.user_metadata?.full_name || 'البائع';
+      const carTitle = listingInfo ? `${listingInfo.make} ${listingInfo.model} ${listingInfo.year}` : 'السيارة';
+      const caseCode = listingInfo?.case_reference || listingId.slice(0, 8);
+
+      try {
+        await supabase.from('admin_notifications').insert({
+          type: 'general',
+          title: '🔄 طلب إعادة تنشيط إعلان مسحوب',
+          message: `طلب العميل ${sellerDisplayName} إعادة تنشيط ونشر إعلان سيارته المسحوب سابقاً (${carTitle} #${caseCode}). الإعلان الآن قيد المراجعة في لوحة الإدارة.`,
+          listing_id: listingId
+        });
+      } catch {}
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mokhalasa-listings-updated', { detail: { listingId, status: 'pending_review' } }));
+      }
+
+      return {
+        success: true,
+        message: 'تمت إعادة تنشيط الإعلان بنجاح وإرساله للمراجعة السريعة من فريق العمليات.'
+      };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'تعذر إعادة تنشيط الإعلان.' };
+    }
+  },
+
+  /**
    * ADMIN: Temporarily hide or unhide listing from public gallery (during deal coordination / meeting)
    */
   async toggleListingVisibility(

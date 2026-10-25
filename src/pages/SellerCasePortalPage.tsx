@@ -8,7 +8,7 @@ import {
   Clock, CheckCircle2, AlertTriangle, Edit3, Phone, ArrowRight, 
   Banknote, FileText, UploadCloud, Tag, Bell, User, Check, X, 
   ChevronLeft, AlertCircle, Calendar, ShieldCheck, MessageSquare, 
-  ExternalLink, Car as CarIcon, Camera, Trash2, Lock
+  ExternalLink, Car as CarIcon, Camera, Trash2, Lock, Archive, RotateCcw, History
 } from 'lucide-react';
 
 interface SellerCasePortalPageProps {
@@ -224,6 +224,27 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
     return combined;
   }, [cases, dbConvertedCases]);
 
+  // Separate Active Cases vs Archived Cases (withdrawn, completed, cancelled)
+  const { activeCases, archivedCases } = useMemo(() => {
+    const active: DistressedVehicleCase[] = [];
+    const archived: DistressedVehicleCase[] = [];
+
+    availableCases.forEach(c => {
+      if (
+        c.status === 'withdrawn' || 
+        c.status === 'completed' || 
+        c.status === 'cancelled' || 
+        c.status === 'rejected_ineligible'
+      ) {
+        archived.push(c);
+      } else {
+        active.push(c);
+      }
+    });
+
+    return { activeCases: active, archivedCases: archived };
+  }, [availableCases]);
+
   // Selected Active Case State (No verification gate: direct default selection)
   const [selectedCaseId, setSelectedCaseId] = useState<string>(() => {
     if (initialCaseRef) {
@@ -235,19 +256,23 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
       const match = availableCases.find(c => c.caseReference === savedLastRef);
       if (match) return match.caseReference;
     }
-    return availableCases[0]?.caseReference || '';
+    return activeCases[0]?.caseReference || availableCases[0]?.caseReference || '';
   });
 
   // Sync selectedCaseId when availableCases update
   useEffect(() => {
     if (!selectedCaseId && availableCases.length > 0) {
-      setSelectedCaseId(availableCases[0].caseReference);
+      setSelectedCaseId(activeCases[0]?.caseReference || availableCases[0].caseReference);
     }
-  }, [availableCases, selectedCaseId]);
+  }, [availableCases, selectedCaseId, activeCases]);
 
   const activeCase = useMemo(() => {
-    return availableCases.find(c => c.caseReference === selectedCaseId) || availableCases[0] || null;
-  }, [availableCases, selectedCaseId]);
+    if (selectedCaseId) {
+      const match = availableCases.find(c => c.caseReference === selectedCaseId);
+      if (match) return match;
+    }
+    return activeCases[0] || archivedCases[0] || availableCases[0] || null;
+  }, [availableCases, selectedCaseId, activeCases, archivedCases]);
 
   // Matching Database Listing
   const matchingDb = useMemo(() => {
@@ -255,8 +280,11 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
     return dbListings.find(l => l.case_reference === activeCase.caseReference || l.id === activeCase.vehicle.id) || null;
   }, [dbListings, activeCase]);
 
-  // Active Tab: 'details' | 'offers' | 'notifications' | 'documents'
-  const [activeTab, setActiveTab] = useState<'details' | 'offers' | 'notifications' | 'documents'>('details');
+  // Active Tab: 'details' | 'offers' | 'notifications' | 'documents' | 'archive'
+  const [activeTab, setActiveTab] = useState<'details' | 'offers' | 'notifications' | 'documents' | 'archive'>(() => {
+    if (activeCases.length === 0 && archivedCases.length > 0) return 'archive';
+    return 'details';
+  });
 
   // Edit Modal State (Fallback if inline edit needed)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -543,18 +571,52 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
     }, 1500);
   };
 
-  // Withdraw Active Case
-  const handleWithdrawActiveCase = async () => {
-    if (!activeCase) return;
-    if (!window.confirm('هل أنت متأكد من رغبتك في سحب هذا الإعلان من المعرض؟ سيتم حفظ كافة بيانات السيارة وأرشفتها بسجلات مخلصة وإخفائها من العرض العام.')) {
+  // Withdraw / Remove Listing (Saves safely into Archive Channel)
+  const handleWithdrawActiveCase = async (targetCase?: DistressedVehicleCase) => {
+    const c = targetCase || activeCase;
+    if (!c) return;
+    if (!window.confirm(`هل أنت متأكد من رغبتك في إزالة أو سحب إعلان (${c.vehicle.make} ${c.vehicle.model}) من المعرض؟\n\n✓ سيتم إخفاء الإعلان من سوق السيارات العام فوراً.\n✓ ستبقى كافة بيانات السيارة والمستندات المحفوظة مسجلة في «سجل إعلاناتك السابقة والأرشيف» لإمكانية الرجوع إليها أو إعادة تنشيطها في أي وقت.`)) {
       return;
     }
-    const matchingDb = dbListings.find(l => l.case_reference === activeCase.caseReference || l.id === activeCase.vehicle.id);
-    const targetId = matchingDb?.id || activeCase.caseReference;
+    const matching = dbListings.find(l => l.case_reference === c.caseReference || l.id === c.vehicle.id);
+    const targetId = matching?.id || c.vehicle.id || c.caseReference;
     const res = await listingService.withdrawListing(targetId);
     if (res.success) {
-      alert('تم سحب الإعلان بنجاح وإشعار فريق العمليات بمخلصة مع الاحتفاظ بالبيانات بسجلاتك.');
-      window.location.reload();
+      alert(res.message);
+      if (customerUser?.id) {
+        const listingsRes = await listingService.getCustomerListings(customerUser.id);
+        if (listingsRes.success) setDbListings(listingsRes.listings);
+      }
+      onUpdateCase({
+        ...c,
+        status: 'withdrawn'
+      });
+      setActiveTab('archive');
+    } else {
+      alert(res.message);
+    }
+  };
+
+  // Reactivate a Withdrawn Listing from Archive
+  const handleReactivateCase = async (c: DistressedVehicleCase) => {
+    if (!window.confirm(`هل ترغب في إعادة تنشيط ونشر إعلان (${c.vehicle.make} ${c.vehicle.model})؟\n\nسيتم إرسال الإعلان لمراجعة سريعة من فريق العمليات وإعادته للمعرض.`)) {
+      return;
+    }
+    const matching = dbListings.find(l => l.case_reference === c.caseReference || l.id === c.vehicle.id);
+    const targetId = matching?.id || c.vehicle.id || c.caseReference;
+    const res = await listingService.reactivateListing(targetId);
+    if (res.success) {
+      alert(res.message);
+      if (customerUser?.id) {
+        const listingsRes = await listingService.getCustomerListings(customerUser.id);
+        if (listingsRes.success) setDbListings(listingsRes.listings);
+      }
+      onUpdateCase({
+        ...c,
+        status: 'pending_review'
+      });
+      setSelectedCaseId(c.caseReference);
+      setActiveTab('details');
     } else {
       alert(res.message);
     }
@@ -594,7 +656,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
     return { pendingOffers: pending, respondedOffers: responded };
   }, [activeOffers]);
 
-  if (!activeCase) {
+  if (!activeCase && archivedCases.length === 0) {
     return (
       <div className="min-h-screen bg-brand-bg py-12 px-4 text-center">
         <div className="max-w-md mx-auto bg-white rounded-3xl p-8 border border-slate-200 shadow-card space-y-4">
@@ -768,20 +830,33 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
             <span className="font-extrabold text-slate-600 text-3xs whitespace-nowrap px-1">
               اختر الطلب:
             </span>
-            {availableCases.map((c) => (
-              <button
-                key={c.caseReference}
-                onClick={() => setSelectedCaseId(c.caseReference)}
-                className={`px-3.5 py-2 rounded-xl font-bold whitespace-nowrap transition flex items-center gap-1.5 ${
-                  activeCase.caseReference === c.caseReference
-                    ? 'bg-brand-navy text-white shadow-sm'
-                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200'
-                }`}
-              >
-                <CarIcon className="w-3.5 h-3.5 text-brand-green" />
-                <span>{c.vehicle.make} {c.vehicle.model} ({c.caseReference})</span>
-              </button>
-            ))}
+            {availableCases.map((c) => {
+              const isWithdrawn = c.status === 'withdrawn';
+              const isCompleted = c.status === 'completed';
+              return (
+                <button
+                  key={c.caseReference}
+                  onClick={() => setSelectedCaseId(c.caseReference)}
+                  className={`px-3.5 py-2 rounded-xl font-bold whitespace-nowrap transition flex items-center gap-1.5 ${
+                    activeCase.caseReference === c.caseReference
+                      ? 'bg-brand-navy text-white shadow-sm'
+                      : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  <CarIcon className="w-3.5 h-3.5 text-brand-green" />
+                  <span>{c.vehicle.make} {c.vehicle.model} ({c.caseReference})</span>
+                  {isWithdrawn ? (
+                    <span className="text-4xs px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-700 font-bold">
+                      مؤرشف
+                    </span>
+                  ) : isCompleted ? (
+                    <span className="text-4xs px-1.5 py-0.5 rounded-full bg-emerald-200 text-emerald-800 font-bold">
+                      تم البيع
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -802,6 +877,10 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                   ? 'bg-amber-100 text-amber-900 border border-amber-300'
                   : activeCase.status === 'rejected'
                   ? 'bg-rose-100 text-rose-800'
+                  : activeCase.status === 'withdrawn'
+                  ? 'bg-slate-200 text-slate-800 border border-slate-300'
+                  : activeCase.status === 'completed'
+                  ? 'bg-emerald-200 text-emerald-900 border border-emerald-300'
                   : 'bg-blue-100 text-blue-800'
               }`}>
                 {activeCase.status === 'listing_approved' || activeCase.status === 'published'
@@ -810,6 +889,10 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                   ? '✏ مطلوب تعديل من الإدارة'
                   : activeCase.status === 'rejected'
                   ? '✕ تم الرفض'
+                  : activeCase.status === 'withdrawn'
+                  ? '📦 إعلان مسحوب ومحفوظ بالأرشيف'
+                  : activeCase.status === 'completed'
+                  ? '✓ تمت الصفقة وتسوية البنك'
                   : '⏳ بانتظار مراجعة الإدارة'}
               </span>
             </div>
@@ -819,14 +902,26 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
-            <button
-              type="button"
-              onClick={handleOpenEditModal}
-              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-brand-navy hover:bg-slate-800 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2"
-            >
-              <Edit3 className="w-3.5 h-3.5 text-brand-green" />
-              <span>تعديل بيانات الإعلان</span>
-            </button>
+            {activeCase.status === 'withdrawn' ? (
+              <button
+                type="button"
+                onClick={() => handleReactivateCase(activeCase)}
+                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-black text-xs shadow-md transition flex items-center justify-center gap-2"
+                title="إعادة تنشيط هذا الإعلان وإرساله للمراجعة السريعة"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>إعادة تنشيط ونشر الإعلان</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleOpenEditModal}
+                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-brand-navy hover:bg-slate-800 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-brand-green" />
+                <span>تعديل بيانات الإعلان</span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -840,12 +935,12 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
             {activeCase.status !== 'withdrawn' && activeCase.status !== 'completed' && (
               <button
                 type="button"
-                onClick={handleWithdrawActiveCase}
+                onClick={() => handleWithdrawActiveCase(activeCase)}
                 className="px-3.5 py-2.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-sm"
-                title="سحب الإعلان من المعرض مع الاحتفاظ ببياناته بسجلات المنصة"
+                title="إزالة الإعلان من سوق السيارات مع حفظ كافة بياناته ومستنداته بسجل إعلاناتك السابقة"
               >
-                <X className="w-3.5 h-3.5" />
-                <span>سحب الإعلان</span>
+                <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                <span>إزالة / سحب الإعلان</span>
               </button>
             )}
           </div>
@@ -936,6 +1031,24 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
           >
             <FileText className="w-4 h-4" />
             <span>المستندات والأوراق</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('archive')}
+            className={`flex-1 py-2.5 px-3 rounded-xl font-bold transition flex items-center justify-center gap-2 whitespace-nowrap ${
+              activeTab === 'archive'
+                ? 'bg-brand-navy text-white shadow-sm'
+                : 'text-slate-600 hover:text-brand-navy hover:bg-slate-50'
+            }`}
+          >
+            <Archive className="w-4 h-4" />
+            <span>سجل الإعلانات السابقة والأرشيف</span>
+            {archivedCases.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-3xs font-black bg-slate-500 text-white">
+                {archivedCases.length}
+              </span>
+            )}
           </button>
         </div>
 
@@ -1408,6 +1521,214 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
               </div>
             </div>
 
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* TAB 5: ARCHIVED & PREVIOUS LISTINGS (سجل الإعلانات السابقة)    */}
+        {/* ============================================================== */}
+        {activeTab === 'archive' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-card space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-slate-100">
+                <div>
+                  <h3 className="font-extrabold text-base text-brand-navy flex items-center gap-2">
+                    <Archive className="w-5 h-5 text-brand-green" />
+                    <span>سجل الإعلانات السابقة والأرشيف</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    كافة إعلاناتك التي تم سحبها، أو إيقافها، أو إتمام صفقتها وتسوية البنك بنجاح. بيانات ومستندات سياراتك محفوظة هنا بأمان.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('sell-wizard')}
+                  className="px-4 py-2 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-black text-xs shadow-sm transition flex items-center gap-1.5 self-start sm:self-auto"
+                >
+                  <CarIcon className="w-4 h-4" />
+                  <span>نشر إعلان سيارة جديدة</span>
+                </button>
+              </div>
+
+              {/* Incomplete Draft Notice (if any draft is present) */}
+              {hasWizardDraft && (
+                <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-300 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-amber-700" />
+                      <span className="font-black text-xs text-amber-950">
+                        مسودة طلب بيع وتخارج غير مكتملة
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-3xs font-extrabold bg-amber-200 text-amber-900">
+                        مسودة محفوظة محلياً
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDiscardDraft}
+                      className="text-3xs text-rose-600 hover:text-rose-800 font-bold flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>حذف المسودة</span>
+                    </button>
+                  </div>
+                  <p className="text-2xs text-amber-900 leading-relaxed">
+                    بدأت في تسجيل سيارة ({draftCarTitle || 'بيانات سيارتك'}) عبر معالج البيع ولم تستكملها. يمكنك العودة واستكمالها لنشرها بالمعرض في أي وقت.
+                  </p>
+                  <div className="pt-1 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('sell-wizard')}
+                      className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs shadow-sm transition flex items-center gap-1.5"
+                    >
+                      <span>استكمال مسودة هذا الإعلان الآن</span>
+                      <ArrowRight className="w-3.5 h-3.5 rotate-180" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* List of Archived / Withdrawn Cases */}
+              {archivedCases.length === 0 && !hasWizardDraft ? (
+                <div className="py-12 text-center space-y-3">
+                  <Archive className="w-12 h-12 text-slate-300 mx-auto" />
+                  <h4 className="font-black text-slate-700 text-sm">لا توجد إعلانات سابقة أو مؤرشفة حتى الآن</h4>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
+                    عند قيامك بسحب أو إزالة أي إعلان من المعرض أو عند اكتمال بيع وتسوية السيارة، ستظهر هنا كافة بياناته ومستنداته المؤرشفة مع إمكانية إعادة تنشيطه بضغطة واحدة.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4 pt-1">
+                  {archivedCases.map((c) => {
+                    const isWithdrawn = c.status === 'withdrawn';
+                    const isCompleted = c.status === 'completed';
+                    const isCancelled = c.status === 'cancelled';
+                    const isRejected = c.status === 'rejected' || c.status === 'rejected_ineligible';
+
+                    return (
+                      <div
+                        key={c.caseReference}
+                        className="p-5 rounded-2xl border border-slate-200 bg-slate-50/60 hover:bg-slate-50 transition space-y-4"
+                      >
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-200 flex-shrink-0 border border-slate-200">
+                              {c.vehicle.images && c.vehicle.images[0] ? (
+                                <img
+                                  src={c.vehicle.images[0]}
+                                  alt={c.vehicle.make}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <CarIcon className="w-6 h-6 text-slate-400" />
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="font-black text-sm text-brand-navy">
+                                  {c.vehicle.make} {c.vehicle.model} {c.vehicle.year}
+                                </h4>
+                                <span className="font-mono text-3xs text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                                  {c.caseReference}
+                                </span>
+                              </div>
+                              <p className="text-2xs text-slate-500 mt-0.5">
+                                {c.vehicle.trim || ''} • العداد: {c.vehicle.mileage?.toLocaleString('ar-EG')} كم • جهة التمويل: {c.financing.institutionName}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col sm:items-end gap-1">
+                            <span className={`px-2.5 py-1 rounded-full text-3xs font-black ${
+                              isCompleted
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                : isWithdrawn
+                                ? 'bg-slate-200 text-slate-800 border border-slate-300'
+                                : isRejected
+                                ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                                : 'bg-amber-100 text-amber-900 border border-amber-300'
+                            }`}>
+                              {isCompleted
+                                ? '✓ تمت الصفقة وتسوية البنك بنجاح'
+                                : isWithdrawn
+                                ? '📦 إعلان مسحوب ومحفوظ بالأرشيف'
+                                : isRejected
+                                ? '✕ تم رفض الطلب'
+                                : '✕ تم إلغاء الطلب'}
+                            </span>
+                            <span className="text-xs font-black text-brand-green font-mono">
+                              {formatEGP(c.vehicle.askingPrice)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Additional Info Callout */}
+                        <div className="p-3 bg-white rounded-xl border border-slate-200/80 text-2xs space-y-1">
+                          <div className="flex justify-between items-center text-slate-500 text-3xs">
+                            <span>تاريخ التسجيل: {c.createdAt}</span>
+                            <span>الرخصة: {c.vehicle.licenseValidityMonths || 12} شهر ({c.vehicle.trafficDepartment || 'المرور'})</span>
+                          </div>
+                          {c.sellerConditionStory && (
+                            <p className="text-slate-600 line-clamp-2 text-3xs">
+                              {c.sellerConditionStory}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-200/60">
+                          <span className="text-3xs text-slate-400">
+                            🔒 كافة بيانات السيارة ومستنداتها مشفرة ومحفوظة بحسابك.
+                          </span>
+
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {/* Reactivate Button (If withdrawn) */}
+                            {isWithdrawn && (
+                              <button
+                                type="button"
+                                onClick={() => handleReactivateCase(c)}
+                                className="px-3.5 py-1.5 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-2xs shadow-sm transition flex items-center gap-1.5"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>إعادة تنشيط ونشر الإعلان</span>
+                              </button>
+                            )}
+
+                            {/* Edit in Wizard Button */}
+                            {onStartEditCase && (
+                              <button
+                                type="button"
+                                onClick={() => onStartEditCase(c)}
+                                className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-brand-navy hover:bg-slate-100 font-bold text-2xs transition flex items-center gap-1"
+                              >
+                                <Edit3 className="w-3 h-3 text-brand-green" />
+                                <span>تعديل ونشر كطلب جديد</span>
+                              </button>
+                            )}
+
+                            {/* View Details */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedCaseId(c.caseReference);
+                                setActiveTab('details');
+                              }}
+                              className="px-3.5 py-1.5 rounded-xl bg-slate-900 text-white font-bold text-2xs hover:bg-slate-800 transition"
+                            >
+                              معاينة التفاصيل
+                            </button>
+                          </div>
+                        </div>
+
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+            </div>
           </div>
         )}
 
