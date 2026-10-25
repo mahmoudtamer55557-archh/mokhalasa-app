@@ -237,18 +237,39 @@ export const HomePage: React.FC<HomePageProps> = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {distressedCars.map((car) => (
-            <CarCard
-              key={car.id}
-              car={car}
-              onSelect={onSelectCar}
-              isFavorite={favorites.includes(car.id)}
-              onToggleFavorite={onToggleFavorite}
-              lang={lang}
-            />
-          ))}
-        </div>
+        {distressedCars.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {distressedCars.map((car) => (
+              <CarCard
+                key={car.id}
+                car={car}
+                onSelect={onSelectCar}
+                isFavorite={favorites.includes(car.id)}
+                onToggleFavorite={onToggleFavorite}
+                lang={lang}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="bg-slate-50 border border-slate-200 rounded-3xl p-10 text-center space-y-4 max-w-xl mx-auto shadow-sm">
+            <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto text-brand-green">
+              <CarIcon className="w-7 h-7" />
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="font-extrabold text-slate-800 text-base">لا توجد سيارات معروضة حالياً</h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                المنصة جاهزة لاستقبال ونشر طلبات بيع السيارات المتعثرة وسداد التزامات البنوك فور تقديمها واعتمادها رسمياً.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => onNavigate('sell-wizard')}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-brand-green hover:bg-emerald-600 text-slate-950 font-black text-xs transition shadow"
+            >
+              <span>سجل سيارتك الآن للبيع والتخارج</span>
+            </button>
+          </div>
+        )}
       </section>
 
       {/* 4. THE 4-STEP MANAGED EXIT PROCESS */}

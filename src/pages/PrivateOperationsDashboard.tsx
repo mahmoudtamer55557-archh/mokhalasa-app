@@ -68,18 +68,8 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
 }) => {
   const isAr = lang === 'ar';
 
-  // Authenticated Staff User Session (defaults to null if no valid active session in storage)
-  const [currentStaffUser, setCurrentStaffUser] = useState<EmployeeUser | null>(() => {
-    try {
-      const saved = sessionStorage.getItem('mokhalasa_staff_session');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const match = MOCK_EMPLOYEES.find(e => e.id === parsed.id);
-        if (match && match.isActive) return match;
-      }
-    } catch {}
-    return null;
-  });
+  // Authenticated Staff User Session (defaults to null; never persists credentials across reload)
+  const [currentStaffUser, setCurrentStaffUser] = useState<EmployeeUser | null>(null);
 
   const [activeTab, setActiveTab] = useState<'cases' | 'moderation' | 'purchase_offers' | 'audit_logs' | 'edits_review' | 'team' | 'compliance'>('moderation');
 
@@ -516,17 +506,11 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
     if (target) {
       setCurrentStaffUser(target);
       setActiveManagingCase(null);
-      try {
-        sessionStorage.setItem('mokhalasa_staff_session', JSON.stringify(target));
-      } catch {}
     }
   };
 
   const handleLogout = () => {
     setCurrentStaffUser(null);
-    try {
-      sessionStorage.removeItem('mokhalasa_staff_session');
-    } catch {}
   };
 
   // Generate Executive Operations Summary using Gemini AI
@@ -727,9 +711,6 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
       <StaffLoginPage
         onLoginSuccess={(user) => {
           setCurrentStaffUser(user);
-          try {
-            sessionStorage.setItem('mokhalasa_staff_session', JSON.stringify(user));
-          } catch {}
         }}
         onNavigateToPublic={() => onNavigate('home')}
         initialRoleHint={initialRole}

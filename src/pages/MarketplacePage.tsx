@@ -202,23 +202,13 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                 المعرض جاهز ونظيف تماماً لاستقبال إعلانات السيارات المعتمدة. كن أول من يعرض سيارته للبيع والتخارج من الأقساط بأمان وشفافية عبر مخلصة.
               </p>
             </div>
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <div className="pt-2 flex items-center justify-center">
               <button
                 type="button"
                 onClick={() => onNavigate?.('sell-wizard')}
                 className="w-full sm:w-auto px-7 py-3 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md transition"
               >
                 اعرض سيارتك للبيع الآن
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  localStorage.setItem('mokhalasa_show_demo_cars', 'true');
-                  window.location.reload();
-                }}
-                className="w-full sm:w-auto px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition"
-              >
-                تفعيل البيانات التجريبية (Demo Mode)
               </button>
             </div>
           </div>

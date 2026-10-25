@@ -43,9 +43,9 @@ export function App() {
   const [currentView, setCurrentView] = useState<string>(() => 
     parseViewFromHash(typeof window !== 'undefined' ? window.location.hash : '')
   );
-  const [cars, setCars] = useState<Car[]>(INITIAL_CARS);
-  const [selectedCar, setSelectedCar] = useState<Car | null>(INITIAL_CARS[0]);
-  const [favorites, setFavorites] = useState<string[]>(['car-1']);
+  const [cars, setCars] = useState<Car[]>([]);
+  const [selectedCar, setSelectedCar] = useState<Car | null>(null);
+  const [favorites, setFavorites] = useState<string[]>([]);
   const [userRole, setUserRole] = useState<'seller' | 'buyer' | 'admin' | 'staff' | 'owner'>('seller');
   const [lang, setLang] = useState<'ar' | 'en'>('ar');
 
@@ -414,12 +414,7 @@ export function App() {
     const fetchApprovedListings = async () => {
       const res = await listingService.getPublicListings();
       if (isMounted && res.success) {
-        if (res.cars && res.cars.length > 0) {
-          setCars(res.cars);
-        } else {
-          const showDemo = typeof window !== 'undefined' && localStorage.getItem('mokhalasa_show_demo_cars') === 'true';
-          setCars(showDemo ? INITIAL_CARS : []);
-        }
+        setCars(res.cars || []);
       }
     };
 

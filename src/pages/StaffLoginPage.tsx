@@ -23,11 +23,10 @@ export const StaffLoginPage: React.FC<StaffLoginPageProps> = ({
 }) => {
   const isAr = lang === 'ar';
 
-  const [email, setEmail] = useState<string>('mahmoud@mokhalasa.com');
-  const [password, setPassword] = useState<string>('MahmoudOps@2026');
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
   const [securityPin, setSecurityPin] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [rememberDevice, setRememberDevice] = useState<boolean>(true);
 
   // States
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -107,12 +106,6 @@ export const StaffLoginPage: React.FC<StaffLoginPageProps> = ({
     }
   };
 
-  const handleQuickFill = (targetEmail: string) => {
-    setEmail(targetEmail);
-    setPassword(targetEmail === 'mahmoud@mokhalasa.com' ? 'MahmoudOps@2026' : 'MokhalasaOps@2026');
-    setErrorMessage(null);
-  };
-
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 font-cairo text-right selection:bg-brand-green/30 selection:text-white" dir={isAr ? 'rtl' : 'ltr'}>
       
@@ -156,7 +149,7 @@ export const StaffLoginPage: React.FC<StaffLoginPageProps> = ({
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+          <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4 text-xs">
             
             {/* Corporate Email Field */}
             <div className="space-y-1.5">
@@ -169,6 +162,7 @@ export const StaffLoginPage: React.FC<StaffLoginPageProps> = ({
                   type="email"
                   required
                   dir="ltr"
+                  autoComplete="off"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@mokhalasa.com"
@@ -189,6 +183,7 @@ export const StaffLoginPage: React.FC<StaffLoginPageProps> = ({
                   type={showPassword ? 'text' : 'password'}
                   required
                   dir="ltr"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
@@ -216,6 +211,7 @@ export const StaffLoginPage: React.FC<StaffLoginPageProps> = ({
                 type="text"
                 dir="ltr"
                 maxLength={6}
+                autoComplete="off"
                 value={securityPin}
                 onChange={(e) => setSecurityPin(e.target.value)}
                 placeholder="6-digit PIN"
@@ -223,20 +219,15 @@ export const StaffLoginPage: React.FC<StaffLoginPageProps> = ({
               />
             </div>
 
-            {/* Remember device checkbox */}
+            {/* Strict manual entry indicator */}
             <div className="flex items-center justify-between pt-1">
-              <label className="flex items-center gap-2 cursor-pointer text-3xs text-slate-400">
-                <input
-                  type="checkbox"
-                  checked={rememberDevice}
-                  onChange={(e) => setRememberDevice(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded bg-slate-950 border-slate-700 text-brand-green focus:ring-brand-green accent-brand-green"
-                />
-                <span>تذكر جلستي على هذا الجهاز المعتمد</span>
-              </label>
+              <span className="text-3xs text-amber-400/90 font-medium flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-brand-green" />
+                <span>إدخال يدوي إلزامي في كل جلسة لحماية الأمان</span>
+              </span>
 
               <span className="text-3xs text-slate-500">
-                جلسة مشفرة آمنة
+                عدم حفظ كلمة المرور
               </span>
             </div>
 
@@ -270,34 +261,8 @@ export const StaffLoginPage: React.FC<StaffLoginPageProps> = ({
                 <span>سياسة أمان حسابات العمليات:</span>
               </div>
               <p>
-                لا يمكن إنشاء حسابات موظفين أو مالك من أي واجهة عامة. تصدر الحسابات بقرار إداري وتفعل صلاحياتها مركزياً عبر قاعدة البيانات والسيرفر الآمن.
+                لا يمكن إنشاء حسابات موظفين أو مالك من أي واجهة عامة. تصدر الحسابات بقرار إداري وتفعل صلاحياتها مركزياً عبر قاعدة البيانات والسيرفر الآمن، ويلزم إدخال كلمة المرور يدوياً في كل جلسة لحماية سرية البيانات.
               </p>
-            </div>
-
-            {/* Developer / Staging Test Presets */}
-            <div className="space-y-1.5">
-              <div className="text-3xs font-extrabold text-slate-500 uppercase tracking-wider">
-                بيانات تجريبية جاهزة للمعاينة السريعة:
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-3xs">
-                <button
-                  type="button"
-                  onClick={() => handleQuickFill('mahmoud@mokhalasa.com')}
-                  className="p-2 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-right text-slate-300 transition"
-                >
-                  <span className="font-bold text-emerald-400 block">👑 محمود تامر (المالك والمشرف)</span>
-                  <span className="font-mono text-slate-500 text-4xs">mahmoud@mokhalasa.com</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickFill('ahmed@mokhalasa.com')}
-                  className="p-2 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-right text-slate-300 transition"
-                >
-                  <span className="font-bold text-blue-400 block">👤 أحمد الشريف (مسؤول)</span>
-                  <span className="font-mono text-slate-500 text-4xs">ahmed@mokhalasa.com</span>
-                </button>
-              </div>
             </div>
           </div>
 

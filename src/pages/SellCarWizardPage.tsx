@@ -85,21 +85,21 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
   const [hasContactedLender, setHasContactedLender] = useState<boolean | 'not_sure'>(true);
   const [hasOfficialQuote, setHasOfficialQuote] = useState<boolean | 'not_sure'>('not_sure');
 
-  // STEP 2: Vehicle Specs, Condition & Honest Disclosures
-  const [selectedMakeId, setSelectedMakeId] = useState('nissan');
-  const [selectedModelId, setSelectedModelId] = useState('nissan-sunny');
-  const [selectedYear, setSelectedYear] = useState<number | null>(2023);
-  const [selectedTrim, setSelectedTrim] = useState('سوبر صالون بصمة وتكييف تاتش (Super Saloon)');
+  // STEP 2: Vehicle Specs, Condition & Honest Disclosures (Initialized clean without demo defaults)
+  const [selectedMakeId, setSelectedMakeId] = useState('');
+  const [selectedModelId, setSelectedModelId] = useState('');
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [selectedTrim, setSelectedTrim] = useState('');
   const [isCustomTrim, setIsCustomTrim] = useState(false);
   const [customTrimText, setCustomTrimText] = useState('');
   const [transmission, setTransmission] = useState<'أوتوماتيك' | 'مانيوال' | 'CVT' | 'ثنائي التعشيق (Dual Clutch)'>('أوتوماتيك');
   const [fuelType, setFuelType] = useState<'بنزين' | 'هايبرد (هجين)' | 'كهرباء بالكامل (EV)' | 'غاز طبيعي' | 'ديزل'>('بنزين');
-  const [engineSize, setEngineSize] = useState('1500 cc');
-  const [mileage, setMileage] = useState(34000);
-  const [color, setColor] = useState('فضي ميتاليك');
+  const [engineSize, setEngineSize] = useState('');
+  const [mileage, setMileage] = useState(0);
+  const [color, setColor] = useState('');
   const [paintCondition, setPaintCondition] = useState<'فابريكا بالكامل' | 'رش رفرفين نظافة' | 'رش إكصدامات فقط' | 'رش خارجي نظافة' | 'أخرى'>('فابريكا بالكامل');
   const [chassisVin, setChassisVin] = useState('');
-  const [trafficUnit, setTrafficUnit] = useState('مرور فيصل');
+  const [trafficUnit, setTrafficUnit] = useState('');
   const [sellerType, setSellerType] = useState<'مالك أول' | 'مالك ثانٍ' | 'توكيل'>('مالك أول');
   const [licenseValidityMonths, setLicenseValidityMonths] = useState<number>(12);
 
@@ -109,14 +109,14 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
 
   // STEP 3: Financing Details
   const [bankKey, setBankKey] = useState('credit_agricole');
-  const [outstandingPrincipal, setOutstandingPrincipal] = useState(260000);
-  const [monthlyInstallment, setMonthlyInstallment] = useState(9400);
-  const [remainingMonths, setRemainingMonths] = useState(32);
+  const [outstandingPrincipal, setOutstandingPrincipal] = useState(0);
+  const [monthlyInstallment, setMonthlyInstallment] = useState(0);
+  const [remainingMonths, setRemainingMonths] = useState(0);
   const [hasArrears, setHasArrears] = useState(false);
   const [arrearsAmount, setArrearsAmount] = useState(0);
-  const [sellerExpectedPrice, setSellerExpectedPrice] = useState<number>(620000);
+  const [sellerExpectedPrice, setSellerExpectedPrice] = useState<number>(0);
 
-  // STEP 4: Photos (Minimum 4 required)
+  // STEP 4: Photos (Minimum 4 required - starting clean with 0 uploads)
   const [photoSlots, setPhotoSlots] = useState<PhotoSlotItem[]>([
     {
       id: 'slot-front',
@@ -124,8 +124,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
       labelAr: 'الواجهة الأمامية',
       labelEn: 'Front Exterior',
       descriptionAr: 'صورة أفقية لكامل مقدمة السيارة والشبكة والإكصدام',
-      isRequired: true,
-      previewUrl: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=1200&q=80'
+      isRequired: true
     },
     {
       id: 'slot-rear',
@@ -133,8 +132,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
       labelAr: 'الواجهة الخلفية',
       labelEn: 'Rear Exterior',
       descriptionAr: 'صورة تظهر الشنطة والفوانيس الخلفية ولوحة السيارة',
-      isRequired: true,
-      previewUrl: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=1200&q=80'
+      isRequired: true
     },
     {
       id: 'slot-right',
@@ -142,8 +140,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
       labelAr: 'الجانب الأيمن',
       labelEn: 'Right Side',
       descriptionAr: 'صورة طولية لكامل الجانب الأيمن والجنوط والأبواب',
-      isRequired: true,
-      previewUrl: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80'
+      isRequired: true
     },
     {
       id: 'slot-left',
@@ -151,8 +148,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
       labelAr: 'الجانب الأيسر',
       labelEn: 'Left Side',
       descriptionAr: 'صورة طولية لكامل الجانب الأيسر وجانب السائق',
-      isRequired: true,
-      previewUrl: 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=1200&q=80'
+      isRequired: true
     },
     {
       id: 'slot-interior',
@@ -213,9 +209,9 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
 
   // Valuation calculation on demand
   const valuation = computeVehicleValuation({
-    make: selectedMakeId === 'nissan' ? 'Nissan' : selectedMakeId === 'hyundai' ? 'Hyundai' : 'Chery',
-    model: selectedModelId.includes('sunny') ? 'Sunny' : selectedModelId.includes('elantra') ? 'Elantra CN7' : 'Tiggo 7',
-    year: selectedYear || 2023,
+    make: selectedMakeId === 'nissan' ? 'Nissan' : selectedMakeId === 'hyundai' ? 'Hyundai' : selectedMakeId === 'chery' ? 'Chery' : selectedMakeId || 'عام',
+    model: selectedModelId.includes('sunny') ? 'Sunny' : selectedModelId.includes('elantra') ? 'Elantra CN7' : selectedModelId.includes('tiggo') ? 'Tiggo 7' : selectedModelId || 'عام',
+    year: selectedYear || 2024,
     trim: isCustomTrim ? customTrimText : selectedTrim,
     mileage,
     paintCondition,
@@ -1198,7 +1194,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                 <input
                   type="number"
                   step="5000"
-                  value={outstandingPrincipal}
+                  value={outstandingPrincipal || ''}
                   onChange={(e) => setOutstandingPrincipal(Number(e.target.value))}
                   placeholder="مثال: 250000"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green"
@@ -1258,14 +1254,14 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
               <div className="sm:col-span-2 pt-2">
                 <div className="flex justify-between items-center mb-1.5">
                   <label className="font-bold text-slate-700">السعر المتوقع أو المطلوب للسيارة (اختياري):</label>
-                  <span className="text-xs font-black text-brand-green">{formatEGP(sellerExpectedPrice)}</span>
+                  <span className="text-xs font-black text-brand-green">{sellerExpectedPrice > 0 ? formatEGP(sellerExpectedPrice) : 'غير محدد بعد'}</span>
                 </div>
                 <input
                   type="range"
                   min="300000"
                   max="2500000"
                   step="25000"
-                  value={sellerExpectedPrice}
+                  value={sellerExpectedPrice || 500000}
                   onChange={(e) => setSellerExpectedPrice(Number(e.target.value))}
                   className="w-full accent-brand-green cursor-pointer"
                 />
