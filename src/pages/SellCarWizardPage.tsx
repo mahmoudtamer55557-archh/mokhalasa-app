@@ -30,6 +30,9 @@ interface SellCarWizardPageProps {
   onListingCreated: (newCar: Car, newCase?: DistressedVehicleCase) => void;
   onNavigate: (view: string) => void;
   onRequirePhoneCompletion?: () => void;
+  editingCase?: DistressedVehicleCase | null;
+  onFinishEdit?: () => void;
+  resumeDraft?: boolean;
   lang?: 'ar' | 'en';
 }
 
@@ -51,6 +54,9 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
   onListingCreated,
   onNavigate,
   onRequirePhoneCompletion,
+  editingCase,
+  onFinishEdit,
+  resumeDraft,
   lang = 'ar'
 }) => {
   const isAr = lang === 'ar';
@@ -206,6 +212,172 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
       }));
     }
   }
+
+  // Effect 1: Pre-populate when entering in Edit Mode for an existing case
+  React.useEffect(() => {
+    if (editingCase) {
+      const v = editingCase.vehicle;
+      const f = editingCase.financing;
+      const s = editingCase.seller;
+
+      // Find make and model in catalog
+      const foundMake = VEHICLE_MAKES.find(
+        m => m.nameAr.toLowerCase() === v.make.toLowerCase() || m.nameEn.toLowerCase() === v.make.toLowerCase()
+      );
+      if (foundMake) {
+        setSelectedMakeId(foundMake.id);
+        const models = getModelsByMake(foundMake.id);
+        const foundModel = models.find(
+          md => md.nameAr.toLowerCase() === v.model.toLowerCase() || md.nameEn.toLowerCase() === v.model.toLowerCase() || v.model.toLowerCase().includes(md.id)
+        );
+        if (foundModel) setSelectedModelId(foundModel.id);
+      }
+
+      setSelectedYear(v.year || null);
+      setSelectedTrim(v.trim || '');
+      setTransmission(v.transmission || 'أوتوماتيك');
+      if (v.fuelType) setFuelType(v.fuelType as any);
+      setEngineSize(v.engineSize || '');
+      setMileage(v.mileage || 0);
+      setColor(v.color || '');
+      setPaintCondition((v.inspection?.paintCondition as any) || 'فابريكا بالكامل');
+      setTrafficUnit(v.trafficDepartment || '');
+      setSellerType((v.sellerType as any) || 'مالك أول');
+      setLicenseValidityMonths(v.licenseValidityMonths || 12);
+      setSellerConditionStory(editingCase.sellerConditionStory || v.description || '');
+      if (editingCase.disclosedIssues && editingCase.disclosedIssues.length > 0) {
+        setSelectedIssues(editingCase.disclosedIssues);
+      }
+
+      setVehicleStatus(editingCase.vehicle.vehicleStatus || 'bank_loan');
+      setDistressReason(editingCase.distressReason || 'installment_burden');
+      setUrgency(editingCase.urgency || 'urgent');
+      setOwnerRelationship(s.relationship || 'direct_owner');
+
+      if (f.institutionKey) setBankKey(f.institutionKey);
+      setOutstandingPrincipal(f.estimatedOutstandingPrincipal || f.outstandingPrincipal || 0);
+      setMonthlyInstallment(f.monthlyInstallment || 0);
+      setRemainingMonths(f.remainingMonths || 0);
+      setHasArrears(Boolean(f.arrearsAmount && f.arrearsAmount > 0));
+      setArrearsAmount(f.arrearsAmount || 0);
+      setSellerExpectedPrice(v.askingPrice || 0);
+
+      if (v.images && v.images.length > 0) {
+        setPhotoSlots(prev => prev.map((slot, i) => ({
+          ...slot,
+          previewUrl: v.images[i] || slot.previewUrl
+        })));
+      }
+
+      if (s.name) setSellerName(s.name);
+      if (s.phone) setSellerPhone(s.phone);
+      if (s.preferredContactTime) setPreferredContactTime(s.preferredContactTime);
+      if (s.governorate) {
+        setLocation({
+          governorate: s.governorate,
+          city: s.city || '',
+          latitude: 30.0131,
+          longitude: 31.4328,
+          isGpsLocated: true,
+          displayAddress: `${s.governorate} - ${s.city || ''}`
+        });
+      }
+
+      if (editingCase.documents && editingCase.documents.length > 0) {
+        setDocuments(editingCase.documents);
+      }
+    }
+  }, [editingCase]);
+
+  // Effect 2: Load Draft if resuming or if draft exists and not in edit mode
+  React.useEffect(() => {
+    if (!editingCase) {
+      try {
+        const savedDraft = localStorage.getItem('mokhalasa_wizard_draft');
+        if (savedDraft) {
+          const parsed = JSON.parse(savedDraft);
+          if (resumeDraft || parsed.currentStep > 1 || parsed.selectedMakeId) {
+            if (parsed.currentStep) setCurrentStep(Math.min(parsed.currentStep, 7));
+            if (parsed.selectedMakeId) setSelectedMakeId(parsed.selectedMakeId);
+            if (parsed.selectedModelId) setSelectedModelId(parsed.selectedModelId);
+            if (parsed.selectedYear) setSelectedYear(parsed.selectedYear);
+            if (parsed.selectedTrim) setSelectedTrim(parsed.selectedTrim);
+            if (parsed.mileage) setMileage(parsed.mileage);
+            if (parsed.color) setColor(parsed.color);
+            if (parsed.trafficUnit) setTrafficUnit(parsed.trafficUnit);
+            if (parsed.sellerConditionStory) setSellerConditionStory(parsed.sellerConditionStory);
+            if (parsed.selectedIssues) setSelectedIssues(parsed.selectedIssues);
+            if (parsed.distressReason) setDistressReason(parsed.distressReason);
+            if (parsed.urgency) setUrgency(parsed.urgency);
+            if (parsed.vehicleStatus) setVehicleStatus(parsed.vehicleStatus);
+            if (parsed.ownerRelationship) setOwnerRelationship(parsed.ownerRelationship);
+            if (parsed.bankKey) setBankKey(parsed.bankKey);
+            if (parsed.outstandingPrincipal) setOutstandingPrincipal(parsed.outstandingPrincipal);
+            if (parsed.monthlyInstallment) setMonthlyInstallment(parsed.monthlyInstallment);
+            if (parsed.remainingMonths) setRemainingMonths(parsed.remainingMonths);
+            if (parsed.hasArrears !== undefined) setHasArrears(parsed.hasArrears);
+            if (parsed.arrearsAmount) setArrearsAmount(parsed.arrearsAmount);
+            if (parsed.sellerExpectedPrice) setSellerExpectedPrice(parsed.sellerExpectedPrice);
+            if (parsed.sellerName) setSellerName(parsed.sellerName);
+            if (parsed.sellerPhone) setSellerPhone(parsed.sellerPhone);
+            if (parsed.location) setLocation(parsed.location);
+          }
+        }
+      } catch {}
+    }
+  }, [editingCase, resumeDraft]);
+
+  // Effect 3: Auto-save Incomplete Draft to LocalStorage whenever seller makes progress
+  React.useEffect(() => {
+    if (!editingCase && (selectedMakeId || currentStep > 1 || outstandingPrincipal > 0)) {
+      try {
+        const draftPayload = {
+          currentStep,
+          selectedMakeId,
+          selectedModelId,
+          selectedYear,
+          selectedTrim,
+          transmission,
+          fuelType,
+          engineSize,
+          mileage,
+          color,
+          paintCondition,
+          chassisVin,
+          trafficUnit,
+          sellerType,
+          licenseValidityMonths,
+          sellerConditionStory,
+          selectedIssues,
+          distressReason,
+          urgency,
+          vehicleStatus,
+          ownerRelationship,
+          bankKey,
+          outstandingPrincipal,
+          monthlyInstallment,
+          remainingMonths,
+          hasArrears,
+          arrearsAmount,
+          sellerExpectedPrice,
+          sellerName,
+          sellerPhone,
+          preferredContactTime,
+          location,
+          savedAt: new Date().toISOString()
+        };
+        localStorage.setItem('mokhalasa_wizard_draft', JSON.stringify(draftPayload));
+      } catch {}
+    }
+  }, [
+    editingCase, currentStep, selectedMakeId, selectedModelId, selectedYear,
+    selectedTrim, transmission, fuelType, engineSize, mileage, color,
+    paintCondition, chassisVin, trafficUnit, sellerType, licenseValidityMonths,
+    sellerConditionStory, selectedIssues, distressReason, urgency,
+    vehicleStatus, ownerRelationship, bankKey, outstandingPrincipal,
+    monthlyInstallment, remainingMonths, hasArrears, arrearsAmount,
+    sellerExpectedPrice, sellerName, sellerPhone, preferredContactTime, location
+  ]);
 
   // Valuation calculation on demand
   const valuation = computeVehicleValuation({
@@ -595,6 +767,80 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
       return;
     }
 
+    // Check if in Edit Mode for an existing case
+    if (editingCase) {
+      const targetListingId = editingCase.vehicle.id || editingCase.caseReference;
+      const updateResult = await listingService.updateFullListingFromWizard(targetListingId, {
+        make: selectedMakeObj ? selectedMakeObj.nameAr : (newCar.make || 'نيسان'),
+        model: selectedModelObj ? selectedModelObj.nameAr : (newCar.model || 'صني'),
+        year: selectedYear || 2024,
+        trim: isCustomTrim ? customTrimText : selectedTrim,
+        transmission,
+        fuel_type: fuelType,
+        engine_size: engineSize,
+        mileage,
+        color,
+        governorate: location.governorate,
+        city: location.city,
+        traffic_unit: trafficUnit.trim() || 'مرور فيصل',
+        asking_price: sellerExpectedPrice || valuation.suggestedAskingPrice,
+        condition_description: sellerConditionStory,
+        paint_condition: paintCondition,
+        disclosed_defects: selectedIssues.filter(i => i !== NO_ISSUES_OPTION),
+        has_financing: vehicleStatus === 'bank_loan' || vehicleStatus === 'consumer_finance',
+        financing_type: vehicleStatus,
+        financing_provider: selectedBank.bankNameAr,
+        outstanding_amount: outstandingPrincipal,
+        monthly_installment: monthlyInstallment,
+        images: uploadedImages
+      });
+
+      if (!updateResult.success) {
+        setValidationError(updateResult.message || 'حدث خطأ أثناء حفظ التعديلات.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Update case revisions in client state
+      const updatedCase: DistressedVehicleCase = {
+        ...editingCase,
+        status: 'pending_review',
+        editStatus: 'pending_review',
+        pendingEditsCount: (editingCase.pendingEditsCount || 0) + 1,
+        sellerConditionStory,
+        disclosedIssues: selectedIssues,
+        seller: {
+          ...editingCase.seller,
+          preferredContactTime,
+          governorate: location.governorate,
+          city: location.city
+        },
+        vehicle: {
+          ...editingCase.vehicle,
+          ...newCar,
+          askingPrice: sellerExpectedPrice || valuation.suggestedAskingPrice,
+          mileage,
+          images: uploadedImages
+        },
+        financing: {
+          ...editingCase.financing,
+          estimatedOutstandingPrincipal: outstandingPrincipal,
+          monthlyInstallment,
+          remainingMonths
+        }
+      };
+
+      onListingCreated(updatedCase.vehicle, updatedCase);
+      try {
+        localStorage.removeItem('mokhalasa_wizard_draft');
+      } catch {}
+      setIsSubmitting(false);
+      alert('✅ تم حفظ كافة تعديلات الإعلان بنجاح وإرسالها لفريق العمليات للاعتماد!');
+      if (onFinishEdit) onFinishEdit();
+      onNavigate('seller-portal');
+      return;
+    }
+
     // Submit to Supabase car_listings table (strictly awaiting database confirmation)
     const submitResult = await listingService.submitListing({
       make: selectedMakeObj ? selectedMakeObj.nameAr : (newCar.make || 'نيسان'),
@@ -640,6 +886,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
       localStorage.setItem('mokhalasa_last_case_ref', caseRef);
       localStorage.setItem('mokhalasa_last_access_key', generatedAccessKey);
       localStorage.setItem('mokhalasa_last_phone', sellerPhone);
+      localStorage.removeItem('mokhalasa_wizard_draft'); // Clean up completed draft
     } catch {
       // LocalStorage fallback
     }
@@ -654,7 +901,8 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
     outstandingPrincipal, monthlyInstallment, remainingMonths, hasArrears,
     arrearsAmount, earlySettlementFee, hasOfficialQuote, hasContactedLender,
     paintCondition, ownerRelationship, sellerName, sellerPhone, preferredContactTime,
-    settlementStatement, onListingCreated, selectedYear, customerUser, isPhoneVerified, handleOpenPhoneOtpModal
+    settlementStatement, onListingCreated, selectedYear, customerUser, isPhoneVerified, handleOpenPhoneOtpModal,
+    editingCase, onFinishEdit, onNavigate
   ]);
 
   const stepLabels = [
@@ -671,18 +919,73 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
     <div className="min-h-screen bg-brand-bg py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto space-y-6">
         
-        {/* Wizard Header */}
-        <div className="text-center space-y-2">
-          <span className="text-xs font-bold text-brand-green uppercase tracking-wider block">
-            بوابة تسجيل حالات التخارج والتعثر التمويلي
-          </span>
-          <h1 className="text-2xl sm:text-3xl font-black text-brand-navy">
-            عايز تبيع عربيتك وتتخلص من عبء الأقساط؟
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 max-w-xl mx-auto">
-            خطوات ميسرة لتسجيل حالتك، تقييم سعرها العادل من واقع السوق، وبدء إجراءات السداد والتسوية مع البنك بإشراف فريق مخلصة.
-          </p>
-        </div>
+        {/* Wizard Header / Edit Mode Indicator */}
+        {editingCase ? (
+          <div className="bg-amber-500/10 border border-amber-300 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm animate-fadeIn">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-800 flex items-center justify-center font-black text-lg">
+                ✏️
+              </div>
+              <div className="space-y-0.5 text-right">
+                <span className="text-3xs font-extrabold text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full inline-block">
+                  وضع تعديل بيانات الإعلان
+                </span>
+                <h2 className="text-base font-black text-slate-900">
+                  تعديل الطلب رقم: {editingCase.caseReference}
+                </h2>
+                <p className="text-2xs text-slate-600">
+                  يمكنك مراجعة كافة صفحات الإعلان وتعديل أي مواصفات أو السعر أو الصور ثم حفظها لإعادة المراجعة.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 pr-12 sm:pr-0">
+              <button
+                type="button"
+                onClick={() => {
+                  if (onFinishEdit) onFinishEdit();
+                  onNavigate('seller-portal');
+                }}
+                className="px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition shadow-2xs"
+              >
+                إلغاء التعديل والعودة
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center space-y-2">
+            <span className="text-xs font-bold text-brand-green uppercase tracking-wider block">
+              بوابة تسجيل حالات التخارج والتعثر التمويلي
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-black text-brand-navy">
+              عايز تبيع عربيتك وتتخلص من عبء الأقساط؟
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 max-w-xl mx-auto">
+              خطوات ميسرة لتسجيل حالتك، تقييم سعرها العادل من واقع السوق، وبدء إجراءات السداد والتسوية مع البنك بإشراف فريق مخلصة.
+            </p>
+          </div>
+        )}
+
+        {/* Draft Notice if draft was restored in fresh mode */}
+        {!editingCase && typeof window !== 'undefined' && localStorage.getItem('mokhalasa_wizard_draft') && currentStep > 1 && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-2xs text-emerald-900 animate-fadeIn">
+            <span className="flex items-center gap-1.5 font-bold">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <span>تم استرجاع مسودة الطلب السابق تلقائياً لتكمل البيانات من حيث توقفت.</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  localStorage.removeItem('mokhalasa_wizard_draft');
+                  window.location.reload();
+                } catch {}
+              }}
+              className="text-emerald-700 hover:text-emerald-950 underline font-bold text-right"
+            >
+              البدء من جديد وتفريغ المسودة
+            </button>
+          </div>
+        )}
 
         {/* Stepper Indicator */}
         {currentStep <= 7 && (
@@ -1593,12 +1896,12 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                 {isSubmitting ? (
                   <>
                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>جاري نشر الإعلان وتأكيد البيانات...</span>
+                    <span>{editingCase ? 'جاري حفظ التعديلات وإرسالها...' : 'جاري نشر الإعلان وتأكيد البيانات...'}</span>
                   </>
                 ) : (
                   <>
                     <Send className="w-4 h-4" />
-                    <span>نشر الإعلان الآن</span>
+                    <span>{editingCase ? 'حفظ التعديلات وإرسالها للمراجعة' : 'نشر الإعلان الآن'}</span>
                   </>
                 )}
               </button>

@@ -77,9 +77,17 @@ export interface DatabaseCarListing {
   official_documents?: {
     licenseUrl?: string;
     licenseFrontUrl?: string;
+    licenseFrontStatus?: 'pending' | 'verified' | 'rejected';
+    licenseFrontRejectReason?: string;
     licenseBackUrl?: string;
+    licenseBackStatus?: 'pending' | 'verified' | 'rejected';
+    licenseBackRejectReason?: string;
     nationalIdUrl?: string;
+    nationalIdStatus?: 'pending' | 'verified' | 'rejected';
+    nationalIdRejectReason?: string;
     bankStatementUrl?: string;
+    bankStatementStatus?: 'pending' | 'verified' | 'rejected';
+    bankStatementRejectReason?: string;
     submittedAt?: string;
     notes?: string;
   };
@@ -874,18 +882,49 @@ export const listingService = {
         const storedDocs = localStorage.getItem('mokhalasa_listing_documents') || '{}';
         const parsed = JSON.parse(storedDocs);
         const current = parsed[listingId] || {};
+        const prevDocs = current.docs || {};
+
+        // If replacing a previously rejected document, clear its rejection status
+        const updatedDocs: any = {
+          ...prevDocs,
+          notes: docs.notes || prevDocs.notes,
+          submittedAt: now
+        };
+
+        if (docs.licenseFrontUrl || docs.licenseUrl) {
+          updatedDocs.licenseFrontUrl = docs.licenseFrontUrl || docs.licenseUrl;
+          updatedDocs.licenseUrl = docs.licenseFrontUrl || docs.licenseUrl;
+          if (updatedDocs.licenseFrontStatus === 'rejected') {
+            updatedDocs.licenseFrontStatus = 'pending';
+            delete updatedDocs.licenseFrontRejectReason;
+          }
+        }
+        if (docs.licenseBackUrl) {
+          updatedDocs.licenseBackUrl = docs.licenseBackUrl;
+          if (updatedDocs.licenseBackStatus === 'rejected') {
+            updatedDocs.licenseBackStatus = 'pending';
+            delete updatedDocs.licenseBackRejectReason;
+          }
+        }
+        if (docs.nationalIdUrl) {
+          updatedDocs.nationalIdUrl = docs.nationalIdUrl;
+          if (updatedDocs.nationalIdStatus === 'rejected') {
+            updatedDocs.nationalIdStatus = 'pending';
+            delete updatedDocs.nationalIdRejectReason;
+          }
+        }
+        if (docs.bankStatementUrl) {
+          updatedDocs.bankStatementUrl = docs.bankStatementUrl;
+          if (updatedDocs.bankStatementStatus === 'rejected') {
+            updatedDocs.bankStatementStatus = 'pending';
+            delete updatedDocs.bankStatementRejectReason;
+          }
+        }
+
         parsed[listingId] = {
           ...current,
-          docs: {
-            licenseUrl: docs.licenseFrontUrl || docs.licenseUrl || current.docs?.licenseUrl,
-            licenseFrontUrl: docs.licenseFrontUrl || docs.licenseUrl || current.docs?.licenseFrontUrl,
-            licenseBackUrl: docs.licenseBackUrl || current.docs?.licenseBackUrl,
-            nationalIdUrl: docs.nationalIdUrl || current.docs?.nationalIdUrl,
-            bankStatementUrl: docs.bankStatementUrl || current.docs?.bankStatementUrl,
-            notes: docs.notes || current.docs?.notes,
-            submittedAt: now
-          },
-          verified: false // Reset or await admin review
+          docs: updatedDocs,
+          verified: false // Await admin review
         };
         localStorage.setItem('mokhalasa_listing_documents', JSON.stringify(parsed));
       } catch {}
@@ -923,6 +962,216 @@ export const listingService = {
       };
     } catch (err: any) {
       return { success: false, message: err?.message || 'تعذر رفع المستندات.' };
+    }
+  },
+
+  /**
+   * ADMIN: Review a specific document (Approve or Reject with reason)
+   */
+  async reviewSpecificDocument(
+    listingId: string,
+    docField: 'licenseFront' | 'licenseBack' | 'nationalId' | 'bankStatement',
+    decision: 'approve' | 'verify' | 'reject',
+    rejectReason?: string,
+    staffName: string = 'مسؤول تدقيق المستندات'
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const now = new Date().toISOString();
+      const statusKey = `${docField}Status`;
+      const reasonKey = `${docField}RejectReason`;
+
+      const docNameMap: Record<string, string> = {
+        licenseFront: 'رخصة السيارة (الوجه الأمامي)',
+        licenseBack: 'رخصة السيارة (الوجه الخلفي)',
+        nationalId: 'بطاقة الرقم القومي للمالك',
+        bankStatement: 'بيان المديونية / مخالصة البنك'
+      };
+      const docNameAr = docNameMap[docField] || 'المستند الرسمي';
+
+      // 1. Update localStorage mirror
+      let isAllVerified = false;
+      try {
+        const storedDocs = localStorage.getItem('mokhalasa_listing_documents') || '{}';
+        const parsed = JSON.parse(storedDocs);
+        const current = parsed[listingId] || {};
+        const currentDocObj = { ...(current.docs || {}) };
+
+        if (decision === 'approve' || decision === 'verify') {
+          currentDocObj[statusKey] = 'verified';
+          delete currentDocObj[reasonKey];
+        } else {
+          currentDocObj[statusKey] = 'rejected';
+          currentDocObj[reasonKey] = rejectReason || 'يرجى إعادة رفع صورة واضحة ومطابقة للمواصفات.';
+        }
+
+        // Check if all available documents are verified
+        isAllVerified = 
+          (currentDocObj.licenseFrontStatus === 'verified' || !currentDocObj.licenseFrontUrl) &&
+          (currentDocObj.licenseBackStatus === 'verified' || !currentDocObj.licenseBackUrl) &&
+          (currentDocObj.nationalIdStatus === 'verified' || !currentDocObj.nationalIdUrl) &&
+          (currentDocObj.bankStatementStatus === 'verified' || !currentDocObj.bankStatementUrl) &&
+          (currentDocObj.licenseFrontStatus === 'verified' || currentDocObj.nationalIdStatus === 'verified');
+
+        parsed[listingId] = {
+          ...current,
+          docs: currentDocObj,
+          verified: isAllVerified,
+          verifiedAt: isAllVerified ? now : null,
+          verifiedBy: staffName
+        };
+        localStorage.setItem('mokhalasa_listing_documents', JSON.stringify(parsed));
+      } catch {}
+
+      // 2. Fetch car details to notify customer
+      try {
+        const { data: carData } = await supabase
+          .from('car_listings')
+          .select('user_id, make, model')
+          .eq('id', listingId)
+          .maybeSingle();
+
+        const userId = carData?.user_id;
+        const carTitle = carData ? `${carData.make} ${carData.model}` : 'سيارتك';
+
+        if (userId) {
+          if (decision === 'reject') {
+            await this.sendCustomerNotification({
+              userId,
+              type: 'document_rejected',
+              title: `⚠️ تم رفض مستند: ${docNameAr}`,
+              message: `تم فحص أوراق (${carTitle}) ورفض ${docNameAr}. السبب: ${rejectReason || 'المستند غير واضح'}. يرجى الضغط هنا لرفع بديل صحيح.`,
+              linkView: 'seller-portal',
+              relatedId: listingId,
+              targetDocField: docField
+            });
+          } else {
+            await this.sendCustomerNotification({
+              userId,
+              type: 'listing_status_changed',
+              title: `✓ تم اعتماد وتوثيق ${docNameAr}`,
+              message: `تم فحص ${docNameAr} لسيارتك (${carTitle}) من قبل الإدارة واعتماده رسمياً.`,
+              linkView: 'seller-portal',
+              relatedId: listingId
+            });
+          }
+        }
+      } catch {}
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mokhalasa-listings-updated', { detail: { listingId, documents_verified: isAllVerified } }));
+      }
+
+      return {
+        success: true,
+        message: decision === 'approve'
+          ? `تم اعتماد ${docNameAr} بنجاح.`
+          : `تم تسجيل رفض ${docNameAr} وإشعار العميل بالسبب لاستبداله.`
+      };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'تعذر تدقيق المستند.' };
+    }
+  },
+
+  /**
+   * SELLER: Update complete listing from Wizard Edit Mode
+   */
+  async updateFullListingFromWizard(
+    listingId: string,
+    data: {
+      make: string;
+      model: string;
+      year: number;
+      trim?: string;
+      transmission?: string;
+      fuel_type?: string;
+      engine_size?: string;
+      mileage: number;
+      color?: string;
+      governorate: string;
+      city?: string;
+      traffic_unit?: string;
+      asking_price: number;
+      condition_description: string;
+      paint_condition?: string;
+      disclosed_defects?: string[];
+      has_financing?: boolean;
+      financing_type?: string;
+      financing_provider?: string;
+      outstanding_amount?: number;
+      monthly_installment?: number;
+      images?: string[];
+    }
+  ): Promise<{ success: boolean; message: string; error?: string }> {
+    try {
+      const now = new Date().toISOString();
+      const payload: Record<string, any> = {
+        make: data.make,
+        model: data.model,
+        year: data.year,
+        trim: data.trim || '',
+        transmission: data.transmission || 'أوتوماتيك',
+        fuel_type: data.fuel_type || 'بنزين',
+        engine_size: data.engine_size || '',
+        mileage: data.mileage,
+        color: data.color || '',
+        governorate: data.governorate,
+        city: data.city || '',
+        traffic_unit: data.traffic_unit || '',
+        asking_price: data.asking_price,
+        condition_description: data.condition_description,
+        paint_condition: data.paint_condition || 'فابريكا بالكامل',
+        disclosed_defects: data.disclosed_defects || [],
+        has_financing: data.has_financing ?? true,
+        financing_type: data.financing_type || 'bank_loan',
+        financing_provider: data.financing_provider || '',
+        outstanding_amount: data.outstanding_amount || 0,
+        monthly_installment: data.monthly_installment || 0,
+        status: 'pending_review',
+        updated_at: now
+      };
+
+      // 1. Update in Supabase
+      try {
+        await supabase
+          .from('car_listings')
+          .update(payload)
+          .eq('id', listingId);
+      } catch {}
+
+      // 2. Update local mirrors
+      try {
+        const storedMods = localStorage.getItem('mokhalasa_moderation_overrides') || '{}';
+        const parsed = JSON.parse(storedMods);
+        parsed[listingId] = {
+          ...parsed[listingId],
+          status: 'pending_review',
+          traffic_unit: data.traffic_unit,
+          feedback: null,
+          updatedAt: now
+        };
+        localStorage.setItem('mokhalasa_moderation_overrides', JSON.stringify(parsed));
+      } catch {}
+
+      // 3. Notify Admin
+      try {
+        await supabase.from('admin_notifications').insert({
+          type: 'listing_resubmitted',
+          title: '📝 تم تحديث بيانات الإعلان بالكامل وإعادة إرساله',
+          message: `قام العميل بتعديل كامل بيانات الإعلان (${data.make} ${data.model} ${data.year} - كود: ${listingId.slice(0, 8)}) عبر معالج البيع وإعادة إرساله للاعتماد.`,
+          listing_id: listingId
+        });
+      } catch {}
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mokhalasa-listings-updated', { detail: { listingId, status: 'pending_review' } }));
+      }
+
+      return {
+        success: true,
+        message: 'تم حفظ كافة التعديلات بنجاح وإعادة تقديم الإعلان لفريق العمليات للاعتماد.'
+      };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'تعذر حفظ التعديلات.' };
     }
   },
 

@@ -87,6 +87,14 @@ export function App() {
   const [targetProblemCaseRef, setTargetProblemCaseRef] = useState<string | null>(null);
   const [targetProblemAction, setTargetProblemAction] = useState<'edit' | 'documents' | 'offers' | null>(null);
 
+  // Wizard Edit Mode State
+  const [editingCase, setEditingCase] = useState<DistressedVehicleCase | null>(null);
+
+  const handleStartEditCase = (caseItem: DistressedVehicleCase) => {
+    setEditingCase(caseItem);
+    handleNavigate('sell-wizard');
+  };
+
   // Listen for Supabase Authentication State (Vital for Google OAuth Redirect & Session Persistence)
   useEffect(() => {
     // 1. Explicitly check for OAuth Code exchange or OAuth Error in URL (from Google redirect)
@@ -224,7 +232,13 @@ export function App() {
       setTargetProblemCaseRef(targetRef || null);
       setTargetProblemAction('edit');
       handleNavigate('seller-portal');
-    } else if (notification.title.includes('مستندات') || notification.title.includes('أوراق')) {
+    } else if (
+      notification.type === 'document_rejected' || 
+      notification.type === 'document_requested' || 
+      notification.title.includes('مستندات') || 
+      notification.title.includes('أوراق') ||
+      notification.title.includes('رفض')
+    ) {
       setTargetProblemCaseRef(targetRef || null);
       setTargetProblemAction('documents');
       handleNavigate('seller-portal');
@@ -576,6 +590,8 @@ export function App() {
             onListingCreated={handleListingCreated}
             onNavigate={handleNavigate}
             onRequirePhoneCompletion={() => setShowCompletePhoneModal(true)}
+            editingCase={editingCase}
+            onFinishEdit={() => setEditingCase(null)}
             lang={lang}
           />
         )}
@@ -594,6 +610,7 @@ export function App() {
             onClearTargetProblem={() => {
               setTargetProblemAction(null);
             }}
+            onStartEditCase={handleStartEditCase}
           />
         )}
 

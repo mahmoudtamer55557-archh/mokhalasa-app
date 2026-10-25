@@ -8,7 +8,7 @@ import {
   Clock, CheckCircle2, AlertTriangle, Edit3, Phone, ArrowRight, 
   Banknote, FileText, UploadCloud, Tag, Bell, User, Check, X, 
   ChevronLeft, AlertCircle, Calendar, ShieldCheck, MessageSquare, 
-  ExternalLink, Car as CarIcon, Camera, Trash2
+  ExternalLink, Car as CarIcon, Camera, Trash2, Lock
 } from 'lucide-react';
 
 interface SellerCasePortalPageProps {
@@ -21,6 +21,7 @@ interface SellerCasePortalPageProps {
   targetProblemCaseRef?: string | null;
   targetProblemAction?: 'edit' | 'documents' | 'offers' | null;
   onClearTargetProblem?: () => void;
+  onStartEditCase?: (caseItem: DistressedVehicleCase) => void;
 }
 
 const COMMON_DEFECTS_LIST = [
@@ -41,7 +42,8 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
   lang = 'ar',
   targetProblemCaseRef,
   targetProblemAction,
-  onClearTargetProblem
+  onClearTargetProblem,
+  onStartEditCase
 }) => {
   const isAr = lang === 'ar';
 
@@ -50,6 +52,39 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
   const [dbOffers, setDbOffers] = useState<PurchaseOffer[]>([]);
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
   const [offerActionMsg, setOfferActionMsg] = useState<string | null>(null);
+
+  // Incomplete Draft State (Wizard Progress Saved in localStorage)
+  const [hasWizardDraft, setHasWizardDraft] = useState<boolean>(false);
+  const [draftCarTitle, setDraftCarTitle] = useState<string>('');
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('mokhalasa_wizard_draft');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && (parsed.currentStep > 1 || parsed.selectedMakeId || parsed.specs?.make)) {
+          setHasWizardDraft(true);
+          const makeName = parsed.selectedMakeId || parsed.specs?.make || 'سيارة';
+          const year = parsed.selectedYear || parsed.specs?.year || '';
+          setDraftCarTitle(`${makeName} ${year}`.trim());
+        } else {
+          setHasWizardDraft(false);
+        }
+      } else {
+        setHasWizardDraft(false);
+      }
+    } catch {
+      setHasWizardDraft(false);
+    }
+  }, []);
+
+  const handleDiscardDraft = () => {
+    if (window.confirm('هل تريد حذف هذه المسودة والبدء من جديد؟')) {
+      localStorage.removeItem('mokhalasa_wizard_draft');
+      setHasWizardDraft(false);
+      setDraftCarTitle('');
+    }
+  };
 
   // Map user's dbListings into DistressedVehicleCase format if not already in cases
   const dbConvertedCases = useMemo(() => {
@@ -214,10 +249,16 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
     return availableCases.find(c => c.caseReference === selectedCaseId) || availableCases[0] || null;
   }, [availableCases, selectedCaseId]);
 
+  // Matching Database Listing
+  const matchingDb = useMemo(() => {
+    if (!activeCase) return null;
+    return dbListings.find(l => l.case_reference === activeCase.caseReference || l.id === activeCase.vehicle.id) || null;
+  }, [dbListings, activeCase]);
+
   // Active Tab: 'details' | 'offers' | 'notifications' | 'documents'
   const [activeTab, setActiveTab] = useState<'details' | 'offers' | 'notifications' | 'documents'>('details');
 
-  // Edit Modal State
+  // Edit Modal State (Fallback if inline edit needed)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editPrice, setEditPrice] = useState<number>(0);
   const [editMileage, setEditMileage] = useState<number>(0);
@@ -237,6 +278,41 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
   const [docNotes, setDocNotes] = useState('');
   const [docsSaveSuccess, setDocsSaveSuccess] = useState(false);
   const [docsUploading, setDocsUploading] = useState(false);
+
+  // Sync existing documents from DB into local state
+  useEffect(() => {
+    if (matchingDb?.official_documents) {
+      const docs = matchingDb.official_documents;
+      setLicenseFrontUrl(docs.licenseFrontUrl || docs.licenseUrl || '');
+      setLicenseBackUrl(docs.licenseBackUrl || '');
+      setIdUrl(docs.nationalIdUrl || '');
+      setStatementUrl(docs.bankStatementUrl || '');
+      if (docs.notes) setDocNotes(docs.notes);
+    }
+  }, [matchingDb]);
+
+  // Verification & Rejection Statuses for Documents
+  const officialDocs = matchingDb?.official_documents;
+  const isGlobalDocsVerified = Boolean(matchingDb?.documents_verified);
+
+  const licenseFrontStatus = officialDocs?.licenseFrontStatus || (isGlobalDocsVerified ? 'verified' : 'pending');
+  const licenseFrontReason = officialDocs?.licenseFrontRejectReason;
+
+  const licenseBackStatus = officialDocs?.licenseBackStatus || (isGlobalDocsVerified ? 'verified' : 'pending');
+  const licenseBackReason = officialDocs?.licenseBackRejectReason;
+
+  const nationalIdStatus = officialDocs?.nationalIdStatus || (isGlobalDocsVerified ? 'verified' : 'pending');
+  const nationalIdReason = officialDocs?.nationalIdRejectReason;
+
+  const bankStatementStatus = officialDocs?.bankStatementStatus || (isGlobalDocsVerified ? 'verified' : 'pending');
+  const bankStatementReason = officialDocs?.bankStatementRejectReason;
+
+  const hasRejectedDocs = (
+    licenseFrontStatus === 'rejected' ||
+    licenseBackStatus === 'rejected' ||
+    nationalIdStatus === 'rejected' ||
+    bankStatementStatus === 'rejected'
+  );
 
   const handleCaseDocFile = (field: 'front' | 'back' | 'id' | 'statement', file: File | null) => {
     if (!file) return;
@@ -277,9 +353,13 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
     loadRealData();
   }, [customerUser]);
 
-  // Open Edit Modal
+  // Open Edit: Direct to Full 7-Step Wizard if onStartEditCase provided
   const handleOpenEditModal = () => {
     if (!activeCase) return;
+    if (onStartEditCase) {
+      onStartEditCase(activeCase);
+      return;
+    }
     setEditPrice(activeCase.vehicle.askingPrice);
     setEditMileage(activeCase.vehicle.mileage);
     setEditConditionStory(activeCase.sellerConditionStory || activeCase.vehicle.description || '');
@@ -299,14 +379,18 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
       }
     }
     if (targetProblemAction === 'edit' && activeCase) {
-      setEditPrice(activeCase.vehicle.askingPrice);
-      setEditMileage(activeCase.vehicle.mileage);
-      setEditConditionStory(activeCase.sellerConditionStory || activeCase.vehicle.description || '');
-      setEditDisclosedIssues(activeCase.disclosedIssues || []);
-      setEditContactTime(activeCase.seller.preferredContactTime || '');
-      setEditReasonNote('');
-      setIsEditModalOpen(true);
-      setEditSaveSuccess(false);
+      if (onStartEditCase) {
+        onStartEditCase(activeCase);
+      } else {
+        setEditPrice(activeCase.vehicle.askingPrice);
+        setEditMileage(activeCase.vehicle.mileage);
+        setEditConditionStory(activeCase.sellerConditionStory || activeCase.vehicle.description || '');
+        setEditDisclosedIssues(activeCase.disclosedIssues || []);
+        setEditContactTime(activeCase.seller.preferredContactTime || '');
+        setEditReasonNote('');
+        setIsEditModalOpen(true);
+        setEditSaveSuccess(false);
+      }
       onClearTargetProblem?.();
     } else if (targetProblemAction === 'documents') {
       setIsDocsModalOpen(true);
@@ -315,7 +399,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
       setActiveTab('offers');
       onClearTargetProblem?.();
     }
-  }, [targetProblemCaseRef, targetProblemAction, availableCases, activeCase, onClearTargetProblem]);
+  }, [targetProblemCaseRef, targetProblemAction, availableCases, activeCase, onClearTargetProblem, onStartEditCase]);
 
   const handleToggleDefect = (defect: string) => {
     setEditDisclosedIssues(prev => 
@@ -514,17 +598,49 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
     return (
       <div className="min-h-screen bg-brand-bg py-12 px-4 text-center">
         <div className="max-w-md mx-auto bg-white rounded-3xl p-8 border border-slate-200 shadow-card space-y-4">
-          <FileText className="w-12 h-12 text-slate-400 mx-auto" />
-          <h2 className="text-lg font-black text-brand-navy">لا توجد طلبات بيع مسجلة حالياً</h2>
-          <p className="text-xs text-slate-500">
-            يمكنك نشر إعلان بيع سيارتك المحملة بأقساط أو مديونية بسهولة عبر معالج البيع.
-          </p>
-          <button
-            onClick={() => onNavigate('sell-wizard')}
-            className="w-full py-3 rounded-xl bg-brand-green text-white font-extrabold text-xs shadow-md"
-          >
-            بيع سيارتك الآن
-          </button>
+          {hasWizardDraft ? (
+            <div className="bg-amber-50 border border-amber-300 rounded-2xl p-5 text-right space-y-3">
+              <div className="flex items-center gap-2 text-amber-900 font-black text-sm">
+                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                <span>فيه طلب أنت ما كملتهوش، حابب تكمله ولا لأ؟</span>
+              </div>
+              <p className="text-xs text-amber-800 leading-relaxed">
+                بدأت في إدخال بيانات سيارة ({draftCarTitle || 'مسودة الطلب'}) ولم تستكمل باقي الخطوات. يمكنك العودة وإتمامها الآن بضغطة واحدة.
+              </p>
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => onNavigate('sell-wizard')}
+                  className="flex-1 py-2.5 rounded-xl bg-brand-green text-white font-black text-xs shadow hover:bg-emerald-600 transition flex items-center justify-center gap-1.5"
+                >
+                  <span>استكمال الطلب الآن</span>
+                  <ArrowRight className="w-4 h-4 rotate-180" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDiscardDraft}
+                  className="px-3.5 py-2.5 rounded-xl bg-white border border-amber-300 text-amber-900 font-bold text-xs hover:bg-amber-100 transition"
+                >
+                  حذف المسودة
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <FileText className="w-12 h-12 text-slate-400 mx-auto" />
+              <h2 className="text-lg font-black text-brand-navy">لا توجد طلبات بيع مسجلة حالياً</h2>
+              <p className="text-xs text-slate-500">
+                يمكنك نشر إعلان بيع سيارتك المحملة بأقساط أو مديونية بسهولة عبر معالج البيع.
+              </p>
+              <button
+                type="button"
+                onClick={() => onNavigate('sell-wizard')}
+                className="w-full py-3 rounded-xl bg-brand-green text-white font-extrabold text-xs shadow-md"
+              >
+                بيع سيارتك الآن
+              </button>
+            </>
+          )}
         </div>
       </div>
     );
@@ -567,6 +683,84 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Draft Incomplete Prompt Banner (If user has an incomplete wizard draft) */}
+        {hasWizardDraft && (
+          <div className="bg-amber-50 border-2 border-amber-300 rounded-3xl p-5 shadow-sm text-xs text-amber-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fadeIn">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-amber-100 rounded-xl text-amber-700 flex-shrink-0 mt-0.5">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-black text-sm text-amber-900">
+                  فيه طلب أنت ما كملتهوش، حابب تكمله ولا لأ؟
+                </h4>
+                <p className="text-xs text-amber-800 mt-0.5">
+                  لديك بيانات مسودة محفوظة لسيارة ({draftCarTitle || 'بيانات سيارتك'}) تم البدء فيها عبر معالج البيع والتخارج ولم يتم إرسالها للمراجعة بعد.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => onNavigate('sell-wizard')}
+                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-black text-xs shadow-md transition flex items-center justify-center gap-1.5 whitespace-nowrap"
+              >
+                <span>استكمال الطلب الآن</span>
+                <ArrowRight className="w-4 h-4 rotate-180" />
+              </button>
+              <button
+                type="button"
+                onClick={handleDiscardDraft}
+                className="px-3.5 py-2.5 rounded-xl bg-white border border-amber-300 hover:bg-amber-100 text-amber-900 font-bold text-xs transition whitespace-nowrap"
+              >
+                حذف المسودة
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Document Rejection Alert Banner (When ops dashboard rejects a document with reason) */}
+        {hasRejectedDocs && (
+          <div className="bg-rose-50 border-2 border-rose-300 rounded-3xl p-5 text-xs text-rose-950 space-y-3 shadow-md animate-fadeIn">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 font-black text-sm text-rose-900">
+                <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0 animate-pulse" />
+                <span>تنبيه هام من الإدارة: تم فحص المستندات وهناك مستند مرفوض يلزم استبداله</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDocsModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shadow-sm transition flex items-center justify-center gap-1.5 whitespace-nowrap self-end sm:self-auto"
+              >
+                <UploadCloud className="w-4 h-4" />
+                <span>استبدال المستندات المرفوضة الآن</span>
+              </button>
+            </div>
+            <div className="space-y-1.5 bg-white/90 p-3.5 rounded-2xl border border-rose-200">
+              {licenseFrontStatus === 'rejected' && (
+                <p className="text-2xs text-rose-900">
+                  • <strong>رخصة السيارة (الوجه الأمامي):</strong> <span className="text-rose-700 font-bold">{licenseFrontReason || 'الصورة غير واضحة أو البيانات غير مطابقة'}</span>
+                </p>
+              )}
+              {licenseBackStatus === 'rejected' && (
+                <p className="text-2xs text-rose-900">
+                  • <strong>رخصة السيارة (الوجه الخلفي):</strong> <span className="text-rose-700 font-bold">{licenseBackReason || 'الصورة غير واضحة أو البيانات غير مطابقة'}</span>
+                </p>
+              )}
+              {nationalIdStatus === 'rejected' && (
+                <p className="text-2xs text-rose-900">
+                  • <strong>بطاقة الرقم القومي:</strong> <span className="text-rose-700 font-bold">{nationalIdReason || 'الصورة غير واضحة أو البطاقة غير سارية'}</span>
+                </p>
+              )}
+              {bankStatementStatus === 'rejected' && (
+                <p className="text-2xs text-rose-900">
+                  • <strong>بيان مديونية البنك:</strong> <span className="text-rose-700 font-bold">{bankStatementReason || 'المستند غير واضح أو منتهي الصلاحية'}</span>
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Multi-Request Switcher (If user has multiple vehicles) */}
         {availableCases.length > 1 && (
@@ -1403,13 +1597,30 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
             ) : (
               <form onSubmit={handleSaveDocs} className="space-y-3.5 text-xs max-h-[60vh] overflow-y-auto px-1">
                 {/* 1. License Front */}
-                <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-2">
+                <div className={`p-3 rounded-2xl border space-y-2 ${
+                  licenseFrontStatus === 'verified'
+                    ? 'bg-emerald-50/50 border-emerald-300'
+                    : licenseFrontStatus === 'rejected'
+                    ? 'bg-rose-50/60 border-rose-300'
+                    : 'bg-slate-50/80 border-slate-200'
+                }`}>
                   <div className="flex items-center justify-between">
                     <label className="font-black text-slate-800 flex items-center gap-1.5">
                       <span>1. رخصة السيارة (الوجه الأمامي)</span>
-                      <span className="text-3xs text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">أساسي</span>
+                      {licenseFrontStatus === 'verified' ? (
+                        <span className="text-3xs text-emerald-700 font-extrabold bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
+                          <Lock className="w-2.5 h-2.5" />
+                          معتمد رسمياً - غير قابل للتعديل
+                        </span>
+                      ) : licenseFrontStatus === 'rejected' ? (
+                        <span className="text-3xs text-rose-700 font-extrabold bg-rose-100 px-2.5 py-0.5 rounded-full border border-rose-300">
+                          ✕ مرفوض - يلزم استبداله
+                        </span>
+                      ) : (
+                        <span className="text-3xs text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">أساسي</span>
+                      )}
                     </label>
-                    {licenseFrontUrl && (
+                    {licenseFrontUrl && licenseFrontStatus !== 'verified' && (
                       <button
                         type="button"
                         onClick={() => setLicenseFrontUrl('')}
@@ -1421,7 +1632,37 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                     )}
                   </div>
 
-                  {licenseFrontUrl ? (
+                  {/* Rejection notice if rejected */}
+                  {licenseFrontStatus === 'rejected' && (
+                    <div className="p-2.5 bg-rose-100/80 rounded-xl border border-rose-300 text-rose-950 text-2xs space-y-0.5">
+                      <span className="font-black flex items-center gap-1 text-rose-900">
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                        سبب رفض الإدارة:
+                      </span>
+                      <p className="font-bold text-rose-800">
+                        {licenseFrontReason || 'الصورة غير واضحة أو البيانات غير متطابقة مع السيارة المعلنة.'}
+                      </p>
+                    </div>
+                  )}
+
+                  {licenseFrontStatus === 'verified' ? (
+                    <div className="flex items-center gap-3 p-2 bg-white rounded-xl border border-emerald-200 shadow-2xs">
+                      {licenseFrontUrl && (licenseFrontUrl.startsWith('data:image') || licenseFrontUrl.startsWith('http')) ? (
+                        <img src={licenseFrontUrl} alt="رخصة السيارة - أمامي" className="w-14 h-14 object-cover rounded-lg border border-slate-100" />
+                      ) : (
+                        <div className="w-14 h-14 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-700 font-bold text-xs">PDF</div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-2xs font-extrabold text-emerald-900 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          مستند معتمد ومطابق للسجلات
+                        </span>
+                        <p className="text-3xs text-slate-500 mt-0.5">
+                          تم تدقيق المستند واعتماده من فريق العمليات، ومقفل ضد أي تعديل.
+                        </p>
+                      </div>
+                    </div>
+                  ) : licenseFrontUrl ? (
                     <div className="flex items-center gap-3 p-2 bg-white rounded-xl border border-emerald-200 shadow-2xs">
                       {licenseFrontUrl.startsWith('data:image') || licenseFrontUrl.startsWith('http') ? (
                         <img src={licenseFrontUrl} alt="رخصة السيارة - أمامي" className="w-14 h-14 object-cover rounded-lg border border-slate-100" />
@@ -1431,7 +1672,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                       <div className="flex-1 min-w-0">
                         <span className="text-2xs font-extrabold text-emerald-900 flex items-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          تم إرفاق الوجه الأمامي
+                          {licenseFrontStatus === 'rejected' ? 'تم اختيار مستند بديل للمراجعة' : 'تم إرفاق الوجه الأمامي'}
                         </span>
                         <p className="text-3xs text-slate-500 truncate mt-0.5 dir-ltr text-right">
                           {licenseFrontUrl.slice(0, 45)}...
@@ -1439,9 +1680,13 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                       </div>
                     </div>
                   ) : (
-                    <label className="flex flex-col items-center justify-center p-3.5 border-2 border-dashed border-slate-300 hover:border-brand-green bg-white rounded-xl cursor-pointer transition text-center group">
-                      <Camera className="w-6 h-6 text-slate-400 group-hover:text-brand-green transition mb-1" />
-                      <span className="text-2xs font-bold text-slate-700 group-hover:text-brand-green transition">التقاط بالكاميرا أو اختيار صورة من الهاتف / الكمبيوتر</span>
+                    <label className={`flex flex-col items-center justify-center p-3.5 border-2 border-dashed bg-white rounded-xl cursor-pointer transition text-center group ${
+                      licenseFrontStatus === 'rejected' ? 'border-rose-400 hover:border-brand-green bg-rose-50/20' : 'border-slate-300 hover:border-brand-green'
+                    }`}>
+                      <Camera className={`w-6 h-6 mb-1 transition ${licenseFrontStatus === 'rejected' ? 'text-rose-500 group-hover:text-brand-green' : 'text-slate-400 group-hover:text-brand-green'}`} />
+                      <span className="text-2xs font-bold text-slate-700 group-hover:text-brand-green transition">
+                        {licenseFrontStatus === 'rejected' ? 'التقاط صورة جديدة واضحة أو رفع ملف بديل' : 'التقاط بالكاميرا أو اختيار صورة من الهاتف / الكمبيوتر'}
+                      </span>
                       <span className="text-3xs text-slate-400 mt-0.5">يدعم JPG, PNG, WEBP, PDF</span>
                       <input
                         type="file"
@@ -1455,13 +1700,30 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                 </div>
 
                 {/* 2. License Back */}
-                <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-2">
+                <div className={`p-3 rounded-2xl border space-y-2 ${
+                  licenseBackStatus === 'verified'
+                    ? 'bg-emerald-50/50 border-emerald-300'
+                    : licenseBackStatus === 'rejected'
+                    ? 'bg-rose-50/60 border-rose-300'
+                    : 'bg-slate-50/80 border-slate-200'
+                }`}>
                   <div className="flex items-center justify-between">
                     <label className="font-black text-slate-800 flex items-center gap-1.5">
                       <span>2. رخصة السيارة (الوجه الخلفي)</span>
-                      <span className="text-3xs text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">أساسي</span>
+                      {licenseBackStatus === 'verified' ? (
+                        <span className="text-3xs text-emerald-700 font-extrabold bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
+                          <Lock className="w-2.5 h-2.5" />
+                          معتمد رسمياً - غير قابل للتعديل
+                        </span>
+                      ) : licenseBackStatus === 'rejected' ? (
+                        <span className="text-3xs text-rose-700 font-extrabold bg-rose-100 px-2.5 py-0.5 rounded-full border border-rose-300">
+                          ✕ مرفوض - يلزم استبداله
+                        </span>
+                      ) : (
+                        <span className="text-3xs text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">أساسي</span>
+                      )}
                     </label>
-                    {licenseBackUrl && (
+                    {licenseBackUrl && licenseBackStatus !== 'verified' && (
                       <button
                         type="button"
                         onClick={() => setLicenseBackUrl('')}
@@ -1473,7 +1735,37 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                     )}
                   </div>
 
-                  {licenseBackUrl ? (
+                  {/* Rejection notice if rejected */}
+                  {licenseBackStatus === 'rejected' && (
+                    <div className="p-2.5 bg-rose-100/80 rounded-xl border border-rose-300 text-rose-950 text-2xs space-y-0.5">
+                      <span className="font-black flex items-center gap-1 text-rose-900">
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                        سبب رفض الإدارة:
+                      </span>
+                      <p className="font-bold text-rose-800">
+                        {licenseBackReason || 'الصورة غير واضحة أو البيانات غير متطابقة.'}
+                      </p>
+                    </div>
+                  )}
+
+                  {licenseBackStatus === 'verified' ? (
+                    <div className="flex items-center gap-3 p-2 bg-white rounded-xl border border-emerald-200 shadow-2xs">
+                      {licenseBackUrl && (licenseBackUrl.startsWith('data:image') || licenseBackUrl.startsWith('http')) ? (
+                        <img src={licenseBackUrl} alt="رخصة السيارة - خلفي" className="w-14 h-14 object-cover rounded-lg border border-slate-100" />
+                      ) : (
+                        <div className="w-14 h-14 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-700 font-bold text-xs">PDF</div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-2xs font-extrabold text-emerald-900 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          مستند معتمد ومطابق للسجلات
+                        </span>
+                        <p className="text-3xs text-slate-500 mt-0.5">
+                          تم تدقيق المستند واعتماده من فريق العمليات، ومقفل ضد أي تعديل.
+                        </p>
+                      </div>
+                    </div>
+                  ) : licenseBackUrl ? (
                     <div className="flex items-center gap-3 p-2 bg-white rounded-xl border border-emerald-200 shadow-2xs">
                       {licenseBackUrl.startsWith('data:image') || licenseBackUrl.startsWith('http') ? (
                         <img src={licenseBackUrl} alt="رخصة السيارة - خلفي" className="w-14 h-14 object-cover rounded-lg border border-slate-100" />
@@ -1483,7 +1775,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                       <div className="flex-1 min-w-0">
                         <span className="text-2xs font-extrabold text-emerald-900 flex items-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          تم إرفاق الوجه الخلفي
+                          {licenseBackStatus === 'rejected' ? 'تم اختيار مستند بديل للمراجعة' : 'تم إرفاق الوجه الخلفي'}
                         </span>
                         <p className="text-3xs text-slate-500 truncate mt-0.5 dir-ltr text-right">
                           {licenseBackUrl.slice(0, 45)}...
@@ -1491,9 +1783,13 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                       </div>
                     </div>
                   ) : (
-                    <label className="flex flex-col items-center justify-center p-3.5 border-2 border-dashed border-slate-300 hover:border-brand-green bg-white rounded-xl cursor-pointer transition text-center group">
-                      <Camera className="w-6 h-6 text-slate-400 group-hover:text-brand-green transition mb-1" />
-                      <span className="text-2xs font-bold text-slate-700 group-hover:text-brand-green transition">التقاط بالكاميرا أو اختيار صورة من الهاتف / الكمبيوتر</span>
+                    <label className={`flex flex-col items-center justify-center p-3.5 border-2 border-dashed bg-white rounded-xl cursor-pointer transition text-center group ${
+                      licenseBackStatus === 'rejected' ? 'border-rose-400 hover:border-brand-green bg-rose-50/20' : 'border-slate-300 hover:border-brand-green'
+                    }`}>
+                      <Camera className={`w-6 h-6 mb-1 transition ${licenseBackStatus === 'rejected' ? 'text-rose-500 group-hover:text-brand-green' : 'text-slate-400 group-hover:text-brand-green'}`} />
+                      <span className="text-2xs font-bold text-slate-700 group-hover:text-brand-green transition">
+                        {licenseBackStatus === 'rejected' ? 'التقاط صورة جديدة واضحة للوجه الخلفي' : 'التقاط بالكاميرا أو اختيار صورة من الهاتف / الكمبيوتر'}
+                      </span>
                       <span className="text-3xs text-slate-400 mt-0.5">يدعم JPG, PNG, WEBP, PDF</span>
                       <input
                         type="file"
@@ -1507,13 +1803,30 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                 </div>
 
                 {/* 3. National ID */}
-                <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-2">
+                <div className={`p-3 rounded-2xl border space-y-2 ${
+                  nationalIdStatus === 'verified'
+                    ? 'bg-emerald-50/50 border-emerald-300'
+                    : nationalIdStatus === 'rejected'
+                    ? 'bg-rose-50/60 border-rose-300'
+                    : 'bg-slate-50/80 border-slate-200'
+                }`}>
                   <div className="flex items-center justify-between">
                     <label className="font-black text-slate-800 flex items-center gap-1.5">
                       <span>3. بطاقة الرقم القومي</span>
-                      <span className="text-3xs text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded-full">للتحقق الإداري فقط</span>
+                      {nationalIdStatus === 'verified' ? (
+                        <span className="text-3xs text-emerald-700 font-extrabold bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
+                          <Lock className="w-2.5 h-2.5" />
+                          معتمد رسمياً - غير قابل للتعديل
+                        </span>
+                      ) : nationalIdStatus === 'rejected' ? (
+                        <span className="text-3xs text-rose-700 font-extrabold bg-rose-100 px-2.5 py-0.5 rounded-full border border-rose-300">
+                          ✕ مرفوض - يلزم استبداله
+                        </span>
+                      ) : (
+                        <span className="text-3xs text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded-full">للتحقق الإداري فقط</span>
+                      )}
                     </label>
-                    {idUrl && (
+                    {idUrl && nationalIdStatus !== 'verified' && (
                       <button
                         type="button"
                         onClick={() => setIdUrl('')}
@@ -1525,7 +1838,37 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                     )}
                   </div>
 
-                  {idUrl ? (
+                  {/* Rejection notice if rejected */}
+                  {nationalIdStatus === 'rejected' && (
+                    <div className="p-2.5 bg-rose-100/80 rounded-xl border border-rose-300 text-rose-950 text-2xs space-y-0.5">
+                      <span className="font-black flex items-center gap-1 text-rose-900">
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                        سبب رفض الإدارة:
+                      </span>
+                      <p className="font-bold text-rose-800">
+                        {nationalIdReason || 'الصورة غير واضحة أو البطاقة غير سارية.'}
+                      </p>
+                    </div>
+                  )}
+
+                  {nationalIdStatus === 'verified' ? (
+                    <div className="flex items-center gap-3 p-2 bg-white rounded-xl border border-emerald-200 shadow-2xs">
+                      {idUrl && (idUrl.startsWith('data:image') || idUrl.startsWith('http')) ? (
+                        <img src={idUrl} alt="بطاقة الرقم القومي" className="w-14 h-14 object-cover rounded-lg border border-slate-100" />
+                      ) : (
+                        <div className="w-14 h-14 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-700 font-bold text-xs">مستند</div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-2xs font-extrabold text-emerald-900 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          بطاقة محققة ومطابقة
+                        </span>
+                        <p className="text-3xs text-slate-500 mt-0.5">
+                          تم تدقيق المستند واعتماده من فريق العمليات، ومقفل ضد أي تعديل.
+                        </p>
+                      </div>
+                    </div>
+                  ) : idUrl ? (
                     <div className="flex items-center gap-3 p-2 bg-white rounded-xl border border-emerald-200 shadow-2xs">
                       {idUrl.startsWith('data:image') || idUrl.startsWith('http') ? (
                         <img src={idUrl} alt="بطاقة الرقم القومي" className="w-14 h-14 object-cover rounded-lg border border-slate-100" />
@@ -1535,7 +1878,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                       <div className="flex-1 min-w-0">
                         <span className="text-2xs font-extrabold text-emerald-900 flex items-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          تم إرفاق البطاقة القومية
+                          {nationalIdStatus === 'rejected' ? 'تم اختيار مستند بديل للمراجعة' : 'تم إرفاق البطاقة القومية'}
                         </span>
                         <p className="text-3xs text-slate-500 truncate mt-0.5 dir-ltr text-right">
                           {idUrl.slice(0, 45)}...
@@ -1543,9 +1886,13 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                       </div>
                     </div>
                   ) : (
-                    <label className="flex flex-col items-center justify-center p-3.5 border-2 border-dashed border-slate-300 hover:border-brand-green bg-white rounded-xl cursor-pointer transition text-center group">
-                      <Camera className="w-6 h-6 text-slate-400 group-hover:text-brand-green transition mb-1" />
-                      <span className="text-2xs font-bold text-slate-700 group-hover:text-brand-green transition">التقاط صورة البطاقة القومية</span>
+                    <label className={`flex flex-col items-center justify-center p-3.5 border-2 border-dashed bg-white rounded-xl cursor-pointer transition text-center group ${
+                      nationalIdStatus === 'rejected' ? 'border-rose-400 hover:border-brand-green bg-rose-50/20' : 'border-slate-300 hover:border-brand-green'
+                    }`}>
+                      <Camera className={`w-6 h-6 mb-1 transition ${nationalIdStatus === 'rejected' ? 'text-rose-500 group-hover:text-brand-green' : 'text-slate-400 group-hover:text-brand-green'}`} />
+                      <span className="text-2xs font-bold text-slate-700 group-hover:text-brand-green transition">
+                        {nationalIdStatus === 'rejected' ? 'رفع صورة واضحة ومحدثة لبطاقة الرقم القومي' : 'التقاط صورة البطاقة القومية'}
+                      </span>
                       <span className="text-3xs text-slate-400 mt-0.5">يدعم JPG, PNG, WEBP</span>
                       <input
                         type="file"
@@ -1559,13 +1906,30 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                 </div>
 
                 {/* 4. Bank Statement */}
-                <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-2">
+                <div className={`p-3 rounded-2xl border space-y-2 ${
+                  bankStatementStatus === 'verified'
+                    ? 'bg-emerald-50/50 border-emerald-300'
+                    : bankStatementStatus === 'rejected'
+                    ? 'bg-rose-50/60 border-rose-300'
+                    : 'bg-slate-50/80 border-slate-200'
+                }`}>
                   <div className="flex items-center justify-between">
                     <label className="font-black text-slate-800 flex items-center gap-1.5">
                       <span>4. بيان السداد المعجل / مديونية البنك</span>
-                      <span className="text-3xs text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">لتسوية التمويل</span>
+                      {bankStatementStatus === 'verified' ? (
+                        <span className="text-3xs text-emerald-700 font-extrabold bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
+                          <Lock className="w-2.5 h-2.5" />
+                          معتمد رسمياً - غير قابل للتعديل
+                        </span>
+                      ) : bankStatementStatus === 'rejected' ? (
+                        <span className="text-3xs text-rose-700 font-extrabold bg-rose-100 px-2.5 py-0.5 rounded-full border border-rose-300">
+                          ✕ مرفوض - يلزم استبداله
+                        </span>
+                      ) : (
+                        <span className="text-3xs text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">لتسوية التمويل</span>
+                      )}
                     </label>
-                    {statementUrl && (
+                    {statementUrl && bankStatementStatus !== 'verified' && (
                       <button
                         type="button"
                         onClick={() => setStatementUrl('')}
@@ -1577,7 +1941,37 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                     )}
                   </div>
 
-                  {statementUrl ? (
+                  {/* Rejection notice if rejected */}
+                  {bankStatementStatus === 'rejected' && (
+                    <div className="p-2.5 bg-rose-100/80 rounded-xl border border-rose-300 text-rose-950 text-2xs space-y-0.5">
+                      <span className="font-black flex items-center gap-1 text-rose-900">
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                        سبب رفض الإدارة:
+                      </span>
+                      <p className="font-bold text-rose-800">
+                        {bankStatementReason || 'المستند غير واضح أو منتهي الصلاحية.'}
+                      </p>
+                    </div>
+                  )}
+
+                  {bankStatementStatus === 'verified' ? (
+                    <div className="flex items-center gap-3 p-2 bg-white rounded-xl border border-emerald-200 shadow-2xs">
+                      {statementUrl && (statementUrl.startsWith('data:image') || statementUrl.startsWith('http')) ? (
+                        <img src={statementUrl} alt="بيان البنك" className="w-14 h-14 object-cover rounded-lg border border-slate-100" />
+                      ) : (
+                        <div className="w-14 h-14 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-700 font-bold text-xs">PDF</div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-2xs font-extrabold text-emerald-900 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          بيان بنكي معتمد ومطابق
+                        </span>
+                        <p className="text-3xs text-slate-500 mt-0.5">
+                          تم تدقيق المستند واعتماده من فريق العمليات، ومقفل ضد أي تعديل.
+                        </p>
+                      </div>
+                    </div>
+                  ) : statementUrl ? (
                     <div className="flex items-center gap-3 p-2 bg-white rounded-xl border border-emerald-200 shadow-2xs">
                       {statementUrl.startsWith('data:image') || statementUrl.startsWith('http') ? (
                         <img src={statementUrl} alt="بيان البنك" className="w-14 h-14 object-cover rounded-lg border border-slate-100" />
@@ -1587,7 +1981,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                       <div className="flex-1 min-w-0">
                         <span className="text-2xs font-extrabold text-emerald-900 flex items-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          تم إرفاق بيان السداد البنكي
+                          {bankStatementStatus === 'rejected' ? 'تم اختيار مستند بديل للمراجعة' : 'تم إرفاق بيان السداد البنكي'}
                         </span>
                         <p className="text-3xs text-slate-500 truncate mt-0.5 dir-ltr text-right">
                           {statementUrl.slice(0, 45)}...
@@ -1595,9 +1989,13 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                       </div>
                     </div>
                   ) : (
-                    <label className="flex flex-col items-center justify-center p-3.5 border-2 border-dashed border-slate-300 hover:border-brand-green bg-white rounded-xl cursor-pointer transition text-center group">
-                      <UploadCloud className="w-6 h-6 text-slate-400 group-hover:text-brand-green transition mb-1" />
-                      <span className="text-2xs font-bold text-slate-700 group-hover:text-brand-green transition">رفع بيان المديونية البنكية أو المخالصة</span>
+                    <label className={`flex flex-col items-center justify-center p-3.5 border-2 border-dashed bg-white rounded-xl cursor-pointer transition text-center group ${
+                      bankStatementStatus === 'rejected' ? 'border-rose-400 hover:border-brand-green bg-rose-50/20' : 'border-slate-300 hover:border-brand-green'
+                    }`}>
+                      <UploadCloud className={`w-6 h-6 mb-1 transition ${bankStatementStatus === 'rejected' ? 'text-rose-500 group-hover:text-brand-green' : 'text-slate-400 group-hover:text-brand-green'}`} />
+                      <span className="text-2xs font-bold text-slate-700 group-hover:text-brand-green transition">
+                        {bankStatementStatus === 'rejected' ? 'رفع بيان مديونية بنكية أو مخالصة حديثة' : 'رفع بيان المديونية البنكية أو المخالصة'}
+                      </span>
                       <span className="text-3xs text-slate-400 mt-0.5">يدعم صورة أو مستند PDF</span>
                       <input
                         type="file"

@@ -46,11 +46,27 @@ export const DocumentChecklist: React.FC<DocumentChecklistProps> = ({
   };
 
   const getStatusBadge = (doc: RequiredDocumentMetadata) => {
+    if (doc.verificationStatus === 'verified' || doc.verified) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-3xs font-extrabold bg-emerald-100 text-emerald-900 border border-emerald-300">
+          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+          <span>✓ معتمد رسمياً</span>
+        </span>
+      );
+    }
+    if (doc.verificationStatus === 'rejected') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-3xs font-extrabold bg-rose-100 text-rose-900 border border-rose-300 animate-pulse">
+          <AlertCircle className="w-3 h-3 text-rose-600" />
+          <span>✕ مرفوض - يلزم استبداله</span>
+        </span>
+      );
+    }
     if (doc.status === 'uploaded') {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-3xs font-extrabold bg-emerald-100 text-emerald-800">
           <CheckCircle2 className="w-3 h-3 text-brand-green" />
-          <span>تم الرفع بنجاح</span>
+          <span>تم الرفع (قيد الفحص)</span>
         </span>
       );
     }
@@ -106,18 +122,24 @@ export const DocumentChecklist: React.FC<DocumentChecklistProps> = ({
       {/* Checklist items */}
       <div className="space-y-3">
         {documents.map((doc) => {
-          const isUploaded = doc.status === 'uploaded';
+          const isVerified = doc.verificationStatus === 'verified' || doc.verified;
+          const isRejected = doc.verificationStatus === 'rejected';
+          const isUploaded = doc.status === 'uploaded' || !!doc.uploadedFileName || isVerified;
           const isExpanded = activeInfoDocId === doc.id;
 
           return (
             <div
               key={doc.id}
               className={`rounded-2xl border transition-all p-4 ${
-                isUploaded
-                  ? 'bg-emerald-50/40 border-brand-green/30'
-                  : doc.isRequired
-                    ? 'bg-white border-slate-200 shadow-sm'
-                    : 'bg-slate-50 border-slate-200/80'
+                isVerified
+                  ? 'bg-emerald-50/50 border-emerald-300'
+                  : isRejected
+                    ? 'bg-rose-50/60 border-rose-300 ring-1 ring-rose-200'
+                    : isUploaded
+                      ? 'bg-emerald-50/30 border-brand-green/30'
+                      : doc.isRequired
+                        ? 'bg-white border-slate-200 shadow-sm'
+                        : 'bg-slate-50 border-slate-200/80'
               }`}
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -125,7 +147,7 @@ export const DocumentChecklist: React.FC<DocumentChecklistProps> = ({
                 {/* Doc Name and Badge */}
                 <div className="space-y-1 flex-1">
                   <div className="flex items-center gap-2">
-                    <FileText className={`w-4 h-4 ${isUploaded ? 'text-brand-green' : 'text-slate-500'}`} />
+                    <FileText className={`w-4 h-4 ${isVerified ? 'text-emerald-600' : isRejected ? 'text-rose-600' : isUploaded ? 'text-brand-green' : 'text-slate-500'}`} />
                     <span className="font-extrabold text-xs text-brand-navy">{doc.nameAr}</span>
                     {getStatusBadge(doc)}
                   </div>
@@ -144,7 +166,26 @@ export const DocumentChecklist: React.FC<DocumentChecklistProps> = ({
                     <span>لماذا يُطلب؟</span>
                   </button>
 
-                  {isUploaded ? (
+                  {/* 1. If document is officially verified: Locked (Cannot edit or delete) */}
+                  {isVerified ? (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-900 text-2xs font-bold border border-emerald-300 shadow-2xs">
+                      <Lock className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>معتمد - غير قابل للتعديل</span>
+                    </div>
+                  ) : isRejected ? (
+                    /* 2. If rejected: Allow uploading replacement */
+                    <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition animate-bounce">
+                      <Upload className="w-3.5 h-3.5 text-white" />
+                      <span>استبدال المستند المرفوض</span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,application/pdf"
+                        onChange={(e) => handleFileChange(doc.id, e)}
+                        className="hidden"
+                      />
+                    </label>
+                  ) : isUploaded ? (
+                    /* 3. If uploaded but pending: Allow delete/replace */
                     <div className="flex items-center gap-1">
                       <div className="text-3xs bg-emerald-100 text-emerald-800 px-2 py-1 rounded-md font-mono max-w-[130px] truncate">
                         {doc.uploadedFileName || 'ملف مرفق'}
@@ -159,6 +200,7 @@ export const DocumentChecklist: React.FC<DocumentChecklistProps> = ({
                       </button>
                     </div>
                   ) : (
+                    /* 4. Not yet uploaded */
                     <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-brand-navy hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition">
                       <Upload className="w-3.5 h-3.5 text-brand-green" />
                       <span>رفع المستند</span>
@@ -173,6 +215,19 @@ export const DocumentChecklist: React.FC<DocumentChecklistProps> = ({
                 </div>
 
               </div>
+
+              {/* Rejection Notice Banner */}
+              {isRejected && (
+                <div className="mt-3 p-3 rounded-xl bg-rose-100/90 border border-rose-300 text-xs space-y-1 animate-fadeIn">
+                  <div className="flex items-center gap-1.5 font-bold text-rose-900">
+                    <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                    <span>ملاحظة مسؤول العمليات (سبب الرفض):</span>
+                  </div>
+                  <p className="text-2xs text-rose-950 font-medium pr-5 leading-relaxed bg-white/70 p-2 rounded-lg border border-rose-200">
+                    {doc.rejectionReason || 'يرجى إعادة رفع صورة واضحة ومطابقة للبيانات.'}
+                  </p>
+                </div>
+              )}
 
               {/* Collapsible Info Drawer: Legal Authority and Purpose */}
               {isExpanded && (

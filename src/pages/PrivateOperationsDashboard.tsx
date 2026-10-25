@@ -430,6 +430,50 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
     }
   };
 
+  // Specific Document Rejection Modal State
+  const [docRejectModal, setDocRejectModal] = useState<{
+    isOpen: boolean;
+    listingId: string;
+    docField: 'licenseFront' | 'licenseBack' | 'nationalId' | 'bankStatement';
+    docLabel: string;
+    presetReason: string;
+    customReason: string;
+  }>({
+    isOpen: false,
+    listingId: '',
+    docField: 'licenseFront',
+    docLabel: '',
+    presetReason: 'الصورة غير واضحة وبها انعكاس ضوء أو تمويه',
+    customReason: ''
+  });
+
+  // Handle Review Specific Document (Individual Verification or Rejection)
+  const handleReviewSpecificDocument = async (
+    listingId: string, 
+    docField: 'licenseFront' | 'licenseBack' | 'nationalId' | 'bankStatement', 
+    decision: 'verify' | 'reject', 
+    rejectReason?: string
+  ) => {
+    const res = await listingService.reviewSpecificDocument(
+      listingId,
+      docField,
+      decision,
+      rejectReason,
+      currentStaffUser?.name || 'مسؤول فحص المستندات'
+    );
+    if (res.success) {
+      alert(`✅ ${res.message}`);
+      await loadModerationListings();
+      if (selectedModerationListing && selectedModerationListing.id === listingId) {
+        const fresh = await listingService.getAdminListings('all');
+        const found = fresh.listings.find((l: DatabaseCarListing) => l.id === listingId);
+        if (found) setSelectedModerationListing(found);
+      }
+    } else {
+      alert(`خطأ: ${res.message}`);
+    }
+  };
+
   // Document Lightbox Preview State
   const [docPreviewUrl, setDocPreviewUrl] = useState<string | null>(null);
   const [docPreviewTitle, setDocPreviewTitle] = useState<string>('');
@@ -2231,82 +2275,314 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
               </div>
 
               {selectedModerationListing.official_documents ? (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-3xs">
-                  {/* License Front */}
-                  <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1">
-                    <span className="text-slate-400 block font-bold">الرخصة (وجه أمامي):</span>
-                    {(selectedModerationListing.official_documents.licenseFrontUrl || selectedModerationListing.official_documents.licenseUrl) ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDocPreviewUrl(selectedModerationListing.official_documents?.licenseFrontUrl || selectedModerationListing.official_documents?.licenseUrl || null);
-                          setDocPreviewTitle('رخصة السيارة (الوجه الأمامي)');
-                        }}
-                        className="text-emerald-400 hover:text-emerald-300 font-bold underline truncate block text-left w-full text-3xs"
-                      >
-                        معاينة وفحص ↗
-                      </button>
-                    ) : (
-                      <span className="text-slate-600 block">لم ترفع بعد</span>
-                    )}
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1 text-3xs">
+                  {/* 1. License Front */}
+                  {(() => {
+                    const doc = selectedModerationListing.official_documents;
+                    const url = doc?.licenseFrontUrl || doc?.licenseUrl;
+                    const status = doc?.licenseFrontStatus || 'pending';
+                    const reason = doc?.licenseFrontRejectReason;
+                    return (
+                      <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2 flex flex-col justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-300 font-bold">الرخصة (وجه أمامي)</span>
+                            <span className={`px-2 py-0.5 rounded-full text-4xs font-black ${
+                              status === 'verified'
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                : status === 'rejected'
+                                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                                : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                            }`}>
+                              {status === 'verified' ? '✓ معتمد' : status === 'rejected' ? '✕ مرفوض' : '⏳ قيد الفحص'}
+                            </span>
+                          </div>
+                          {reason && (
+                            <p className="text-4xs text-rose-300 bg-rose-950/60 p-1.5 rounded-lg border border-rose-800/80">
+                              السبب: {reason}
+                            </p>
+                          )}
+                          {url ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDocPreviewUrl(url);
+                                setDocPreviewTitle('رخصة السيارة (الوجه الأمامي)');
+                              }}
+                              className="text-emerald-400 hover:text-emerald-300 font-bold underline block text-left w-full text-3xs py-0.5"
+                            >
+                              معاينة وفحص ↗
+                            </button>
+                          ) : (
+                            <span className="text-slate-600 block text-4xs">لم يرفع بعد</span>
+                          )}
+                        </div>
 
-                  {/* License Back */}
-                  <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1">
-                    <span className="text-slate-400 block font-bold">الرخصة (وجه خلفي):</span>
-                    {selectedModerationListing.official_documents.licenseBackUrl ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDocPreviewUrl(selectedModerationListing.official_documents?.licenseBackUrl || null);
-                          setDocPreviewTitle('رخصة السيارة (الوجه الخلفي)');
-                        }}
-                        className="text-emerald-400 hover:text-emerald-300 font-bold underline truncate block text-left w-full text-3xs"
-                      >
-                        معاينة وفحص ↗
-                      </button>
-                    ) : (
-                      <span className="text-slate-600 block">لم ترفع بعد</span>
-                    )}
-                  </div>
+                        {url && (
+                          <div className="flex items-center gap-1.5 pt-1 border-t border-slate-900">
+                            {status !== 'verified' && (
+                              <button
+                                type="button"
+                                onClick={() => handleReviewSpecificDocument(selectedModerationListing.id, 'licenseFront', 'verify')}
+                                className="flex-1 py-1 rounded-lg bg-emerald-950 border border-emerald-700 text-emerald-300 font-bold text-4xs hover:bg-emerald-900 transition flex items-center justify-center gap-1"
+                              >
+                                <Check className="w-2.5 h-2.5" />
+                                <span>اعتماد</span>
+                              </button>
+                            )}
+                            {status !== 'rejected' && (
+                              <button
+                                type="button"
+                                onClick={() => setDocRejectModal({
+                                  isOpen: true,
+                                  listingId: selectedModerationListing.id,
+                                  docField: 'licenseFront',
+                                  docLabel: 'رخصة السيارة (الوجه الأمامي)',
+                                  presetReason: 'الصورة غير واضحة وبها انعكاس ضوء أو تمويه',
+                                  customReason: ''
+                                })}
+                                className="flex-1 py-1 rounded-lg bg-rose-950 border border-rose-800 text-rose-300 font-bold text-4xs hover:bg-rose-900 transition flex items-center justify-center gap-1"
+                              >
+                                <X className="w-2.5 h-2.5" />
+                                <span>رفض وسبب</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
-                  {/* National ID */}
-                  <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1">
-                    <span className="text-slate-400 block font-bold">بطاقة الرقم القومي:</span>
-                    {selectedModerationListing.official_documents.nationalIdUrl ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDocPreviewUrl(selectedModerationListing.official_documents?.nationalIdUrl || null);
-                          setDocPreviewTitle('بطاقة الرقم القومي للمالك');
-                        }}
-                        className="text-emerald-400 hover:text-emerald-300 font-bold underline truncate block text-left w-full text-3xs"
-                      >
-                        معاينة وفحص ↗
-                      </button>
-                    ) : (
-                      <span className="text-slate-600 block">لم ترفع بعد</span>
-                    )}
-                  </div>
+                  {/* 2. License Back */}
+                  {(() => {
+                    const doc = selectedModerationListing.official_documents;
+                    const url = doc?.licenseBackUrl;
+                    const status = doc?.licenseBackStatus || 'pending';
+                    const reason = doc?.licenseBackRejectReason;
+                    return (
+                      <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2 flex flex-col justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-300 font-bold">الرخصة (وجه خلفي)</span>
+                            <span className={`px-2 py-0.5 rounded-full text-4xs font-black ${
+                              status === 'verified'
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                : status === 'rejected'
+                                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                                : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                            }`}>
+                              {status === 'verified' ? '✓ معتمد' : status === 'rejected' ? '✕ مرفوض' : '⏳ قيد الفحص'}
+                            </span>
+                          </div>
+                          {reason && (
+                            <p className="text-4xs text-rose-300 bg-rose-950/60 p-1.5 rounded-lg border border-rose-800/80">
+                              السبب: {reason}
+                            </p>
+                          )}
+                          {url ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDocPreviewUrl(url);
+                                setDocPreviewTitle('رخصة السيارة (الوجه الخلفي)');
+                              }}
+                              className="text-emerald-400 hover:text-emerald-300 font-bold underline block text-left w-full text-3xs py-0.5"
+                            >
+                              معاينة وفحص ↗
+                            </button>
+                          ) : (
+                            <span className="text-slate-600 block text-4xs">لم يرفع بعد</span>
+                          )}
+                        </div>
 
-                  {/* Bank Payoff / Statement */}
-                  <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1">
-                    <span className="text-slate-400 block font-bold">بيان البنك / المخالصة:</span>
-                    {selectedModerationListing.official_documents.bankStatementUrl ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDocPreviewUrl(selectedModerationListing.official_documents?.bankStatementUrl || null);
-                          setDocPreviewTitle('بيان المديونية / مخالصة البنك');
-                        }}
-                        className="text-emerald-400 hover:text-emerald-300 font-bold underline truncate block text-left w-full text-3xs"
-                      >
-                        معاينة وفحص ↗
-                      </button>
-                    ) : (
-                      <span className="text-slate-600 block">لم يرفع بعد</span>
-                    )}
-                  </div>
+                        {url && (
+                          <div className="flex items-center gap-1.5 pt-1 border-t border-slate-900">
+                            {status !== 'verified' && (
+                              <button
+                                type="button"
+                                onClick={() => handleReviewSpecificDocument(selectedModerationListing.id, 'licenseBack', 'verify')}
+                                className="flex-1 py-1 rounded-lg bg-emerald-950 border border-emerald-700 text-emerald-300 font-bold text-4xs hover:bg-emerald-900 transition flex items-center justify-center gap-1"
+                              >
+                                <Check className="w-2.5 h-2.5" />
+                                <span>اعتماد</span>
+                              </button>
+                            )}
+                            {status !== 'rejected' && (
+                              <button
+                                type="button"
+                                onClick={() => setDocRejectModal({
+                                  isOpen: true,
+                                  listingId: selectedModerationListing.id,
+                                  docField: 'licenseBack',
+                                  docLabel: 'رخصة السيارة (الوجه الخلفي)',
+                                  presetReason: 'الصورة غير واضحة وبها انعكاس ضوء أو تمويه',
+                                  customReason: ''
+                                })}
+                                className="flex-1 py-1 rounded-lg bg-rose-950 border border-rose-800 text-rose-300 font-bold text-4xs hover:bg-rose-900 transition flex items-center justify-center gap-1"
+                              >
+                                <X className="w-2.5 h-2.5" />
+                                <span>رفض وسبب</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* 3. National ID */}
+                  {(() => {
+                    const doc = selectedModerationListing.official_documents;
+                    const url = doc?.nationalIdUrl;
+                    const status = doc?.nationalIdStatus || 'pending';
+                    const reason = doc?.nationalIdRejectReason;
+                    return (
+                      <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2 flex flex-col justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-300 font-bold">بطاقة الرقم القومي</span>
+                            <span className={`px-2 py-0.5 rounded-full text-4xs font-black ${
+                              status === 'verified'
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                : status === 'rejected'
+                                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                                : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                            }`}>
+                              {status === 'verified' ? '✓ معتمد' : status === 'rejected' ? '✕ مرفوض' : '⏳ قيد الفحص'}
+                            </span>
+                          </div>
+                          {reason && (
+                            <p className="text-4xs text-rose-300 bg-rose-950/60 p-1.5 rounded-lg border border-rose-800/80">
+                              السبب: {reason}
+                            </p>
+                          )}
+                          {url ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDocPreviewUrl(url);
+                                setDocPreviewTitle('بطاقة الرقم القومي');
+                              }}
+                              className="text-emerald-400 hover:text-emerald-300 font-bold underline block text-left w-full text-3xs py-0.5"
+                            >
+                              معاينة وفحص ↗
+                            </button>
+                          ) : (
+                            <span className="text-slate-600 block text-4xs">لم يرفع بعد</span>
+                          )}
+                        </div>
+
+                        {url && (
+                          <div className="flex items-center gap-1.5 pt-1 border-t border-slate-900">
+                            {status !== 'verified' && (
+                              <button
+                                type="button"
+                                onClick={() => handleReviewSpecificDocument(selectedModerationListing.id, 'nationalId', 'verify')}
+                                className="flex-1 py-1 rounded-lg bg-emerald-950 border border-emerald-700 text-emerald-300 font-bold text-4xs hover:bg-emerald-900 transition flex items-center justify-center gap-1"
+                              >
+                                <Check className="w-2.5 h-2.5" />
+                                <span>اعتماد</span>
+                              </button>
+                            )}
+                            {status !== 'rejected' && (
+                              <button
+                                type="button"
+                                onClick={() => setDocRejectModal({
+                                  isOpen: true,
+                                  listingId: selectedModerationListing.id,
+                                  docField: 'nationalId',
+                                  docLabel: 'بطاقة الرقم القومي',
+                                  presetReason: 'الصورة غير واضحة أو البطاقة غير سارية',
+                                  customReason: ''
+                                })}
+                                className="flex-1 py-1 rounded-lg bg-rose-950 border border-rose-800 text-rose-300 font-bold text-4xs hover:bg-rose-900 transition flex items-center justify-center gap-1"
+                              >
+                                <X className="w-2.5 h-2.5" />
+                                <span>رفض وسبب</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* 4. Bank Statement */}
+                  {(() => {
+                    const doc = selectedModerationListing.official_documents;
+                    const url = doc?.bankStatementUrl;
+                    const status = doc?.bankStatementStatus || 'pending';
+                    const reason = doc?.bankStatementRejectReason;
+                    return (
+                      <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2 flex flex-col justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-300 font-bold">بيان البنك / المخالصة</span>
+                            <span className={`px-2 py-0.5 rounded-full text-4xs font-black ${
+                              status === 'verified'
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                : status === 'rejected'
+                                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                                : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                            }`}>
+                              {status === 'verified' ? '✓ معتمد' : status === 'rejected' ? '✕ مرفوض' : '⏳ قيد الفحص'}
+                            </span>
+                          </div>
+                          {reason && (
+                            <p className="text-4xs text-rose-300 bg-rose-950/60 p-1.5 rounded-lg border border-rose-800/80">
+                              السبب: {reason}
+                            </p>
+                          )}
+                          {url ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDocPreviewUrl(url);
+                                setDocPreviewTitle('بيان المديونية البنكية');
+                              }}
+                              className="text-emerald-400 hover:text-emerald-300 font-bold underline block text-left w-full text-3xs py-0.5"
+                            >
+                              معاينة وفحص ↗
+                            </button>
+                          ) : (
+                            <span className="text-slate-600 block text-4xs">لم يرفع بعد</span>
+                          )}
+                        </div>
+
+                        {url && (
+                          <div className="flex items-center gap-1.5 pt-1 border-t border-slate-900">
+                            {status !== 'verified' && (
+                              <button
+                                type="button"
+                                onClick={() => handleReviewSpecificDocument(selectedModerationListing.id, 'bankStatement', 'verify')}
+                                className="flex-1 py-1 rounded-lg bg-emerald-950 border border-emerald-700 text-emerald-300 font-bold text-4xs hover:bg-emerald-900 transition flex items-center justify-center gap-1"
+                              >
+                                <Check className="w-2.5 h-2.5" />
+                                <span>اعتماد</span>
+                              </button>
+                            )}
+                            {status !== 'rejected' && (
+                              <button
+                                type="button"
+                                onClick={() => setDocRejectModal({
+                                  isOpen: true,
+                                  listingId: selectedModerationListing.id,
+                                  docField: 'bankStatement',
+                                  docLabel: 'بيان المديونية / مخالصة البنك',
+                                  presetReason: 'المستند غير واضح أو منتهي الصلاحية',
+                                  customReason: ''
+                                })}
+                                className="flex-1 py-1 rounded-lg bg-rose-950 border border-rose-800 text-rose-300 font-bold text-4xs hover:bg-rose-900 transition flex items-center justify-center gap-1"
+                              >
+                                <X className="w-2.5 h-2.5" />
+                                <span>رفض وسبب</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               ) : (
                 <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-3xs text-slate-500 text-center">
@@ -2839,6 +3115,103 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                 className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold"
               >
                 إغلاق المعاينة
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL: DOCUMENT REJECTION WITH PRESET & CUSTOM REASON          */}
+      {/* ============================================================== */}
+      {docRejectModal.isOpen && (
+        <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 rounded-3xl border border-slate-800 max-w-lg w-full p-6 space-y-4 animate-scaleUp shadow-2xl text-xs">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2 text-rose-400 font-black text-sm">
+                <AlertTriangle className="w-5 h-5" />
+                <span>رفض مستند: {docRejectModal.docLabel}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDocRejectModal(prev => ({ ...prev, isOpen: false }))}
+                className="text-slate-400 hover:text-white p-1 text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-2xs text-slate-300 leading-relaxed">
+              يرجى تحديد سبب رفض المستند. سيتم إشعار العميل فوراً وتوجيهه مباشرة لرفع مستند بديل مطابق.
+            </p>
+
+            <div className="space-y-2">
+              <label className="text-3xs font-bold text-slate-400 block">اختر من الأسباب الشائعة:</label>
+              <div className="space-y-1.5">
+                {[
+                  'الصورة غير واضحة وبها انعكاس ضوء أو تمويه',
+                  'رخصة السيارة منتهية الصلاحية ويلزم تجديدها',
+                  'البيانات غير مطابقة لبيانات السيارة المعلنة',
+                  'مطلوب تصوير الوجهين بوضوح كامل',
+                  'بيان مديونية البنك قديم أو غير مختوم',
+                  'بطاقة الرقم القومي منتهية أو غير واضحة'
+                ].map(preset => (
+                  <label
+                    key={preset}
+                    className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition ${
+                      docRejectModal.presetReason === preset
+                        ? 'bg-rose-950/40 border-rose-500/60 text-rose-200'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="docRejectPreset"
+                      checked={docRejectModal.presetReason === preset}
+                      onChange={() => setDocRejectModal(prev => ({ ...prev, presetReason: preset }))}
+                      className="accent-rose-500"
+                    />
+                    <span className="text-2xs font-medium">{preset}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-3xs font-bold text-slate-400 block">أو اكتب سبباً مخصصاً للعميل:</label>
+              <input
+                type="text"
+                value={docRejectModal.customReason}
+                onChange={(e) => setDocRejectModal(prev => ({ ...prev, customReason: e.target.value }))}
+                placeholder="توضيح إضافي للمشكلة بالمستند..."
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="pt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const finalReason = docRejectModal.customReason.trim() || docRejectModal.presetReason;
+                  handleReviewSpecificDocument(
+                    docRejectModal.listingId,
+                    docRejectModal.docField,
+                    'reject',
+                    finalReason
+                  );
+                  setDocRejectModal(prev => ({ ...prev, isOpen: false }));
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-md transition flex items-center justify-center gap-1.5"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>تأكيد رفض المستند وإشعار العميل</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDocRejectModal(prev => ({ ...prev, isOpen: false }))}
+                className="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs hover:bg-slate-700 transition"
+              >
+                إلغاء
               </button>
             </div>
           </div>

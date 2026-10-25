@@ -415,11 +415,14 @@ export interface InAppNotification {
     | 'offer_communicated' 
     | 'offer_accepted' 
     | 'offer_rejected' 
+    | 'document_rejected'
+    | 'document_requested'
     | 'general';
   title: string;
   message: string;
   linkView?: string;
   relatedId?: string;
+  targetDocField?: string;
   isRead: boolean;
   createdAt: string;
 }
@@ -624,6 +627,9 @@ export interface RequiredDocumentMetadata {
   uploadedFileSize?: string;
   uploadedAt?: string;
   status: 'required' | 'optional' | 'uploaded' | 'under_review' | 'not_applicable';
+  verificationStatus?: 'pending' | 'verified' | 'rejected';
+  rejectionReason?: string;
+  fileUrl?: string;
 }
 
 export type PhotoSlotType = 
