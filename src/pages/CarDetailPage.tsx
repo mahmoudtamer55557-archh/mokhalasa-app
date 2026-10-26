@@ -136,7 +136,7 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
   );
 
   return (
-    <div className="min-h-screen bg-brand-bg py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-brand-bg py-8 px-4 sm:px-6 lg:px-8" dir={isAr ? 'rtl' : 'ltr'}>
       <div className="max-w-6xl mx-auto space-y-6">
         
         {/* Top Navigation & Breadcrumbs */}
@@ -145,8 +145,8 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
             onClick={onBack}
             className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-navy hover:text-brand-green transition"
           >
-            <ArrowRight className="w-4 h-4" />
-            <span>{isAr ? 'العودة إلى قائمة السيارات المتعثرة' : 'Back to Distressed Listings'}</span>
+            <ArrowRight className="w-4 h-4 rtl:rotate-0 ltr:rotate-180" />
+            <span>{isAr ? 'العودة إلى سوق السيارات' : 'Back to Car Marketplace'}</span>
           </button>
 
           <div className="flex items-center gap-2">
@@ -436,7 +436,7 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
                       <span>{isAr ? 'نظام التقسيط المباشر (بدون بنك):' : 'Direct Installment Plan:'}</span>
                     </span>
                     <span className="bg-amber-100 text-amber-900 font-black px-2.5 py-0.5 rounded-full text-[10px]">
-                      {car.directInstallment?.sellerType === 'showroom' ? 'معرض سيارات معتمد' : 'مالك مباشر'}
+                      {car.directInstallment?.sellerType === 'showroom' ? (isAr ? 'معرض سيارات معتمد' : 'Certified Showroom') : (isAr ? 'مالك مباشر' : 'Direct Owner')}
                     </span>
                   </div>
 

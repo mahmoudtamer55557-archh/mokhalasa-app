@@ -658,7 +658,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
 
   if (!activeCase && archivedCases.length === 0) {
     return (
-      <div className="min-h-screen bg-brand-bg py-12 px-4 text-center">
+      <div className="min-h-screen bg-brand-bg py-12 px-4 text-center" dir={isAr ? 'rtl' : 'ltr'}>
         <div className="max-w-md mx-auto bg-white rounded-3xl p-8 border border-slate-200 shadow-card space-y-4">
           {hasWizardDraft ? (
             <div className="bg-amber-50 border border-amber-300 rounded-2xl p-5 text-right space-y-3">
@@ -709,7 +709,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-brand-bg py-8 px-4 sm:px-6 lg:px-8 font-cairo">
+    <div className="min-h-screen bg-brand-bg py-8 px-4 sm:px-6 lg:px-8 font-cairo" dir={isAr ? 'rtl' : 'ltr'}>
       <div className="max-w-5xl mx-auto space-y-6">
         
         {/* Top Header */}

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import MokhalasaSvgLogo from '../brand/MokhalasaSvgLogo';
 import { CustomerUser, InAppNotification } from '../../types';
+import { translations } from '../../utils/translations';
 import { 
   Menu, X, Globe, PlusCircle, Car as CarIcon, 
   Key, Lock, User, LogOut, ChevronDown, FileText,
@@ -48,6 +49,7 @@ export const Header: React.FC<HeaderProps> = ({
   const notifRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
   const isAr = lang === 'ar';
+  const t = translations[lang] || translations.ar;
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -89,9 +91,15 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex-shrink-0 flex items-center">
             <MokhalasaSvgLogo
               variant="dark"
+              height={36}
+              onClick={() => handleNav('home')}
+              className="hover:opacity-90 transition-opacity cursor-pointer sm:hidden"
+            />
+            <MokhalasaSvgLogo
+              variant="dark"
               height={44}
               onClick={() => handleNav('home')}
-              className="hover:opacity-90 transition-opacity cursor-pointer"
+              className="hover:opacity-90 transition-opacity cursor-pointer hidden sm:block"
             />
           </div>
 
@@ -117,7 +125,7 @@ export const Header: React.FC<HeaderProps> = ({
           </nav>
 
           {/* Action Buttons & Utilities */}
-          <div className="hidden md:flex items-center gap-2.5">
+          <div className="hidden lg:flex items-center gap-2.5">
             
             {/* Direct Notifications Center ("برّه") */}
             <div className="relative" ref={notifRef}>
@@ -127,7 +135,7 @@ export const Header: React.FC<HeaderProps> = ({
                 className={`relative p-2 rounded-xl border text-slate-700 hover:text-brand-navy hover:bg-slate-50 transition flex items-center justify-center ${
                   notifDropdownOpen ? 'bg-slate-100 border-slate-300' : 'border-slate-200'
                 }`}
-                title="الإشعارات والتنبيهات المباشرة"
+                title={t.nav.notifications}
               >
                 <Bell className="w-4 h-4 text-slate-700" />
                 {unreadNotificationsCount > 0 && (
@@ -142,7 +150,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <div className="flex items-center justify-between px-2 pb-2.5 border-b border-slate-100">
                     <div className="flex items-center gap-1.5 font-black text-xs text-brand-navy">
                       <Bell className="w-4 h-4 text-brand-green" />
-                      <span>الإشعارات والتنبيهات المباشرة</span>
+                      <span>{t.nav.notifications}</span>
                     </div>
                     {unreadNotificationsCount > 0 && (
                       <button
@@ -150,7 +158,7 @@ export const Header: React.FC<HeaderProps> = ({
                         onClick={() => onMarkAllNotificationsRead?.()}
                         className="text-3xs text-brand-green hover:underline font-bold"
                       >
-                        تعيين الكل كمقروء
+                        {t.nav.markAllRead}
                       </button>
                     )}
                   </div>
@@ -191,7 +199,7 @@ export const Header: React.FC<HeaderProps> = ({
                                 <div>
                                   <div className="font-bold text-xs text-brand-navy leading-tight">{notif.title}</div>
                                   <div className="text-3xs text-slate-400 mt-0.5">
-                                    {new Date(notif.createdAt).toLocaleDateString('ar-EG')}
+                                    {new Date(notif.createdAt).toLocaleDateString(isAr ? 'ar-EG' : 'en-US')}
                                   </div>
                                 </div>
                               </div>
@@ -223,14 +231,14 @@ export const Header: React.FC<HeaderProps> = ({
                             >
                               <span>
                                 {isProblem 
-                                  ? '🚨 حل المشكلة وتعديل الإعلان فوراً' 
+                                  ? (isAr ? '🚨 حل المشكلة وتعديل الإعلان فوراً' : '🚨 Resolve Issue & Update Now') 
                                   : isDocs 
-                                  ? '📄 إرفاق المستندات المطلوبة' 
+                                  ? (isAr ? '📄 إرفاق المستندات المطلوبة' : '📄 Attach Required Docs') 
                                   : isOffer 
-                                  ? '💰 فحص العرض واتخاذ قرار' 
-                                  : 'عرض التفاصيل'}
+                                  ? (isAr ? '💰 فحص العرض واتخاذ قرار' : '💰 Review Offer & Decide') 
+                                  : (isAr ? 'عرض التفاصيل' : 'View Details')}
                               </span>
-                              <ChevronLeft className="w-3 h-3" />
+                              <ChevronLeft className="w-3 h-3 rtl:rotate-0 ltr:rotate-180" />
                             </button>
                           </div>
                         );
@@ -238,8 +246,7 @@ export const Header: React.FC<HeaderProps> = ({
                     ) : (
                       <div className="py-8 text-center space-y-1.5">
                         <Bell className="w-8 h-8 text-slate-300 mx-auto" />
-                        <div className="text-xs font-bold text-slate-600">لا توجد إشعارات جديدة حالياً</div>
-                        <div className="text-3xs text-slate-400">ستصلك هنا كافة التنبيهات وطلبات التعديل وعروض الأسعار</div>
+                        <div className="text-xs font-bold text-slate-600">{t.nav.noNotifications}</div>
                       </div>
                     )}
                   </div>
@@ -254,7 +261,7 @@ export const Header: React.FC<HeaderProps> = ({
                   type="button"
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                   className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-800 transition"
-                  title="حساب العميل"
+                  title={t.common.myAccount}
                 >
                   {customerUser.avatarUrl ? (
                     <img src={customerUser.avatarUrl} alt="" className="w-5 h-5 rounded-full object-cover" />
@@ -277,7 +284,7 @@ export const Header: React.FC<HeaderProps> = ({
                       onClick={() => { handleNav('profile'); setUserDropdownOpen(false); }}
                       className="w-full px-3 py-2 text-right text-xs text-brand-green font-bold hover:bg-emerald-50 rounded-xl flex items-center justify-between transition"
                     >
-                      <span>حسابي وإعلاناتي</span>
+                      <span>{t.common.myAccount}</span>
                       <User className="w-3.5 h-3.5 text-brand-green" />
                     </button>
 
@@ -286,7 +293,7 @@ export const Header: React.FC<HeaderProps> = ({
                       onClick={() => { handleNav('marketplace'); setUserDropdownOpen(false); }}
                       className="w-full px-3 py-2 text-right text-xs text-slate-700 hover:bg-slate-50 rounded-xl flex items-center justify-between"
                     >
-                      <span>تصفح السيارات</span>
+                      <span>{t.nav.marketplace}</span>
                       <CarIcon className="w-3.5 h-3.5 text-slate-400" />
                     </button>
 
@@ -295,7 +302,7 @@ export const Header: React.FC<HeaderProps> = ({
                       onClick={() => { onCustomerLogout?.(); setUserDropdownOpen(false); }}
                       className="w-full px-3 py-2 text-right text-xs text-rose-600 hover:bg-rose-50 rounded-xl flex items-center justify-between font-bold"
                     >
-                      <span>تسجيل الخروج</span>
+                      <span>{t.common.logout}</span>
                       <LogOut className="w-3.5 h-3.5 text-rose-500" />
                     </button>
                   </div>
@@ -307,19 +314,19 @@ export const Header: React.FC<HeaderProps> = ({
                   type="button"
                   onClick={() => onOpenCustomerLogin?.('register')}
                   className="px-3 py-2 rounded-xl text-xs font-bold transition text-slate-700 hover:text-brand-navy hover:bg-slate-50"
-                  title="إنشاء حساب جديد في مخلصة"
+                  title={t.common.register}
                 >
-                  <span>{isAr ? 'إنشاء حساب' : 'Register'}</span>
+                  <span>{t.common.register}</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => onOpenCustomerLogin?.('login')}
                   className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-bold text-white flex items-center gap-1.5 transition shadow-sm"
-                  title="تسجيل الدخول إلى حسابك في مخلصة"
+                  title={t.common.login}
                 >
                   <User className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>{isAr ? 'تسجيل الدخول' : 'Sign In'}</span>
+                  <span>{t.common.login}</span>
                 </button>
               </div>
             )}
@@ -333,10 +340,10 @@ export const Header: React.FC<HeaderProps> = ({
                   ? 'border-brand-green bg-emerald-50 text-brand-green'
                   : 'border-slate-200 text-slate-700 hover:text-brand-navy hover:bg-slate-50'
               }`}
-              title="متابعة حالة وتفاصيل طلب بيع سيارتك والإشعارات وعروض الأسعار"
+              title={t.nav.trackRequest}
             >
               <FileText className="w-3.5 h-3.5 text-brand-green" />
-              <span>{isAr ? 'متابعة طلبي' : 'Track My Request'}</span>
+              <span>{t.nav.trackRequest}</span>
             </button>
 
             {/* Primary Action Button: Distressed Car Sale Intake */}
@@ -349,53 +356,50 @@ export const Header: React.FC<HeaderProps> = ({
               <span>{isAr ? 'عايز أبيع عربيتي' : 'Sell My Car'}</span>
             </button>
 
-            {/* Discrete Operations Console Indicator (Shown only when staff session active or on ops pages) */}
+            {/* Discrete Operations Console Indicator */}
             {(isStaffSessionActive || ['staff', 'owner', 'dashboards'].includes(currentView)) && (
               <button
                 onClick={() => handleNav('staff')}
                 className="px-2.5 py-1.5 rounded-xl bg-slate-900 text-emerald-400 font-bold text-3xs border border-slate-700 hover:bg-black transition flex items-center gap-1"
-                title="لوحة العمليات الداخلية للموظفين والإدارة"
+                title={t.nav.opsConsole}
               >
                 <Lock className="w-3 h-3 text-emerald-400" />
-                <span>{isAr ? 'العمليات' : 'Ops'}</span>
+                <span>{t.nav.opsConsole}</span>
               </button>
             )}
 
             {/* Language Switcher */}
             <button
               onClick={onToggleLang}
-              className="px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-brand-muted hover:text-brand-navy hover:bg-slate-50 flex items-center gap-1 transition"
+              className="px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-brand-navy hover:bg-slate-50 flex items-center gap-1.5 transition"
+              title={isAr ? 'Switch to English' : 'التحويل إلى اللغة العربية'}
             >
-              <Globe className="w-3.5 h-3.5" />
+              <Globe className="w-3.5 h-3.5 text-brand-green" />
               <span>{isAr ? 'EN' : 'عربي'}</span>
             </button>
 
           </div>
 
-          {/* Mobile Menu Hamburger */}
-          <div className="flex lg:hidden items-center gap-2">
-            {!customerUser ? (
-              <button
-                onClick={() => onOpenCustomerLogin?.('login')}
-                className="p-2 rounded-lg border border-slate-200 text-slate-700 font-bold text-3xs flex items-center gap-1"
-                title="تسجيل الدخول"
-              >
-                <User className="w-3.5 h-3.5 text-slate-600" />
-              </button>
-            ) : (
-              <button
-                onClick={() => handleNav('marketplace')}
-                className="p-1.5 rounded-lg border border-slate-200 text-brand-navy text-3xs font-bold flex items-center gap-1"
-              >
-                <img src={customerUser.avatarUrl} alt="" className="w-5 h-5 rounded-full object-cover" />
-              </button>
-            )}
-            
+          {/* Mobile Top Action Bar */}
+          <div className="flex lg:hidden items-center gap-1.5 sm:gap-2">
+            {/* Mobile Language Switcher Button */}
+            <button
+              type="button"
+              onClick={onToggleLang}
+              className="px-2 py-1.5 rounded-xl border border-slate-200 text-xs font-black text-brand-navy hover:bg-slate-50 flex items-center gap-1 transition"
+              title={isAr ? 'Switch to English' : 'التحويل إلى العربية'}
+            >
+              <Globe className="w-3.5 h-3.5 text-brand-green" />
+              <span>{isAr ? 'EN' : 'عربي'}</span>
+            </button>
+
+            {/* Mobile Sell Car Button */}
             <button
               onClick={() => handleNav('sell-wizard')}
-              className="px-3 py-1.5 rounded-lg bg-brand-green text-white font-bold text-xs"
+              className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-2xs sm:text-xs shadow-sm flex items-center gap-1"
             >
-              بيع عربيتك
+              <PlusCircle className="w-3.5 h-3.5 hidden xs:inline" />
+              <span>{isAr ? 'بيع عربيتك' : 'Sell Car'}</span>
             </button>
 
             {/* Mobile Notification Bell ("برّه") */}
@@ -403,11 +407,11 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={() => setNotifDropdownOpen(prev => !prev)}
-                className="relative p-2 rounded-lg border border-slate-200 text-slate-700"
-                aria-label="الإشعارات المباشرة"
-                title="الإشعارات والتنبيهات المباشرة"
+                className="relative p-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 transition"
+                aria-label={t.nav.notifications}
+                title={t.nav.notifications}
               >
-                <Bell className="w-5 h-5" />
+                <Bell className="w-4 h-4 text-slate-700" />
                 {unreadNotificationsCount > 0 && (
                   <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white ring-2 ring-white animate-pulse">
                     {unreadNotificationsCount}
@@ -416,12 +420,38 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             </div>
 
+            {/* Mobile User Login or Avatar */}
+            {!customerUser ? (
+              <button
+                onClick={() => onOpenCustomerLogin?.('login')}
+                className="p-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-3xs flex items-center gap-1"
+                title={t.common.login}
+              >
+                <User className="w-4 h-4 text-slate-600" />
+              </button>
+            ) : (
+              <button
+                onClick={() => handleNav('profile')}
+                className="p-1 rounded-xl border border-brand-green/40 bg-emerald-50 text-brand-navy flex items-center justify-center"
+                title={t.common.myAccount}
+              >
+                {customerUser.avatarUrl ? (
+                  <img src={customerUser.avatarUrl} alt="" className="w-6 h-6 rounded-lg object-cover" />
+                ) : (
+                  <div className="w-6 h-6 rounded-lg bg-brand-green text-white font-black text-2xs flex items-center justify-center">
+                    {customerUser.name.charAt(0)}
+                  </div>
+                )}
+              </button>
+            )}
+
+            {/* Hamburger Toggle */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg text-slate-600 hover:text-brand-navy hover:bg-slate-100"
-              aria-label="القائمة"
+              className="p-2 rounded-xl text-slate-700 hover:text-brand-navy hover:bg-slate-100 transition"
+              aria-label={isAr ? 'القائمة' : 'Menu'}
             >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
 
@@ -549,6 +579,38 @@ export const Header: React.FC<HeaderProps> = ({
       {mobileMenuOpen && (
         <div className="lg:hidden border-t border-slate-100 bg-white px-4 pt-3 pb-6 space-y-3 animate-fadeIn">
           
+          {/* Dedicated Language Selector Row */}
+          <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+              <Globe className="w-4 h-4 text-brand-green" />
+              <span>{isAr ? 'لغة المنصة:' : 'Platform Language:'}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => { if (!isAr) onToggleLang(); }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition ${
+                  isAr 
+                    ? 'bg-brand-navy text-white shadow-xs' 
+                    : 'text-slate-600 hover:bg-slate-200 bg-white border border-slate-200'
+                }`}
+              >
+                العربية 🇪🇬
+              </button>
+              <button
+                type="button"
+                onClick={() => { if (isAr) onToggleLang(); }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition ${
+                  !isAr 
+                    ? 'bg-brand-navy text-white shadow-xs' 
+                    : 'text-slate-600 hover:bg-slate-200 bg-white border border-slate-200'
+                }`}
+              >
+                English 🌐
+              </button>
+            </div>
+          </div>
+
           {/* Customer Profile Mobile Header */}
           {customerUser ? (
             <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
@@ -567,7 +629,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <div>
                     <div className="font-extrabold text-xs text-brand-navy flex items-center gap-1">
                       <span>{customerUser.name}</span>
-                      <span className="text-3xs text-brand-green bg-emerald-50 px-1.5 py-0.2 rounded-full border border-emerald-200">حسابي</span>
+                      <span className="text-3xs text-brand-green bg-emerald-50 px-1.5 py-0.2 rounded-full border border-emerald-200">{t.common.myAccount}</span>
                     </div>
                     <div className="text-3xs text-slate-400 font-mono">{customerUser.email}</div>
                   </div>
@@ -576,7 +638,7 @@ export const Header: React.FC<HeaderProps> = ({
                   onClick={() => { onCustomerLogout?.(); setMobileMenuOpen(false); }}
                   className="text-3xs text-rose-600 font-bold px-2 py-1 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100"
                 >
-                  تسجيل الخروج
+                  {t.common.logout}
                 </button>
               </div>
 
@@ -586,7 +648,7 @@ export const Header: React.FC<HeaderProps> = ({
                   className="w-full py-2 px-3 rounded-xl bg-brand-green/10 text-brand-green font-bold text-xs flex items-center justify-center gap-1.5"
                 >
                   <User className="w-3.5 h-3.5" />
-                  <span>لوحة حسابي وإعلاناتي</span>
+                  <span>{t.common.myAccount}</span>
                 </button>
               </div>
             </div>
@@ -597,14 +659,14 @@ export const Header: React.FC<HeaderProps> = ({
                 className="flex-1 py-2.5 px-3 rounded-xl border border-slate-200 bg-slate-900 text-white font-bold text-xs flex items-center justify-center gap-2"
               >
                 <User className="w-4 h-4 text-emerald-400" />
-                <span>تسجيل الدخول</span>
+                <span>{t.common.login}</span>
               </button>
 
               <button
                 onClick={() => { onOpenCustomerLogin?.('register'); setMobileMenuOpen(false); }}
                 className="py-2.5 px-4 rounded-xl border border-brand-green/30 bg-emerald-50 hover:bg-emerald-100 text-brand-green font-bold text-xs"
               >
-                إنشاء حساب
+                {t.common.register}
               </button>
             </div>
           )}
@@ -614,7 +676,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 key={item.id}
                 onClick={() => handleNav(item.id)}
-                className={`w-full px-3 py-2.5 rounded-lg text-right font-bold text-xs flex items-center justify-between ${
+                className={`w-full px-3 py-2.5 rounded-lg font-bold text-xs flex items-center justify-between text-right ${
                   currentView === item.id ? 'text-brand-green bg-emerald-50' : 'text-slate-700 hover:bg-slate-50'
                 }`}
               >
@@ -630,21 +692,21 @@ export const Header: React.FC<HeaderProps> = ({
               className="w-full py-2.5 rounded-xl border border-brand-green/30 bg-emerald-50 text-brand-green font-bold text-xs text-center flex items-center justify-center gap-1.5"
             >
               <FileText className="w-4 h-4" />
-              <span>متابعة طلبي</span>
+              <span>{t.nav.trackRequest}</span>
             </button>
 
             <button
               onClick={() => { handleNav('sell-wizard'); setMobileMenuOpen(false); }}
               className="w-full py-2.5 rounded-xl bg-brand-green text-white font-extrabold text-xs shadow-md text-center"
             >
-              عايز أبيع عربيتي مع مخلصة
+              {isAr ? 'عايز أبيع عربيتي مع مخلصة' : 'Sell Your Car with Mokhalasa'}
             </button>
 
             <button
               onClick={() => { handleNav('marketplace'); setMobileMenuOpen(false); }}
               className="w-full py-2.5 rounded-xl bg-brand-navy text-white font-bold text-xs text-center"
             >
-              تصفح السيارات المتاحة
+              {t.nav.marketplace}
             </button>
 
             <button
@@ -658,7 +720,7 @@ export const Header: React.FC<HeaderProps> = ({
               }}
               className="w-full py-2.5 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs text-center"
             >
-              اسأل فريق مخلصة عن الإجراءات
+              {isAr ? 'اسأل فريق مخلصة عن الإجراءات' : 'Ask Mokhalasa Team About Bank Procedures'}
             </button>
           </div>
         </div>

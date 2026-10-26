@@ -47,7 +47,13 @@ export function App() {
   const [selectedCar, setSelectedCar] = useState<Car | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [userRole, setUserRole] = useState<'seller' | 'buyer' | 'admin' | 'staff' | 'owner'>('seller');
-  const [lang, setLang] = useState<'ar' | 'en'>('ar');
+  const [lang, setLang] = useState<'ar' | 'en'>(() => {
+    try {
+      const saved = localStorage.getItem('mokhalasa_lang');
+      if (saved === 'ar' || saved === 'en') return saved;
+    } catch {}
+    return 'ar';
+  });
 
   // Customer Session State (Google Sign-In)
   const [customerUser, setCustomerUser] = useState<CustomerUser | null>(() => {
@@ -370,7 +376,13 @@ export function App() {
   };
 
   const handleToggleLang = () => {
-    setLang(prev => (prev === 'ar' ? 'en' : 'ar'));
+    setLang(prev => {
+      const next = prev === 'ar' ? 'en' : 'ar';
+      try {
+        localStorage.setItem('mokhalasa_lang', next);
+      } catch {}
+      return next;
+    });
   };
 
   const handleChangeRole = (role: 'seller' | 'buyer' | 'admin' | 'staff' | 'owner') => {
@@ -705,7 +717,7 @@ export function App() {
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-5 h-5 text-brand-green" />
                 <h3 className="font-extrabold text-base text-brand-navy">
-                  استشارة مجانية مع مستشار مخلصة
+                  {lang === 'ar' ? 'استشارة مجانية مع مستشار مخلصة' : 'Free Consultation with Mokhalasa'}
                 </h3>
               </div>
               <button
@@ -720,32 +732,40 @@ export function App() {
               <div className="py-8 text-center space-y-3">
                 <CheckCircle2 className="w-12 h-12 text-brand-green mx-auto animate-bounce" />
                 <h4 className="font-black text-brand-navy text-sm">
-                  تم استلام طلب الاستشارة بنجاح!
+                  {lang === 'ar' ? 'تم استلام طلب الاستشارة بنجاح!' : 'Consultation request received successfully!'}
                 </h4>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  سيقوم مستشار مصرفي متخصص من مخلصة بالتواصل معك هاتفياً للإجابة على استفساراتك حول تسوية البنك وفك الحظر.
+                  {lang === 'ar' 
+                    ? 'سيقوم مستشار مصرفي متخصص من مخلصة بالتواصل معك هاتفياً للإجابة على استفساراتك حول تسوية البنك وفك الحظر.'
+                    : 'A specialized Mokhalasa banking advisor will contact you by phone to answer your questions regarding bank settlement and lien removal.'}
                 </p>
               </div>
             ) : (
               <form onSubmit={handleConsultationSubmit} className="space-y-3 text-xs">
                 <p className="text-slate-500 text-xs">
-                  اسأل فريق مخلصة عن إجراءات السداد المعجل، تفادي غرامات التأخير، أو كيفية بيع سيارتك بدون أي مخاطرة قانونية.
+                  {lang === 'ar'
+                    ? 'اسأل فريق مخلصة عن إجراءات السداد المعجل، تفادي غرامات التأخير، أو كيفية بيع سيارتك بدون أي مخاطرة قانونية.'
+                    : 'Ask our team about early payoff procedures, avoiding delay penalties, or selling your car without legal risks.'}
                 </p>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 block">الاسم:</label>
+                  <label className="font-bold text-slate-700 block">
+                    {lang === 'ar' ? 'الاسم:' : 'Name:'}
+                  </label>
                   <input
                     type="text"
                     required
                     value={consultationName}
                     onChange={(e) => setConsultationName(e.target.value)}
-                    placeholder="مثال: م. أحمد عبد الله"
+                    placeholder={lang === 'ar' ? 'مثال: م. أحمد عبد الله' : 'e.g. Ahmed Abdullah'}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green focus:outline-none"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 block">رقم الهاتف (واتساب):</label>
+                  <label className="font-bold text-slate-700 block">
+                    {lang === 'ar' ? 'رقم الهاتف (واتساب):' : 'Phone Number (WhatsApp):'}
+                  </label>
                   <input
                     type="tel"
                     required
@@ -758,29 +778,33 @@ export function App() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 block">البنك أو جهة التمويل الحالية:</label>
+                  <label className="font-bold text-slate-700 block">
+                    {lang === 'ar' ? 'البنك أو جهة التمويل الحالية:' : 'Current Bank / Financier:'}
+                  </label>
                   <select
                     value={consultationBank}
                     onChange={(e) => setConsultationBank(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-slate-50"
                   >
-                    <option value="كريدي أجريكول مصر">بنك كريدي أجريكول مصر</option>
-                    <option value="البنك التجاري الدولي CIB">البنك التجاري الدولي (CIB)</option>
-                    <option value="بنك قطر الوطني QNB">بنك قطر الوطني الأهلي (QNB)</option>
-                    <option value="بنك مصر">بنك مصر</option>
-                    <option value="البنك الأهلي المصري">البنك الأهلي المصري</option>
-                    <option value="شركة تمويل استهلاكي">شركة تمويل استهلاكي (كونتكت، درايف، فاليو...)</option>
-                    <option value="أخرى">جهة أخرى</option>
+                    <option value="كريدي أجريكول مصر">{lang === 'ar' ? 'بنك كريدي أجريكول مصر' : 'Crédit Agricole Egypt'}</option>
+                    <option value="البنك التجاري الدولي CIB">{lang === 'ar' ? 'البنك التجاري الدولي (CIB)' : 'Commercial International Bank (CIB)'}</option>
+                    <option value="بنك قطر الوطني QNB">{lang === 'ar' ? 'بنك قطر الوطني الأهلي (QNB)' : 'Qatar National Bank (QNB)'}</option>
+                    <option value="بنك مصر">{lang === 'ar' ? 'بنك مصر' : 'Banque Misr'}</option>
+                    <option value="البنك الأهلي المصري">{lang === 'ar' ? 'البنك الأهلي المصري' : 'National Bank of Egypt (NBE)'}</option>
+                    <option value="شركة تمويل استهلاكي">{lang === 'ar' ? 'شركة تمويل استهلاكي (كونتكت، درايف، فاليو...)' : 'Consumer Finance Company'}</option>
+                    <option value="أخرى">{lang === 'ar' ? 'جهة أخرى' : 'Other Institution'}</option>
                   </select>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 block">سؤالك أو الموقف الحالي:</label>
+                  <label className="font-bold text-slate-700 block">
+                    {lang === 'ar' ? 'سؤالك أو الموقف الحالي:' : 'Your question or current situation:'}
+                  </label>
                   <textarea
                     rows={2}
                     value={consultationQuestion}
                     onChange={(e) => setConsultationQuestion(e.target.value)}
-                    placeholder="مثال: عندي قسط متأخر وعايز أعرف إزاي أبيع بدون ما أدخل في مشاكل قانونية..."
+                    placeholder={lang === 'ar' ? 'مثال: عندي قسط متأخر وعايز أعرف إزاي أبيع بدون ما أدخل في مشاكل قانونية...' : 'e.g. I have 2 overdue installments and want to sell safely...'}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green focus:outline-none resize-none"
                   />
                 </div>
@@ -790,7 +814,7 @@ export function App() {
                     type="submit"
                     className="w-full py-3 rounded-xl bg-brand-green hover:bg-brand-green-hover text-white font-extrabold text-xs shadow-md transition"
                   >
-                    طلب التواصل مع مستشار مخلصة
+                    {lang === 'ar' ? 'طلب التواصل مع مستشار مخلصة' : 'Request Mokhalasa Advisor Call'}
                   </button>
                 </div>
               </form>

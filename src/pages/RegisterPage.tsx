@@ -23,8 +23,9 @@ interface ValidationErrors {
 export const RegisterPage: React.FC<RegisterPageProps> = ({
   onNavigate,
   onOpenLogin,
-  lang: _lang = 'ar'
+  lang = 'ar'
 }) => {
+  const isAr = lang === 'ar';
 
   // Form Field States
   const [email, setEmail] = useState('');
@@ -205,7 +206,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-brand-bg py-10 px-4 sm:px-6 lg:px-8 flex flex-col justify-center">
+    <div className="min-h-screen bg-brand-bg py-10 px-4 sm:px-6 lg:px-8 flex flex-col justify-center" dir={isAr ? 'rtl' : 'ltr'}>
       <div className="max-w-md w-full mx-auto space-y-6">
 
         {/* Brand Header */}

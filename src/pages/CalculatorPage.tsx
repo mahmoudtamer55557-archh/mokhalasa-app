@@ -94,7 +94,7 @@ export const CalculatorPage: React.FC<CalculatorPageProps> = ({ onNavigate, lang
   };
 
   return (
-    <div className="min-h-screen bg-brand-bg py-10 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-brand-bg py-8 sm:py-10 px-4 sm:px-6 lg:px-8" dir={isAr ? 'rtl' : 'ltr'}>
       <div className="max-w-6xl mx-auto space-y-8">
         
         {/* Header Section */}

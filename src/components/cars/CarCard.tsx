@@ -120,7 +120,7 @@ export const CarCard: React.FC<CarCardProps> = ({
         <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 py-2 border-y border-slate-100">
           <div className="flex items-center gap-1.5">
             <Gauge className="w-3.5 h-3.5 text-brand-green flex-shrink-0" />
-            <span>{car.mileage.toLocaleString()} كم</span>
+            <span>{car.mileage.toLocaleString()} {isAr ? 'كم' : 'KM'}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <MapPin className="w-3.5 h-3.5 text-brand-green flex-shrink-0" />
@@ -141,8 +141,8 @@ export const CarCard: React.FC<CarCardProps> = ({
               </span>
             </div>
             <div className="flex justify-between items-center text-slate-600 text-[10px] font-semibold">
-              <span>القسط: {formatEGP(car.directInstallment.monthlyInstallment)}/شهر</span>
-              <span>المدة: {car.directInstallment.installmentMonths} شهر</span>
+              <span>{isAr ? `القسط: ${formatEGP(car.directInstallment.monthlyInstallment)}/شهر` : `Installment: ${formatEGP(car.directInstallment.monthlyInstallment)}/mo`}</span>
+              <span>{isAr ? `المدة: ${car.directInstallment.installmentMonths} شهر` : `Period: ${car.directInstallment.installmentMonths} mos`}</span>
             </div>
           </div>
         )}
@@ -161,15 +161,15 @@ export const CarCard: React.FC<CarCardProps> = ({
             <div className="flex justify-between items-center text-slate-700">
               <span className="font-medium flex items-center gap-1">
                 <Banknote className="w-3.5 h-3.5 text-brand-navy" />
-                {car.financingDetails.providerNameAr}:
+                {isAr ? car.financingDetails.providerNameAr : (car.financingDetails.providerName || car.financingDetails.providerNameAr)}:
               </span>
               <span className="font-bold text-brand-navy">
                 {formatEGP(car.financingDetails.outstandingPrincipal)}
               </span>
             </div>
             <div className="flex justify-between items-center text-slate-500 text-[10px]">
-              <span>القسط: {formatEGP(car.financingDetails.monthlyInstallment)}/شهر</span>
-              <span>متبقي: {car.financingDetails.remainingMonths} شهر</span>
+              <span>{isAr ? `القسط: ${formatEGP(car.financingDetails.monthlyInstallment)}/شهر` : `Installment: ${formatEGP(car.financingDetails.monthlyInstallment)}/mo`}</span>
+              <span>{isAr ? `متبقي: ${car.financingDetails.remainingMonths} شهر` : `Remaining: ${car.financingDetails.remainingMonths} mos`}</span>
             </div>
           </div>
         )}
