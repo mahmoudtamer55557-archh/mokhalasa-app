@@ -22,6 +22,9 @@ export interface UserProfileData {
   isVerified: boolean;
   createdAt: string;
   updatedAt: string;
+  accountStatus?: 'active' | 'pending_deletion';
+  deletionRequestedAt?: string;
+  deletionScheduledDate?: string;
 }
 
 export interface ProfileUpdatePayload {
@@ -70,7 +73,10 @@ export const profileService = {
             city: data.city,
             isVerified: data.is_verified || false,
             createdAt: data.created_at || authUser.created_at,
-            updatedAt: data.updated_at || new Date().toISOString()
+            updatedAt: data.updated_at || new Date().toISOString(),
+            accountStatus: data.account_status || authUser.user_metadata?.account_status || 'active',
+            deletionRequestedAt: data.deletion_requested_at || authUser.user_metadata?.deletion_requested_at,
+            deletionScheduledDate: data.deletion_scheduled_date || authUser.user_metadata?.deletion_scheduled_date
           }
         };
       }
@@ -85,10 +91,15 @@ export const profileService = {
           fullName: meta.full_name || meta.name || authUser.email?.split('@')[0] || 'عميل مخلصة',
           phone: meta.phone || '',
           avatarUrl: meta.avatar_url,
-          role: 'customer',
-          isVerified: authUser.email_confirmed_at ? true : false,
-          createdAt: authUser.created_at || new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          role: meta.role || 'customer',
+          governorate: meta.governorate,
+          city: meta.city,
+          isVerified: meta.phone_verified || false,
+          createdAt: authUser.created_at,
+          updatedAt: new Date().toISOString(),
+          accountStatus: meta.account_status || 'active',
+          deletionRequestedAt: meta.deletion_requested_at,
+          deletionScheduledDate: meta.deletion_scheduled_date
         }
       };
 
@@ -385,6 +396,115 @@ export const profileService = {
       };
     } catch (err: any) {
       return { success: false, message: err?.message || 'تعذر إرسال طلب إعادة التعيين.' };
+    }
+  },
+
+  /**
+   * Request account deletion (Initiates 30-day soft-delete grace period per Law 151/2020)
+   */
+  async requestAccountDeletion(userId: string, reason?: string): Promise<{ success: boolean; message: string; scheduledDate?: string }> {
+    try {
+      const now = new Date();
+      const scheduledDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      const deletionPayload = {
+        account_status: 'pending_deletion',
+        deletion_requested_at: now.toISOString(),
+        deletion_scheduled_date: scheduledDate,
+        deletion_reason: reason || 'طلب العميل عبر لوحة التحكم'
+      };
+
+      // 1. Update Supabase Auth user metadata
+      await supabase.auth.updateUser({
+        data: deletionPayload
+      });
+
+      // 2. Try updating public.profiles table
+      try {
+        await supabase
+          .from('profiles')
+          .update(deletionPayload)
+          .eq('id', userId);
+      } catch (e) {
+        console.warn('Profiles table update deletion note:', e);
+      }
+
+      // 3. Update localStorage session if present
+      try {
+        const stored = localStorage.getItem('mokhalasa_customer_user');
+        if (stored) {
+          const user = JSON.parse(stored);
+          if (user.id === userId) {
+            user.accountStatus = 'pending_deletion';
+            user.deletionRequestedAt = now.toISOString();
+            user.deletionScheduledDate = scheduledDate;
+            localStorage.setItem('mokhalasa_customer_user', JSON.stringify(user));
+          }
+        }
+      } catch {}
+
+      return {
+        success: true,
+        message: 'تم تسجيل طلب حذف الحساب بنجاح. أمامك مهلة 30 يوماً للتراجع واستعادة الحساب.',
+        scheduledDate
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err?.message || 'تعذر تسجيل طلب حذف الحساب حالياً.'
+      };
+    }
+  },
+
+  /**
+   * Cancel account deletion & restore active account state
+   */
+  async cancelAccountDeletion(userId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const restorePayload = {
+        account_status: 'active',
+        deletion_requested_at: null,
+        deletion_scheduled_date: null,
+        deletion_reason: null
+      };
+
+      // 1. Update Supabase Auth user metadata
+      await supabase.auth.updateUser({
+        data: restorePayload
+      });
+
+      // 2. Try updating public.profiles table
+      try {
+        await supabase
+          .from('profiles')
+          .update(restorePayload)
+          .eq('id', userId);
+      } catch (e) {
+        console.warn('Profiles table restore note:', e);
+      }
+
+      // 3. Update localStorage session
+      try {
+        const stored = localStorage.getItem('mokhalasa_customer_user');
+        if (stored) {
+          const user = JSON.parse(stored);
+          if (user.id === userId) {
+            user.accountStatus = 'active';
+            delete user.deletionRequestedAt;
+            delete user.deletionScheduledDate;
+            localStorage.setItem('mokhalasa_customer_user', JSON.stringify(user));
+          }
+        }
+      } catch {}
+
+      return {
+        success: true,
+        message: 'تم إلغاء طلب حذف الحساب واستعادة حسابك بنشاط كامل!'
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err?.message || 'تعذر استعادة الحساب حالياً.'
+      };
     }
   }
 };

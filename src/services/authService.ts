@@ -78,7 +78,10 @@ export function mapSupabaseUserToCustomerUser(supabaseUser: any): CustomerUser {
     isVerified,
     governorate: metadata.governorate,
     city: metadata.city,
-    createdAt: supabaseUser.created_at || new Date().toISOString()
+    createdAt: supabaseUser.created_at || new Date().toISOString(),
+    accountStatus: metadata.account_status || 'active',
+    deletionRequestedAt: metadata.deletion_requested_at,
+    deletionScheduledDate: metadata.deletion_scheduled_date
   };
 }
 

@@ -382,6 +382,9 @@ export interface CustomerUser {
   governorate?: string;
   city?: string;
   createdAt: string;
+  accountStatus?: 'active' | 'pending_deletion';
+  deletionRequestedAt?: string;
+  deletionScheduledDate?: string;
 }
 
 export type PurchaseOfferStatus = 

@@ -13,7 +13,8 @@ import {
   User, Search, Check, X, RefreshCw, Eye, 
   Edit3, Scale, UserCheck, ExternalLink,
   Car as CarIcon, Tag, MessageSquare, Send,
-  AlertTriangle, Trash2, Clock, Sparkles
+  AlertTriangle, Trash2, Clock, Sparkles,
+  Download, FileSpreadsheet
 } from 'lucide-react';
 import { geminiService } from '../services/geminiService';
 import { isWhatsAppServiceEnabled, setWhatsAppServiceEnabled } from '../services/whatsappService';
@@ -72,7 +73,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
   // Authenticated Staff User Session (defaults to null; never persists credentials across reload)
   const [currentStaffUser, setCurrentStaffUser] = useState<EmployeeUser | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'cases' | 'moderation' | 'purchase_offers' | 'audit_logs' | 'edits_review' | 'team' | 'compliance'>('moderation');
+  const [activeTab, setActiveTab] = useState<'cases' | 'moderation' | 'purchase_offers' | 'customers' | 'audit_logs' | 'edits_review' | 'team' | 'compliance'>('moderation');
 
   // Supabase Moderation Queue State
   const [dbListings, setDbListings] = useState<DatabaseCarListing[]>([]);
@@ -213,6 +214,94 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
     };
   }, [loadModerationListings, loadPurchaseOffers]);
 
+  // Customers List & Excel Export State
+  const [customersList, setCustomersList] = useState<any[]>([]);
+  const [customersLoading, setCustomersLoading] = useState(false);
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const [customerFilterStatus, setCustomerFilterStatus] = useState<'all' | 'verified' | 'pending_deletion'>('all');
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
+
+  const fetchCustomers = useCallback(async () => {
+    setCustomersLoading(true);
+    try {
+      // 1. Fetch from Supabase profiles
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      let list = data || [];
+
+      // 2. Merge with localStorage demo / active customers if present
+      const stored = localStorage.getItem('mokhalasa_customer_user');
+      if (stored) {
+        try {
+          const localUser = JSON.parse(stored);
+          if (localUser && localUser.id && !list.some((c: any) => c.id === localUser.id)) {
+            list = [
+              {
+                id: localUser.id,
+                full_name: localUser.name,
+                phone: localUser.phone,
+                email: localUser.email,
+                governorate: localUser.governorate || 'القاهرة',
+                city: localUser.city || '',
+                is_verified: localUser.isVerified,
+                account_status: localUser.accountStatus || 'active',
+                created_at: localUser.createdAt || new Date().toISOString()
+              },
+              ...list
+            ];
+          }
+        } catch {}
+      }
+
+      setCustomersList(list);
+    } catch (err) {
+      console.warn('Error fetching customers:', err);
+    } finally {
+      setCustomersLoading(false);
+    }
+  }, []);
+
+  const exportCustomersToExcel = () => {
+    if (!customersList.length) {
+      setExportNotice('لا توجد بيانات عملاء متاحة للتصدير حالياً.');
+      return;
+    }
+
+    // Prepare CSV with UTF-8 BOM so Microsoft Excel in Windows displays Arabic text flawlessly!
+    const BOM = '\uFEFF';
+    const headers = ['معرف العميل (ID)', 'الاسم بالكامل', 'رقم الهاتف', 'البريد الإلكتروني', 'المحافظة', 'المدينة', 'حالة التحقق (OTP)', 'حالة الحساب', 'تاريخ التسجيل'];
+    
+    const rows = customersList.map((c: any) => [
+      `"${c.id || ''}"`,
+      `"${(c.full_name || c.name || '').replace(/"/g, '""')}"`,
+      `"${c.phone || ''}"`,
+      `"${c.email || ''}"`,
+      `"${c.governorate || 'القاهرة'}"`,
+      `"${c.city || ''}"`,
+      `"${c.is_verified ? 'موثق' : 'غير موثق'}"`,
+      `"${c.account_status === 'pending_deletion' ? 'بانتظار الحذف (30 يوم)' : 'نشط'}"`,
+      `"${new Date(c.created_at || Date.now()).toLocaleDateString('ar-EG')}"`
+    ]);
+
+    const csvContent = BOM + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const dateStr = new Date().toISOString().split('T')[0];
+    link.href = url;
+    link.setAttribute('download', `Mokhalasa_Customers_${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setExportNotice(`تم تحميل شيت بيانات العملاء بنجاح (${customersList.length} عميل) على جهازك!`);
+    setTimeout(() => setExportNotice(null), 5000);
+  };
+
   useEffect(() => {
     let isCancelled = false;
     if (activeTab === 'moderation') {
@@ -233,6 +322,8 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
           setAuditLogs(res.logs);
         }
       });
+    } else if (activeTab === 'customers') {
+      fetchCustomers();
     }
     return () => {
       isCancelled = true;
@@ -923,6 +1014,24 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
             {purchaseOffers.filter(o => o.status === 'new').length > 0 && (
               <span className="w-5 h-5 rounded-full bg-emerald-500 text-slate-950 text-[10px] font-black flex items-center justify-center">
                 {purchaseOffers.filter(o => o.status === 'new').length}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('customers');
+              fetchCustomers();
+            }}
+            className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 ${
+              activeTab === 'customers' ? 'bg-brand-green text-slate-950 font-black shadow-md' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <User className="w-4 h-4" />
+            <span>سجل العملاء وتصدير Excel</span>
+            {customersList.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-md bg-slate-800 text-slate-300 text-[10px] font-mono">
+                {customersList.length}
               </span>
             )}
           </button>
@@ -2086,6 +2195,222 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* TAB: CUSTOMER DATABASE & EXCEL EXPORT (LOW OVERHEAD / NO SERVER STRAIN) */}
+        {/* ============================================================== */}
+        {activeTab === 'customers' && (
+          <div className="space-y-6 animate-fadeIn">
+            
+            {/* Header & Excel Action Banner */}
+            <div className="bg-slate-950 p-6 rounded-3xl border border-slate-800 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-black text-white flex items-center gap-2">
+                    <User className="w-5 h-5 text-brand-green" />
+                    <span>سجل العملاء وتصدير البيانات إلى Excel</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    قاعدة بيانات مركزية آمنة ومزامنة مع Supabase، مع ميزة التصدير لشيت Excel/CSV فوراً وحفظها على جهازك بدون أي حمل على السيرفر.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={fetchCustomers}
+                    disabled={customersLoading}
+                    className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition flex items-center gap-1.5"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${customersLoading ? 'animate-spin text-brand-green' : ''}`} />
+                    <span>تحديث السجل</span>
+                  </button>
+
+                  <button
+                    onClick={exportCustomersToExcel}
+                    disabled={customersLoading || customersList.length === 0}
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-md transition flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <Download className="w-4 h-4" />
+                    <FileSpreadsheet className="w-4 h-4" />
+                    <span>تصدير داتا العملاء إلى Excel / CSV</span>
+                  </button>
+                </div>
+              </div>
+
+              {exportNotice && (
+                <div className="p-3 bg-emerald-950/80 border border-emerald-500/50 rounded-2xl text-xs font-bold text-emerald-300 flex items-center gap-2 animate-fadeIn">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  <span>{exportNotice}</span>
+                </div>
+              )}
+            </div>
+
+            {/* KPI Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                <span className="text-slate-400 text-2xs block">إجمالي العملاء المسجلين</span>
+                <span className="text-xl font-black text-white">{customersList.length}</span>
+              </div>
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                <span className="text-slate-400 text-2xs block">موثقين برمز OTP</span>
+                <span className="text-xl font-black text-emerald-400">
+                  {customersList.filter(c => c.is_verified).length}
+                </span>
+              </div>
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                <span className="text-slate-400 text-2xs block">حسابات نشطة</span>
+                <span className="text-xl font-black text-sky-400">
+                  {customersList.filter(c => c.account_status !== 'pending_deletion').length}
+                </span>
+              </div>
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                <span className="text-slate-400 text-2xs block">بانتظار الحذف (مهلة 30 يوم)</span>
+                <span className="text-xl font-black text-rose-400">
+                  {customersList.filter(c => c.account_status === 'pending_deletion').length}
+                </span>
+              </div>
+            </div>
+
+            {/* Filter & Search Bar */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={customerSearchQuery}
+                  onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                  placeholder="ابحث بالاسم، رقم الهاتف، البريد أو المحافظة..."
+                  className="w-full pr-10 pl-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-green text-right"
+                  dir="rtl"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                {[
+                  { id: 'all', label: 'الكل' },
+                  { id: 'verified', label: 'الموثقين فقط' },
+                  { id: 'pending_deletion', label: 'طلبات الحذف' },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setCustomerFilterStatus(tab.id as any)}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition ${
+                      customerFilterStatus === tab.id
+                        ? 'bg-brand-green text-slate-950'
+                        : 'bg-slate-950 border border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Customer Table */}
+            {customersLoading ? (
+              <div className="py-16 text-center text-xs text-slate-400 space-y-3">
+                <div className="w-8 h-8 border-3 border-brand-green border-t-transparent rounded-full animate-spin mx-auto" />
+                <p>جاري مزامنة بيانات العملاء...</p>
+              </div>
+            ) : customersList.length === 0 ? (
+              <div className="p-12 text-center bg-slate-950 rounded-3xl border border-slate-800 text-slate-400 text-xs">
+                لا توجد سجلات عملاء حالياً. تظهر السجلات هنا تلقائياً بمجرد تسجيل أي عميل.
+              </div>
+            ) : (
+              <div className="bg-slate-950 rounded-3xl border border-slate-800 overflow-hidden shadow-xl">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-right text-xs" dir="rtl">
+                    <thead>
+                      <tr className="bg-slate-900/80 border-b border-slate-800 text-slate-400 text-2xs uppercase">
+                        <th className="p-3.5">العميل</th>
+                        <th className="p-3.5">الهاتف (واتساب)</th>
+                        <th className="p-3.5">البريد الإلكتروني</th>
+                        <th className="p-3.5">الموقع</th>
+                        <th className="p-3.5">التوثيق (OTP)</th>
+                        <th className="p-3.5">حالة الحساب</th>
+                        <th className="p-3.5">تاريخ التسجيل</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {customersList
+                        .filter(c => {
+                          const matchesSearch = !customerSearchQuery || 
+                            (c.full_name || c.name || '').toLowerCase().includes(customerSearchQuery.toLowerCase()) ||
+                            (c.phone || '').includes(customerSearchQuery) ||
+                            (c.email || '').toLowerCase().includes(customerSearchQuery.toLowerCase()) ||
+                            (c.governorate || '').includes(customerSearchQuery);
+
+                          if (!matchesSearch) return false;
+                          if (customerFilterStatus === 'verified') return Boolean(c.is_verified);
+                          if (customerFilterStatus === 'pending_deletion') return c.account_status === 'pending_deletion';
+                          return true;
+                        })
+                        .map((c, idx) => (
+                          <tr key={c.id || idx} className="hover:bg-slate-900/40 transition">
+                            <td className="p-3.5 font-bold text-white flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-brand-green/20 text-brand-green flex items-center justify-center font-bold text-2xs">
+                                {(c.full_name || c.name || 'ع')[0]}
+                              </div>
+                              <span>{c.full_name || c.name || 'عميل مخلصة'}</span>
+                            </td>
+                            <td className="p-3.5 font-mono text-slate-300" dir="ltr">
+                              {c.phone ? (
+                                <a
+                                  href={`https://wa.me/20${c.phone.replace(/^0+/, '')}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-emerald-400 hover:text-emerald-300 underline flex items-center gap-1 justify-end"
+                                  title="فتح محادثة واتساب مع العميل"
+                                >
+                                  <span>{c.phone}</span>
+                                  <MessageSquare className="w-3 h-3" />
+                                </a>
+                              ) : (
+                                <span className="text-slate-600">غير مسجل</span>
+                              )}
+                            </td>
+                            <td className="p-3.5 font-mono text-2xs text-slate-400">
+                              {c.email || '—'}
+                            </td>
+                            <td className="p-3.5 text-slate-300">
+                              {c.governorate || 'القاهرة'} {c.city ? `— ${c.city}` : ''}
+                            </td>
+                            <td className="p-3.5">
+                              {c.is_verified ? (
+                                <span className="px-2 py-0.5 rounded-md bg-emerald-950/80 text-emerald-400 border border-emerald-600/30 font-bold text-3xs">
+                                  موثق ✓
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-md bg-amber-950/80 text-amber-400 border border-amber-600/30 text-3xs">
+                                  غير موثق
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3.5">
+                              {c.account_status === 'pending_deletion' ? (
+                                <span className="px-2 py-0.5 rounded-md bg-rose-950/80 text-rose-400 border border-rose-600/30 font-bold text-3xs flex items-center gap-1 w-fit">
+                                  <Clock className="w-2.5 h-2.5" />
+                                  <span>بانتظار الحذف (30 يوم)</span>
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-md bg-sky-950/80 text-sky-400 border border-sky-600/30 text-3xs font-bold">
+                                  نشط
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3.5 text-slate-400 font-mono text-2xs">
+                              {new Date(c.created_at || Date.now()).toLocaleDateString('ar-EG')}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
           </div>
         )}
 

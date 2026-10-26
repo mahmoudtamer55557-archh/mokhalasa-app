@@ -255,12 +255,21 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
               </p>
 
               <h3 className="font-bold text-sm text-brand-navy">
-                {isAr ? '3. سياسة الإتلاف والحذف' : '3. Data Deletion and Retention Policy'}
+                {isAr ? '3. حق حذف الحساب وفترة السماح (30 يوماً للتراجع)' : '3. Account Deletion Rights & 30-Day Grace Period'}
               </h3>
               <p>
                 {isAr
-                  ? 'يحق لأي مستخدم طلب حذف بياناته الشخصية من المنصة فور انتهاء المعاملة، ويتم إتلاف صور المستندات الشخصية تلقائياً بعد مرور 90 يوماً من إتمام التوثيق الرسمي بالشهر العقاري.'
-                  : 'Users may request complete account data deletion upon deal closing. Identity documents are automatically purged from active databases after 90 days from notarized closing.'}
+                  ? 'تنفيذاً لأحكام القانون رقم 151 لسنة 2020 بشأن حماية البيانات الشخصية، يحق لأي عميل طلب حذف حسابه نهائياً من إعدادات الملف الشخصي. يترتب على الطلب إيقاف الحساب فوراً وإخفاء إعلاناته من السوق، مع منح العميل فترة سماح قانونية مدتها 30 يوماً للتراجع واستعادة الحساب عند تسجيل الدخول. وفي حال انقضاء الـ 30 يوماً دون نشاط، يتم المسح الشامل والنهائي (Hard Purge) لكافة بيانات الهوية والمستندات من قواعد بياناتنا.'
+                  : 'Pursuant to Egyptian Personal Data Protection Law No. 151 of 2020, users hold the right to delete their accounts. Deletion requests initiate a 30-day grace period during which listings are unlisted and users can cancel deletion by signing in. After 30 days without activity, all personal records are permanently erased.'}
+              </p>
+
+              <h3 className="font-bold text-sm text-brand-navy">
+                {isAr ? '4. تصدير البيانات والنسخ الاحتياطي للأمان' : '4. Client Data Portability & Backup Integrity'}
+              </h3>
+              <p>
+                {isAr
+                  ? 'تلتزم مخلصة بمبدأ شفافية البيانات وحق نقلها، وتخضع سجلات العملاء لبروتوكولات نسخ احتياطي مشفرة ومحكمة تضمن سلامة الحقوق التعاقدية وإيصالات الإيداع البنكي الرسمية.'
+                  : 'Mokhalasa adheres to data portability principles under encrypted protocols, ensuring contractual rights and bank deposit receipts are immutably verifiable.'}
               </p>
             </div>
           </div>

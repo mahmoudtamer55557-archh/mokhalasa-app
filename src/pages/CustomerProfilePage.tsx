@@ -98,6 +98,58 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
   const [docsUploading, setDocsUploading] = useState(false);
   const [docsMsg, setDocsMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Account Deletion States (30-day grace period per Law 151/2020)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteMsg, setDeleteMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [restoringAccount, setRestoringAccount] = useState(false);
+
+  const handleRequestDeletion = async () => {
+    if (!customerUser?.id) return;
+    setDeleteLoading(true);
+    setDeleteMsg(null);
+    const res = await profileService.requestAccountDeletion(customerUser.id, deleteReason);
+    setDeleteLoading(false);
+    if (res.success) {
+      setDeleteMsg({ type: 'success', text: res.message });
+      if (profile) {
+        setProfile({
+          ...profile,
+          accountStatus: 'pending_deletion',
+          deletionRequestedAt: new Date().toISOString(),
+          deletionScheduledDate: res.scheduledDate
+        });
+      }
+      setTimeout(() => {
+        setDeleteModalOpen(false);
+        onCustomerLogout();
+      }, 2500);
+    } else {
+      setDeleteMsg({ type: 'error', text: res.message });
+    }
+  };
+
+  const handleCancelDeletion = async () => {
+    if (!customerUser?.id) return;
+    setRestoringAccount(true);
+    const res = await profileService.cancelAccountDeletion(customerUser.id);
+    setRestoringAccount(false);
+    if (res.success) {
+      if (profile) {
+        setProfile({
+          ...profile,
+          accountStatus: 'active',
+          deletionRequestedAt: undefined,
+          deletionScheduledDate: undefined
+        });
+      }
+      setFeedbackMessage({ type: 'success', text: res.message });
+    } else {
+      setFeedbackMessage({ type: 'error', text: res.message });
+    }
+  };
+
   const handleDocFileSelected = (field: 'licenseFront' | 'licenseBack' | 'id' | 'statement', file: File | null) => {
     if (!file) return;
     if (file.size > 15 * 1024 * 1024) {
@@ -1037,6 +1089,38 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
             )}
           </div>
 
+          {/* PENDING DELETION WARNING BANNER */}
+          {(profile?.accountStatus === 'pending_deletion' || customerUser?.accountStatus === 'pending_deletion') && (
+            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 space-y-3 animate-fadeIn">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <h4 className="font-bold text-sm text-rose-800">
+                    تنبيه: حسابك مسجل حالياً تحت طلب الحذف المجدول
+                  </h4>
+                  <p className="text-2xs text-rose-700 leading-relaxed">
+                    تم تسجيل طلب حذف حسابك وفقاً لقانون حماية البيانات رقم 151 لسنة 2020. الحساب في فترة سماح مدتها 30 يوماً تنتهي في {' '}
+                    <span className="font-mono font-bold" dir="ltr">
+                      {profile?.deletionScheduledDate ? new Date(profile.deletionScheduledDate).toLocaleDateString('ar-EG') : 'خلال 30 يوماً'}
+                    </span>
+                    . تم إيقاف إعلاناتك مؤقتاً، ويمكنك التراجع عن أمر الحذف واستعادة نشاط حسابك وإعلاناتك بالكامل بنقرة واحدة أدناه.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleCancelDeletion}
+                  disabled={restoringAccount}
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs transition flex items-center gap-2 shadow-sm"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${restoringAccount ? 'animate-spin' : ''}`} />
+                  <span>{restoringAccount ? 'جاري استعادة الحساب...' : 'التراجع عن الحذف واستعادة الحساب الآن'}</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* TAB 1: ACCOUNT DETAILS */}
           {profileActiveTab === 'account' && (
             <div className="space-y-6 animate-fadeIn text-xs">
@@ -1123,6 +1207,53 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
                     </button>
                   </div>
                 </div>
+
+                {/* DATA PRIVACY & ACCOUNT DELETION CARD (LAW 151/2020) */}
+                <div className="col-span-1 md:col-span-2 p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Trash2 className="w-4 h-4 text-rose-600" />
+                      <h4 className="font-extrabold text-brand-navy text-sm">
+                        إدارة البيانات وحذف الحساب (حق النسيان - قانون 151 لسنة 2020)
+                      </h4>
+                    </div>
+                    <span className="text-3xs px-2.5 py-1 rounded-full bg-slate-200 font-bold text-slate-700 self-start sm:self-auto">
+                      فترة سماح 30 يوم للتراجع
+                    </span>
+                  </div>
+
+                  <p className="text-2xs text-slate-500 leading-relaxed">
+                    تلتزم منصة «مخلصة» بحماية خصوصية بياناتك الشخصية ومستنداتك. إذا قررت التوقف عن استخدام المنصة، يحق لك طلب حذف حسابك نهائياً. يتم إيقاف الحساب فورياً مع منحك فترة سماح مدتها 30 يوماً للتراجع واستعادة الحساب عند تسجيل الدخول، وبعد انقضاء الـ 30 يوماً دون أي نشاط يتم مسح سجلاتك وملفاتك نهائياً من كافة خوادمنا المشفرة.
+                  </p>
+
+                  <div className="pt-1 flex items-center gap-3">
+                    {(profile?.accountStatus === 'pending_deletion' || customerUser?.accountStatus === 'pending_deletion') ? (
+                      <button
+                        type="button"
+                        onClick={handleCancelDeletion}
+                        disabled={restoringAccount}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${restoringAccount ? 'animate-spin' : ''}`} />
+                        <span>{restoringAccount ? 'جاري الإلغاء...' : 'إلغاء طلب الحذف واستعادة الحساب الآن'}</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeleteReason('');
+                          setDeleteMsg(null);
+                          setDeleteModalOpen(true);
+                        }}
+                        className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold rounded-xl text-xs transition flex items-center gap-1.5"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                        <span>طلب حذف الحساب نهائياً</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
               </div>
             </div>
           )}
@@ -2302,6 +2433,83 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
               </div>
             </form>
 
+          </div>
+        </div>
+      )}
+
+      {/* 4. ACCOUNT DELETION CONFIRMATION MODAL */}
+      {deleteModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-5 border border-rose-100 shadow-2xl relative text-right" dir="rtl">
+            <button
+              onClick={() => setDeleteModalOpen(false)}
+              className="absolute left-4 top-4 text-slate-400 hover:text-slate-600 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-lg font-black text-rose-900">
+                طلب حذف الحساب نهائياً
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                هل أنت متأكد من رغبتك في حذف حسابك من منصة «مخلصة»؟
+              </p>
+            </div>
+
+            <div className="p-3.5 bg-rose-50/70 border border-rose-200 rounded-2xl text-2xs text-rose-800 space-y-2 leading-relaxed">
+              <div className="font-bold flex items-center gap-1.5 text-rose-900">
+                <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                <span>ضوابط الحذف وفقاً للقانون رقم 151 لسنة 2020:</span>
+              </div>
+              <ul className="list-disc list-inside space-y-1 pr-1 text-slate-700">
+                <li>يتم إيقاف حسابك وإخفاء سياراتك المعروضة من السوق فورياً.</li>
+                <li>يُمنح حسابك <strong>مهلة سماح مدتها 30 يوماً</strong> تبدأ من الآن.</li>
+                <li>خلال الـ 30 يوماً، يمكنك التراجع واستعادة حسابك بمجرد تسجيل الدخول.</li>
+                <li>بعد انقضاء الـ 30 يوماً دون نشاط، تُحذف بياناتك ومستنداتك نهائياً وبلا رجعة.</li>
+              </ul>
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-bold text-xs text-slate-700 block">سبب الحذف (اختياري لمساعدتنا على تحسين الخدمة):</label>
+              <textarea
+                rows={2}
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                placeholder="مثال: قمت ببيع سيارتي بالفعل، أو لم أعد بحاجة للخدمة..."
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none resize-none"
+              />
+            </div>
+
+            {deleteMsg && (
+              <div className={`p-3 rounded-xl text-xs font-bold ${deleteMsg.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'}`}>
+                {deleteMsg.text}
+              </div>
+            )}
+
+            <div className="pt-2 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteModalOpen(false)}
+                disabled={deleteLoading}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-xs"
+              >
+                إلغاء والاحتفاظ بحسابي
+              </button>
+              <button
+                type="button"
+                onClick={handleRequestDeletion}
+                disabled={deleteLoading}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-md transition flex items-center gap-1.5 disabled:opacity-60"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{deleteLoading ? 'جاري تسجيل الطلب...' : 'تأكيد طلب الحذف (مهلة 30 يوم)'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

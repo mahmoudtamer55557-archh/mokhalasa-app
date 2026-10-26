@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import MokhalasaSvgLogo from '../brand/MokhalasaSvgLogo';
 import { CustomerUser, CustomerAuthStatus } from '../../types';
 import { authService } from '../../services/authService';
+import { profileService } from '../../services/profileService';
 import { otpService } from '../../services/otpService';
 import { isWhatsAppServiceEnabled } from '../../services/whatsappService';
 import { getPhoneValidationError, normalizeEgyptianPhone } from '../../utils/phoneValidator';
@@ -37,6 +38,11 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
   const [authStatus, setAuthStatus] = useState<CustomerAuthStatus>('unauthenticated');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
+
+  // Account Deletion Grace Period Restore Prompt
+  const [showRestorePrompt, setShowRestorePrompt] = useState(false);
+  const [pendingDeletionUser, setPendingDeletionUser] = useState<CustomerUser | null>(null);
+  const [restoringUser, setRestoringUser] = useState(false);
 
   // Login Form State
   const [loginIdentifier, setLoginIdentifier] = useState(''); // Phone or Email
@@ -122,6 +128,27 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
     });
 
     if (response.success && response.user) {
+      const user = response.user;
+      
+      // Check 30-day deletion grace period
+      if (user.accountStatus === 'pending_deletion') {
+        const scheduledTime = user.deletionScheduledDate ? new Date(user.deletionScheduledDate).getTime() : 0;
+        const now = Date.now();
+        if (scheduledTime && now > scheduledTime) {
+          // Hard delete expired!
+          setAuthStatus('error');
+          setErrorMessage('تم حذف هذا الحساب نهائياً بناءً على طلبك بعد انقضاء مهلة الـ 30 يوماً المحددة. يمكنك إنشاء حساب جديد برقم هاتف جديد.');
+          setIsSubmitting(false);
+          return;
+        } else {
+          // Inside 30 days grace period! Show prompt to cancel deletion or proceed
+          setPendingDeletionUser(user);
+          setShowRestorePrompt(true);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       setAuthStatus('authenticated');
       setSuccessNotice('تم تسجيل الدخول بنجاح! مرحباً بك في مخلصة.');
       setTimeout(() => {
@@ -133,6 +160,32 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
       setErrorMessage(response.message || 'بيانات الدخول غير صحيحة.');
     }
     setIsSubmitting(false);
+  };
+
+  const handleRestoreAccount = async () => {
+    if (!pendingDeletionUser) return;
+    setRestoringUser(true);
+    const res = await profileService.cancelAccountDeletion(pendingDeletionUser.id);
+    setRestoringUser(false);
+    if (res.success) {
+      const restored = { ...pendingDeletionUser, accountStatus: 'active' as const };
+      delete restored.deletionRequestedAt;
+      delete restored.deletionScheduledDate;
+      setSuccessNotice('تم إلغاء طلب الحذف واستعادة حسابك بنجاح! أهلاً بك مجدداً.');
+      setAuthStatus('authenticated');
+      setTimeout(() => {
+        onLoginSuccess(restored);
+        onClose();
+      }, 800);
+    } else {
+      setErrorMessage(res.message);
+    }
+  };
+
+  const handleProceedWithPendingDeletion = () => {
+    if (!pendingDeletionUser) return;
+    onLoginSuccess(pendingDeletionUser);
+    onClose();
   };
 
   // -------------------------------------------------------------
@@ -532,8 +585,46 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
           {/* ========================================================= */}
           {activeTab === 'login' && authStatus !== 'authenticated' && (
             <>
+              {/* SUBVIEW 0: RESTORE FROM PENDING DELETION PROMPT */}
+              {showRestorePrompt && pendingDeletionUser && (
+                <div className="space-y-4 py-2 text-right" dir="rtl">
+                  <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 space-y-2">
+                    <div className="flex items-center gap-2 font-bold text-sm text-amber-800">
+                      <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                      <span>تنبيه: حسابك مسجل تحت طلب الحذف</span>
+                    </div>
+                    <p className="text-2xs text-slate-700 leading-relaxed">
+                      أهلاً بك <strong>{pendingDeletionUser.name}</strong>! لقد تم تسجيل طلب لحذف هذا الحساب، والحساب حالياً في فترة السماح القانونية (30 يوماً).
+                    </p>
+                    <p className="text-2xs text-amber-800 font-bold">
+                      هل تود التراجع عن طلب الحذف واستعادة حسابك وإعلاناتك الآن؟
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={handleRestoreAccount}
+                      disabled={restoringUser}
+                      className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition flex items-center justify-center gap-2"
+                    >
+                      <RotateCcw className={`w-4 h-4 ${restoringUser ? 'animate-spin' : ''}`} />
+                      <span>{restoringUser ? 'جاري استعادة الحساب...' : 'نعم، إلغاء الحذف واستعادة الحساب الآن'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleProceedWithPendingDeletion}
+                      className="w-full py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-xs transition"
+                    >
+                      متابعة الدخول وإبقاء الحساب قيد الحذف
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* SUBVIEW 1: STANDARD LOGIN FORM */}
-              {loginView === 'form' && (
+              {!showRestorePrompt && loginView === 'form' && (
                 <form onSubmit={handleSignIn} className="space-y-3">
                   <div className="space-y-1">
                     <label className="font-bold text-xs text-slate-700 block text-right">
