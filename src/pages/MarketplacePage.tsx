@@ -31,6 +31,37 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
   const [maxPrice, setMaxPrice] = useState<number>(3000000);
   const [sortBy, setSortBy] = useState<'featured' | 'price_asc' | 'price_desc' | 'mileage_asc'>('featured');
 
+  // Buyer Waitlist / Custom Car Request State
+  const [buyerMake, setBuyerMake] = useState('');
+  const [buyerBudget, setBuyerBudget] = useState('');
+  const [buyerPhone, setBuyerPhone] = useState('');
+  const [buyerTrack, setBuyerTrack] = useState<'bank_settlement' | 'direct_installment' | 'cash'>('bank_settlement');
+  const [buyerRequestSuccess, setBuyerRequestSuccess] = useState(false);
+
+  const handleBuyerRequestSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!buyerPhone) return;
+    try {
+      const existing = JSON.parse(localStorage.getItem('mokhalasa_buyer_requests') || '[]');
+      existing.push({
+        id: 'REQ-' + Date.now(),
+        make: buyerMake || 'أي ماركة',
+        budget: buyerBudget,
+        track: buyerTrack,
+        phone: buyerPhone,
+        date: new Date().toISOString()
+      });
+      localStorage.setItem('mokhalasa_buyer_requests', JSON.stringify(existing));
+    } catch {}
+    setBuyerRequestSuccess(true);
+    setTimeout(() => {
+      setBuyerRequestSuccess(false);
+      setBuyerMake('');
+      setBuyerBudget('');
+      setBuyerPhone('');
+    }, 4000);
+  };
+
   // Available makes
   const makes = useMemo(() => {
     return Array.from(new Set(cars.map(c => c.make)));
@@ -115,6 +146,9 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
               <Search className={`w-4 h-4 text-slate-400 absolute ${isAr ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2`} />
               <input
                 type="text"
+                name="car_search_query"
+                id="car_search_query"
+                aria-label={isAr ? 'البحث عن سيارة بالماركة أو الموديل أو المحافظة' : 'Search cars by make, model, or city'}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder={t.marketplace.searchPlaceholder}
@@ -202,26 +236,158 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
           </div>
         </div>
 
-        {/* Cars Grid or Clean Empty State */}
+        {/* Cars Grid or Clean Empty State with Buyer Request Waitlist */}
         {cars.length === 0 ? (
-          <div className="bg-white rounded-3xl p-8 sm:p-12 text-center border border-brand-border space-y-5 animate-fadeIn max-w-xl mx-auto shadow-card">
-            <div className="w-16 h-16 rounded-full bg-emerald-50 text-brand-green flex items-center justify-center mx-auto shadow-sm">
-              <CarIcon className="w-8 h-8" />
+          <div className="space-y-8 animate-fadeIn">
+            {/* 1. Buyer Custom Car Request Banner */}
+            <div className="bg-gradient-to-br from-brand-navy via-slate-900 to-slate-950 text-white rounded-3xl p-6 sm:p-10 border border-white/10 shadow-xl max-w-4xl mx-auto">
+              <div className="max-w-2xl mx-auto text-center space-y-3 mb-6">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-green/20 border border-brand-green/30 text-brand-green text-xs font-bold">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>{isAr ? 'خدمة حجز وفحص السيارات حسب الطلب' : 'On-Demand Car Sourcing & Inspection'}</span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black text-white">
+                  {isAr ? 'لم تجد السيارة المناسبة لك حتى الآن؟' : 'Looking for a specific car that is not listed yet?'}
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                  {isAr 
+                    ? 'السيارات المعتمدة يتم حجزها وفحصها باستمرار. سجّل مواصفات سيارتك المطلوبة وميزانيتك، وسيقوم مستشار مخلصة بالتواصل معك فور توفرها وقبل طرحها في السوق العام.'
+                    : 'Certified vehicles are frequently pre-booked. Register your desired car and budget, and our advisor will reach out as soon as a matching car is verified.'}
+                </p>
+              </div>
+
+              {buyerRequestSuccess ? (
+                <div className="bg-emerald-500/20 border border-emerald-500/40 rounded-2xl p-5 text-center text-emerald-300 text-xs font-bold space-y-1">
+                  <p className="text-sm font-black">🎉 تم تسجيل طلبك واهتمامك بنجاح!</p>
+                  <p>سيقوم فريق مخلصة بمراجعة قاعدة طلبات التسوية وإشعارك برقم هاتفك فور توافر السيارة ومطابقتها للفحص.</p>
+                </div>
+              ) : (
+                <form onSubmit={handleBuyerRequestSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-white/5 p-4 rounded-2xl border border-white/10">
+                  <div>
+                    <label className="block text-2xs font-bold text-slate-300 mb-1">
+                      {isAr ? 'الماركة والموديل المطلوب' : 'Make & Model'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder={isAr ? 'مثال: نيسان صني 2022' : 'e.g. Nissan Sunny 2022'}
+                      value={buyerMake}
+                      onChange={(e) => setBuyerMake(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/20 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-green"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-2xs font-bold text-slate-300 mb-1">
+                      {isAr ? 'مسار الشراء المفضل' : 'Purchase Method'}
+                    </label>
+                    <select
+                      value={buyerTrack}
+                      onChange={(e) => setBuyerTrack(e.target.value as any)}
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-white/20 text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-green"
+                    >
+                      <option value="bank_settlement">{isAr ? 'تسوية مديونية وحظر بيع' : 'Bank Settlement'}</option>
+                      <option value="direct_installment">{isAr ? 'تقسيط مباشر بدون بنوك' : 'Direct Installment'}</option>
+                      <option value="cash">{isAr ? 'شراء كاش ملكية خالصة' : 'Cash (Clean Title)'}</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-2xs font-bold text-slate-300 mb-1">
+                      {isAr ? 'الميزانية / المقدم المتاح' : 'Budget / Down Payment'}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={isAr ? 'مثال: 450,000 ج.م' : 'e.g. 450,000 EGP'}
+                      value={buyerBudget}
+                      onChange={(e) => setBuyerBudget(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/20 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-green"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-2xs font-bold text-slate-300 mb-1">
+                      {isAr ? 'رقم الواتساب للتواصل' : 'WhatsApp Number'}
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="01xxxxxxxxx"
+                      value={buyerPhone}
+                      onChange={(e) => setBuyerPhone(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/20 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-green"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2 lg:col-span-4 pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <span className="text-2xs text-slate-400">
+                      {isAr ? '🔒 بياناتك محمية ولن تُستخدم إلا للتواصل معك بخصوص السيارات المطابقة.' : '🔒 Your info is strictly protected and used only to contact you about matching cars.'}
+                    </span>
+                    <button
+                      type="submit"
+                      className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-brand-green hover:bg-emerald-600 text-slate-950 font-black text-xs transition shadow cursor-pointer"
+                    >
+                      {isAr ? 'أبلغني فور توفر سيارة مطابقة' : 'Notify Me When Available'}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
-            <div className="space-y-2">
-              <h3 className="text-lg font-black text-brand-navy">{t.home.noCarsTitle}</h3>
-              <p className="text-xs text-slate-500 leading-relaxed max-w-md mx-auto">
-                {t.home.noCarsDesc}
-              </p>
-            </div>
-            <div className="pt-2 flex items-center justify-center">
-              <button
-                type="button"
-                onClick={() => onNavigate?.('sell-wizard')}
-                className="w-full sm:w-auto px-7 py-3 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md transition"
-              >
-                {t.home.btnListYourCar}
-              </button>
+
+            {/* 2. Educational Settlement Showcase Examples */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-brand-border space-y-4 max-w-4xl mx-auto shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="space-y-0.5">
+                  <h4 className="text-sm font-extrabold text-brand-navy">
+                    {isAr ? 'نماذج صفقات التسوية المعتمدة والتقسيط عبر مخلصة' : 'Verified Settlement & Installment Deal Models'}
+                  </h4>
+                  <p className="text-2xs text-slate-500">
+                    {isAr ? 'أمثلة استرشادية توضح كيف تتم تسوية المديونيات واستلام المستندات الرسمية بالمسارات الثلاثة' : 'Illustrative verified deal benchmarks explaining legal and financial execution'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onNavigate?.('sell-wizard')}
+                  className="px-4 py-2 rounded-xl bg-brand-navy text-white text-xs font-bold hover:bg-slate-800 transition flex-shrink-0"
+                >
+                  {isAr ? 'اعرض سيارتك للبيع' : 'List Your Car'}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                {/* Case 1: Bank Debt Settlement */}
+                <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200/70 space-y-2">
+                  <span className="inline-block px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-2xs font-extrabold">
+                    {isAr ? '🏦 مسار: تسوية بنكية وحظر بيع' : 'Bank Settlement'}
+                  </span>
+                  <h5 className="text-xs font-bold text-slate-900">نيسان صني 2023 - سوبر صالون</h5>
+                  <p className="text-2xs text-slate-600 leading-relaxed">
+                    سعر السوق: 620,000 ج.م • مديونية البنك المسددة بخزينة CIB: 380,000 ج.م • تم استخراج مخالصة بنكية وفك الحظر بالمرور.
+                  </p>
+                </div>
+
+                {/* Case 2: Direct Installment */}
+                <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/70 space-y-2">
+                  <span className="inline-block px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-2xs font-extrabold">
+                    {isAr ? '🟡 مسار: تقسيط مباشر بدون بنوك' : 'Direct Installment'}
+                  </span>
+                  <h5 className="text-xs font-bold text-slate-900">هيونداي إلنترا CN7 2022</h5>
+                  <p className="text-2xs text-slate-600 leading-relaxed">
+                    مقدم ميسر: 220,000 ج.م • قسط شهري: 9,500 ج.م لمدة 36 شهراً • ضمانات شيكات بنكية وحظر بيع بالرخصة بعقد معتمد.
+                  </p>
+                </div>
+
+                {/* Case 3: Certified Cash Sale */}
+                <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200/70 space-y-2">
+                  <span className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-2xs font-extrabold">
+                    {isAr ? '🟢 مسار: بيع كاش ملكية خالصة' : 'Cash (Clean Title)'}
+                  </span>
+                  <h5 className="text-xs font-bold text-slate-900">كيا سبورتاج 2021 - فئة ثانية</h5>
+                  <p className="text-2xs text-slate-600 leading-relaxed">
+                    سعر الكاش: 880,000 ج.م • فحص 150 نقطة فني وهندسي معتمد • نقل ملكية وتنازل رسمي فوري بالشهر العقاري.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         ) : filteredCars.length === 0 ? (

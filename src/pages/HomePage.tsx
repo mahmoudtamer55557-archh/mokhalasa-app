@@ -434,6 +434,81 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
       </section>
 
+      {/* 4.5 TANGIBLE TRUST PROOF & OFFICIAL DOCUMENTS DELIVERED */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-3xl p-6 sm:p-10 border border-brand-border shadow-sm space-y-8">
+          <div className="text-center space-y-2 max-w-2xl mx-auto">
+            <span className="text-xs font-bold text-brand-green uppercase tracking-wider block">
+              {isAr ? 'الشفافية الإجرائية والقانونية الملموسة' : 'Tangible Legal & Procedural Transparency'}
+            </span>
+            <h2 className="text-xl sm:text-2xl font-black text-brand-navy">
+              {isAr ? 'ما الذي يستلمه كل طرف عند إتمام الصفقة عبر مخلصة؟' : 'What Official Documents Does Each Party Receive?'}
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500">
+              {isAr ? 'لا نعتمد على وعود شفهية؛ كل خطوة مدعومة بمستندات بنكية وحكومية رسمية تثبت إبراء الذمة ونقل الملكية' : 'Every step is backed by stamped bank releases and notarized property deeds.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Seller Package */}
+            <div className="bg-slate-50 rounded-2xl p-5 sm:p-6 border border-slate-200 space-y-4">
+              <div className="flex items-center gap-2.5 text-brand-navy font-black text-sm border-b border-slate-200 pb-3">
+                <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-xs">
+                  🏦
+                </div>
+                <span>{isAr ? 'حقيبة مستندات البائع (إبراء ذمة بنكي وقانوني كامل):' : 'Seller Package (Complete Legal & Bank Discharge):'}</span>
+              </div>
+              <ul className="space-y-2.5 text-xs text-slate-700">
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-brand-green flex-shrink-0 mt-0.5" />
+                  <span><strong>إيصال سداد البنك الرسمي:</strong> إيداع مباشر صادر من خزينة البنك المقرض بكامل قيمة التسوية.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-brand-green flex-shrink-0 mt-0.5" />
+                  <span><strong>خطاب مخالصة وفك حظر بيع:</strong> موجه رسمياً من البنك إلى وحدة المرور التابع لها الترخيص.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-brand-green flex-shrink-0 mt-0.5" />
+                  <span><strong>صافي ثمن السيارة نقداً:</strong> استلام فوري لكامل فارق السعر المتفق عليه بعد خصم التسوية.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-brand-green flex-shrink-0 mt-0.5" />
+                  <span><strong>تنقية السجل الائتماني (I-Score):</strong> إغلاق التسهيل الائتماني البنكي رسمياً لمنع أي مطالبات مستقبلية.</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Buyer Package */}
+            <div className="bg-slate-50 rounded-2xl p-5 sm:p-6 border border-slate-200 space-y-4">
+              <div className="flex items-center gap-2.5 text-brand-navy font-black text-sm border-b border-slate-200 pb-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-brand-green flex items-center justify-center font-bold text-xs">
+                  🚗
+                </div>
+                <span>{isAr ? 'حقيبة مستندات المشتري (ملكية حرة وفحص معتمد):' : 'Buyer Package (Clean Title & Certified Inspection):'}</span>
+              </div>
+              <ul className="space-y-2.5 text-xs text-slate-700">
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-brand-green flex-shrink-0 mt-0.5" />
+                  <span><strong>عقد بيع نهائي موثق بالشهر العقاري:</strong> نقل ملكية رسمي باسم المشتري مباشرة دون توكيلات مجهولة.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-brand-green flex-shrink-0 mt-0.5" />
+                  <span><strong>رخصة سيارة خالية من الحظر:</strong> شهادة بيانات ومطابقة فنية تؤكد سريان ونظافة الرخصة.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-brand-green flex-shrink-0 mt-0.5" />
+                  <span><strong>تقرير فحص هندسي شامل (150 نقطة):</strong> فحص دقيق للشاسيه، المحرك، الفتيس، ودهان الهيكل الخارجي.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-brand-green flex-shrink-0 mt-0.5" />
+                  <span><strong>ضمان مطابقة البيانات:</strong> مطابقة رقم الشاسيه والموتور وكافة المستندات مع السجلات الرسمية.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* 5. DANGER OF INFORMAL POA VS MOKHALASA */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center space-y-2 mb-8">

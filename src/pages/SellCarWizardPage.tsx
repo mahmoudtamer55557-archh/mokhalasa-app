@@ -1073,6 +1073,10 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
           </div>
         ) : (
           <div className="text-center space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-3xs font-extrabold mx-auto">
+              <Clock className="w-3.5 h-3.5 text-brand-green" />
+              <span>الوقت المتوقع لإكمال النموذج: 3 دقائق • حفظ تلقائي ومرحلي</span>
+            </div>
             <span className="text-xs font-bold text-brand-green uppercase tracking-wider block">
               بوابة تسجيل حالات التخارج والتعثر التمويلي
             </span>
@@ -2265,6 +2269,19 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                   يمكنك الاكتفاء بإرسال بيانات السيارة والتواصل للمعاينة المبدئية. قبل إتمام أي إجراء بنكي أو عرض السيارة للمشترين، سيتولى فريق مخلصة مساعدتك في استيفاء الوثائق المطلوبة عبر قناة اتصال مشفرة وخاصة.
                 </p>
               </div>
+            </div>
+
+            {/* Strict Privacy & Security Notice */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-xs text-slate-700">
+              <div className="flex items-center gap-2 font-black text-brand-navy">
+                <ShieldCheck className="w-4 h-4 text-brand-green" />
+                <span>سياسة حماية وسرية المستندات والبيانات الشخصية:</span>
+              </div>
+              <ul className="text-2xs text-slate-600 space-y-1.5 list-disc list-inside leading-relaxed">
+                <li><strong>الغرض من الجمع:</strong> التحقق من الموقف المالي وحساب المديونية الفعلية للبنك وسلامة التراخيص فقط.</li>
+                <li><strong>السرية التامة:</strong> لا تُعرض المستندات لأي مشترٍ أو زائر على المنصة إطلاقاً، وتطلع عليها فقط الإدارة القانونية المعتمدة.</li>
+                <li><strong>الحفظ والحذف:</strong> تُحفظ المستندات في بيئة سحابية مشفرة وتُحذف فور إتمام عملية البيع والتنازل، ويمكنك طلب حذفها في أي وقت عبر التواصل مع الدعم.</li>
+              </ul>
             </div>
 
             <DocumentChecklist

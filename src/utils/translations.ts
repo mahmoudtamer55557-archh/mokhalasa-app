@@ -275,10 +275,10 @@ export const translations: Record<Language, Translations> = {
       cashSaleTag: '🟢 بيع كاش'
     },
     home: {
-      heroBadge: 'أول منصة في مصر لبيع سيارات المتعثرين وحظر البيع، والتقسيط المباشر، وسيارات الكاش المعتمدة',
-      heroHeadline1: 'أول منصة لبيع سيارات المتعثرين وحظر البيع',
-      heroHeadline2: 'والتقسيط المباشر وسيارات الكاش في مصر',
-      heroSubtitle: 'سواء سيارتك محملة بأقساط بنكية متعثرة وعليها حظر بيع، أو عايز تبيعها أو تشتريها بتقسيط مباشر بدون بنوك، أو كاش ملكية خالصة — «مخلصة» تضمن لك أعلى عائد وأضمن إجراءات قانونية وفنية.',
+      heroBadge: 'المنصة المصرية المتخصصة لحلول سيارات حظر البيع والمديونيات والتقسيط المباشر والكاش المعتمد',
+      heroHeadline1: 'المنصة المتخصصة لتسوية سيارات حظر البيع والمديونيات',
+      heroHeadline2: 'والتقسيط المباشر بدون بنوك وسيارات الكاش المعتمدة',
+      heroSubtitle: 'سواء كانت سيارتك محملة بأقساط بنكية وعليها حظر بيع، أو ترغب في بيعها أو شرائها بتقسيط مباشر بدون بنوك، أو كاش ملكية خالصة — «مخلصة» توفر لك تقييماً عادلاً مبنياً على أسعار السوق الفعلية وإجراءات تسوية قانونية موثقة تحمي حقوق الطرفين.',
       track1Title: 'سيارات المتعثرين والأقساط',
       track1Desc: 'تصفية القرض وسداد معجل بخزينة البنك واستخراج مخالصة فك الحظر رسمياً.',
       track2Title: 'تقسيط بدون بنوك للمعارض والملاك',
@@ -479,10 +479,10 @@ export const translations: Record<Language, Translations> = {
       cashSaleTag: '🟢 Cash Sale'
     },
     home: {
-      heroBadge: 'Egypt’s #1 Platform for Distressed Car Settlements, Direct Installments & Certified Cash Sales',
-      heroHeadline1: 'The #1 Platform for Distressed Cars & Loan Settlement',
+      heroBadge: 'Specialized Egyptian Platform for Encumbered Car Settlements, Direct Installments & Certified Cash Sales',
+      heroHeadline1: 'The Dedicated Platform for Car Loan Settlement & Sale Bans',
       heroHeadline2: 'Direct Installment & Certified Cash Cars in Egypt',
-      heroSubtitle: 'Whether your car has bank loan arrears and a sale ban, you want in-house installments without banks, or a clean-title cash deal — Mokhalasa guarantees optimal value and secure legal execution.',
+      heroSubtitle: 'Whether your car has bank loan encumbrance and a sale ban, you want direct in-house installments, or a clean-title cash sale — Mokhalasa provides market-driven fair valuation and verified legal execution protecting both parties.',
       track1Title: 'Distressed & Bank-Financed Cars',
       track1Desc: 'Official loan payoffs paid directly at the bank counter with formal sale ban removal.',
       track2Title: 'Direct Installments (No Banks Needed)',
