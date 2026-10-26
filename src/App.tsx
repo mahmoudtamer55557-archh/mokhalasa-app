@@ -23,16 +23,22 @@ import { listingService } from './services/listingService';
 import { isValidEgyptianPhone } from './utils/phoneValidator';
 import { MessageSquare, CheckCircle2, X, AlertTriangle, ChevronLeft } from 'lucide-react';
 
-// Helper to parse view from URL hash
-const parseViewFromHash = (hash: string): string => {
-  const clean = hash.replace(/^#\/?/, '').trim();
-  if (!clean) return 'home';
+// Helper to parse view from URL path OR hash (SEO-friendly clean URLs)
+const parseViewFromUrl = (): string => {
+  if (typeof window === 'undefined') return 'home';
+  // Check pathname first (e.g. /marketplace or /sell)
+  const path = window.location.pathname.replace(/^\//, '').split('/')[0].trim();
+  // Fallback to hash (e.g. #/marketplace)
+  const hash = window.location.hash.replace(/^#\/?/, '').split('/')[0].trim();
+
+  const clean = path && path !== 'index.html' ? path : hash;
+  if (!clean || clean === 'home') return 'home';
   if (['staff', 'owner', 'seller-portal', 'marketplace', 'sell-wizard', 'calculator', 'how-it-works', 'faq', 'contact', 'terms', 'privacy', 'car-detail', 'dashboards', 'register', 'profile'].includes(clean)) {
     return clean;
   }
   if (clean === 'register' || clean === 'signup') return 'register';
   if (clean === 'profile' || clean === 'account' || clean === 'my-account') return 'profile';
-  if (clean === 'sell') return 'sell-wizard';
+  if (clean === 'sell' || clean === 'sell-car') return 'sell-wizard';
   if (clean === 'portal') return 'seller-portal';
   if (clean === 'admin') return 'owner';
   if (clean === 'staff-login') return 'staff';
@@ -40,9 +46,7 @@ const parseViewFromHash = (hash: string): string => {
 };
 
 export function App() {
-  const [currentView, setCurrentView] = useState<string>(() => 
-    parseViewFromHash(typeof window !== 'undefined' ? window.location.hash : '')
-  );
+  const [currentView, setCurrentView] = useState<string>(() => parseViewFromUrl());
   const [cars, setCars] = useState<Car[]>([]);
   const [selectedCar, setSelectedCar] = useState<Car | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -280,10 +284,10 @@ export function App() {
   const [consultationQuestion, setConsultationQuestion] = useState('');
   const [consultationSubmitted, setConsultationSubmitted] = useState(false);
 
-  // Listen to hash changes for deep linking
+  // Listen to popstate (HTML5 History API) and hash changes for deep linking
   useEffect(() => {
-    const handleHashChange = () => {
-      const clean = window.location.hash.replace(/^#\/?/, '').trim();
+    const handleUrlChange = () => {
+      const clean = (window.location.pathname.replace(/^\//, '') || window.location.hash.replace(/^#\/?/, '')).trim();
       if (clean === 'login' || clean === 'customer-login') {
         setCustomerAuthTab('login');
         setCustomerLoginOpen(true);
@@ -291,13 +295,17 @@ export function App() {
         setCustomerAuthTab('register');
         setCustomerLoginOpen(true);
       }
-      const view = parseViewFromHash(window.location.hash);
+      const view = parseViewFromUrl();
       setCurrentView(view);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    window.addEventListener('popstate', handleUrlChange);
+    window.addEventListener('hashchange', handleUrlChange);
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+      window.removeEventListener('hashchange', handleUrlChange);
+    };
   }, []);
 
   // Sync document title and direction
@@ -305,20 +313,26 @@ export function App() {
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = lang;
     document.title = lang === 'ar' 
-      ? 'مخلصة | منصة بيع السيارات المحملة بأقساط وتسوية ديون البنوك'
-      : 'Mokhalasa | Safe Auto Loan Exit & Financed Car Platform';
+      ? 'مخلصة | منصة تسوية سيارات حظر البيع والمديونيات والتقسيط المباشر'
+      : 'Mokhalasa | Car Loan Settlement, Sale Bans & Direct Installments';
   }, [lang]);
 
   const handleNavigate = (view: string) => {
     setCurrentView(view);
-    window.location.hash = `#/${view}`;
+    const targetPath = view === 'home' ? '/' : `/${view}`;
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({ view }, '', targetPath);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSelectCar = (car: Car) => {
     setSelectedCar(car);
     setCurrentView('car-detail');
-    window.location.hash = '#/car-detail';
+    const targetPath = `/car-detail?id=${car.id}`;
+    if (window.location.pathname !== '/car-detail') {
+      window.history.pushState({ view: 'car-detail', carId: car.id }, '', targetPath);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

@@ -670,6 +670,27 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
               </div>
             </div>
 
+            {/* Legal Safety & Direct Deposit Warning Banner */}
+            <div className="bg-amber-500/10 border border-amber-300 rounded-2xl p-4 text-xs text-amber-950 space-y-2">
+              <div className="flex items-center gap-2 font-black text-amber-900">
+                <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                <span>تحذير أمان وتسوية قانونية معتمدة:</span>
+              </div>
+              <p className="text-2xs text-slate-700 leading-relaxed">
+                لحماية أموالك وتفادي أي مساءلة: <strong>لا تقم بتسليم أي مبالغ نقدية للبائع بخصوص المديونية</strong>. يتم إيداع مبلغ التسوية مباشرة في خزينة البنك المقرض، وتستلم إشعار سداد رسمي ومخالصة فك الحظر، والتنازل الموثق بالشهر العقاري بإشراف المستشار القانوني لمنصة مخلصة.
+              </p>
+              <div className="pt-1 flex items-center justify-between text-3xs text-slate-500 border-t border-amber-200">
+                <span>إشراف قانوني معتمد • صفر توكيلات مجهولة</span>
+                <button
+                  type="button"
+                  onClick={() => alert(isAr ? 'تم استلام ملاحظتك وسيقوم الفريق القانوني بمراجعة الإعلان والتواصل معك.' : 'Report submitted for legal review.')}
+                  className="text-amber-800 hover:text-amber-950 font-bold underline cursor-pointer"
+                >
+                  إبلاغ عن هذا الإعلان
+                </button>
+              </div>
+            </div>
+
           </div>
 
         </div>
