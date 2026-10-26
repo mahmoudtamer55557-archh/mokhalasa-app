@@ -71,6 +71,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'marketplace', labelAr: 'تصفح السيارات', labelEn: 'Browse Cars' },
     { id: 'sell-wizard', labelAr: 'بيع عربيتك مع مخلصة', labelEn: 'Sell Your Car' },
     { id: 'how-it-works', labelAr: 'كيف تعمل مخلصة؟', labelEn: 'How It Works' },
+    { id: 'blog', labelAr: 'دليل السيارات', labelEn: 'Car Guides' },
     { id: 'faq', labelAr: 'الأسئلة الشائعة', labelEn: 'FAQ' },
     { id: 'contact', labelAr: 'تواصل معنا', labelEn: 'Contact Us' },
   ];

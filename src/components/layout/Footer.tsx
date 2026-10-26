@@ -68,6 +68,11 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang = 'ar' }) => {
                 </button>
               </li>
               <li>
+                <button onClick={() => onNavigate('blog')} className="hover:text-brand-green transition text-brand-green font-bold">
+                  {isAr ? 'دليل ومقالات السيارات' : 'Car Guides & Blog'}
+                </button>
+              </li>
+              <li>
                 <button onClick={() => onNavigate('faq')} className="hover:text-brand-green transition">
                   {isAr ? 'اسأل فريق مخلصة عن الإجراءات' : 'Ask Mokhalasa Team'}
                 </button>

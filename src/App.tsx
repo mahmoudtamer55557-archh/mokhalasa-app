@@ -12,6 +12,7 @@ import { SellCarWizardPage } from './pages/SellCarWizardPage';
 import { SellerCasePortalPage } from './pages/SellerCasePortalPage';
 import { PrivateOperationsDashboard } from './pages/PrivateOperationsDashboard';
 import { StaticPages } from './pages/StaticPages';
+import { BlogPage } from './pages/BlogPage';
 import { CustomerLoginModal } from './components/auth/CustomerLoginModal';
 import { CompleteProfileModal } from './components/auth/CompleteProfileModal';
 import { CustomerSupportChatbot } from './components/ai/CustomerSupportChatbot';
@@ -33,7 +34,7 @@ const parseViewFromUrl = (): string => {
 
   const clean = path && path !== 'index.html' ? path : hash;
   if (!clean || clean === 'home') return 'home';
-  if (['staff', 'owner', 'seller-portal', 'marketplace', 'sell-wizard', 'calculator', 'how-it-works', 'faq', 'contact', 'terms', 'privacy', 'car-detail', 'dashboards', 'register', 'profile'].includes(clean)) {
+  if (['staff', 'owner', 'seller-portal', 'marketplace', 'sell-wizard', 'calculator', 'how-it-works', 'faq', 'contact', 'terms', 'privacy', 'blog', 'guides', 'articles', 'car-detail', 'dashboards', 'register', 'profile'].includes(clean)) {
     return clean;
   }
   if (clean === 'register' || clean === 'signup') return 'register';
@@ -42,6 +43,7 @@ const parseViewFromUrl = (): string => {
   if (clean === 'portal') return 'seller-portal';
   if (clean === 'admin') return 'owner';
   if (clean === 'staff-login') return 'staff';
+  if (clean === 'guides' || clean === 'articles') return 'blog';
   return 'home';
 };
 
@@ -688,6 +690,14 @@ export function App() {
         {['how-it-works', 'faq', 'terms', 'privacy', 'contact'].includes(currentView) && (
           <StaticPages
             type={currentView as 'how-it-works' | 'faq' | 'terms' | 'privacy' | 'contact'}
+            onNavigate={handleNavigate}
+            lang={lang}
+          />
+        )}
+
+        {/* PUBLIC: Blog & Educational Guides for SEO */}
+        {['blog', 'guides', 'articles'].includes(currentView) && (
+          <BlogPage
             onNavigate={handleNavigate}
             lang={lang}
           />
