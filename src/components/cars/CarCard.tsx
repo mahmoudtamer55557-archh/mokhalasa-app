@@ -1,6 +1,6 @@
 import React from 'react';
 import { Car } from '../../types';
-import { ShieldCheck, Heart, MapPin, Gauge, Banknote, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Heart, MapPin, Gauge, Banknote, CheckCircle2, Sparkles, Star, Flame, Crown } from 'lucide-react';
 
 interface CarCardProps {
   car: Car;
@@ -29,8 +29,32 @@ export const CarCard: React.FC<CarCardProps> = ({
   return (
     <div
       onClick={() => onSelect(car)}
-      className="group bg-white rounded-2xl border border-brand-border hover:border-brand-green/40 shadow-card hover:shadow-card-hover transition-all duration-300 flex flex-col overflow-hidden cursor-pointer relative"
+      className={`group bg-white rounded-2xl border transition-all duration-300 flex flex-col overflow-hidden cursor-pointer relative ${
+        car.featured
+          ? 'border-amber-400/90 ring-2 ring-amber-400/40 shadow-lg shadow-amber-500/10 hover:shadow-xl hover:shadow-amber-500/20 hover:-translate-y-0.5'
+          : 'border-brand-border hover:border-brand-green/40 shadow-card hover:shadow-card-hover'
+      }`}
     >
+      {/* Premium / Promoted VIP Header Ribbon (Sleek bar outside image - Does NOT block or eat photo!) */}
+      {car.featured && (
+        <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 text-slate-950 px-3.5 py-1.5 flex items-center justify-between text-2xs font-black shadow-sm tracking-wide border-b border-amber-300/80">
+          <div className="flex items-center gap-1.5 truncate">
+            <Crown className="w-3.5 h-3.5 fill-slate-950 text-slate-950 flex-shrink-0" />
+            <span className="font-black text-[11px] truncate">
+              {car.featuredBadgeText || (car.featuredRank === 1 ? '⭐ إعلان بريميوم موثق • صدارة المعرض' : car.featuredRank && car.featuredRank <= 3 ? `🔥 إعلان بريميوم مميز (توب 3)` : `⭐ إعلان بريميوم موثق (توب 10)`)}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <span className="px-2 py-0.5 rounded-full bg-slate-950 text-amber-300 font-mono text-3xs font-black border border-amber-400/50 shadow-sm">
+              {car.featuredRank ? `المركز #${car.featuredRank}` : 'VIP'}
+            </span>
+            <span className="px-1.5 py-0.5 rounded bg-black/15 text-slate-950 text-3xs font-black tracking-wider uppercase">
+              PROMOTED
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Image Container with Badges */}
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
         <img
@@ -46,14 +70,14 @@ export const CarCard: React.FC<CarCardProps> = ({
             e.stopPropagation();
             onToggleFavorite?.(car.id);
           }}
-          className="absolute top-3 left-3 p-2 rounded-full bg-white/80 backdrop-blur-md text-slate-700 hover:text-red-500 hover:bg-white shadow-sm transition"
+          className="absolute top-3 left-3 p-2 rounded-full bg-white/90 backdrop-blur-md text-slate-700 hover:text-red-500 hover:bg-white shadow-sm transition z-10"
           aria-label="حفظ في المفضلة"
         >
           <Heart className={`w-4 h-4 ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
         </button>
 
         {/* Financing Status Badge */}
-        <div className="absolute top-3 right-3 flex flex-col gap-1.5 items-end">
+        <div className="absolute top-3 right-3 flex flex-col gap-1.5 items-end z-10">
           {(car.saleType === 'direct_installment' || car.financingType === 'direct_installment' || car.directInstallment) && (
             <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-500 text-slate-950 backdrop-blur-md shadow-md border border-amber-300">
               {isAr ? '🟡 تقسيط مباشر (بدون بنك)' : 'Direct Installment'}
@@ -104,10 +128,14 @@ export const CarCard: React.FC<CarCardProps> = ({
         {/* Title & Trim */}
         <div>
           <div className="flex items-center justify-between gap-2">
-            <h3 className="font-extrabold text-base text-brand-navy group-hover:text-brand-green transition-colors line-clamp-1">
+            <h3 className={`text-brand-navy group-hover:text-brand-green transition-colors line-clamp-1 ${
+              car.featured ? 'text-base sm:text-lg text-slate-950 font-black' : 'text-base font-extrabold'
+            }`}>
               {car.make} {car.model} {car.year}
             </h3>
-            <span className="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-bold flex-shrink-0">
+            <span className={`text-xs px-2 py-0.5 rounded font-bold flex-shrink-0 ${
+              car.featured ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-slate-100 text-slate-600'
+            }`}>
               {car.year}
             </span>
           </div>
@@ -175,19 +203,24 @@ export const CarCard: React.FC<CarCardProps> = ({
         )}
 
         {/* Pricing Area */}
-        <div className="pt-1 flex items-end justify-between">
+        <div className="pt-2 flex items-end justify-between border-t border-slate-100">
           <div>
-            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-              {isAr ? 'السعر المطلوب' : 'Asking Price'}
+            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
+              <span>{isAr ? 'السعر المطلوب' : 'Asking Price'}</span>
+              {car.featured && (
+                <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 font-extrabold border border-amber-200">
+                  {isAr ? 'صفقة مميزة' : 'Promoted'}
+                </span>
+              )}
             </div>
-            <div className="text-lg font-black text-brand-navy leading-tight">
+            <div className={`leading-tight ${car.featured ? 'text-xl text-slate-950 font-black font-mono' : 'text-lg font-black text-brand-navy'}`}>
               {formatEGP(car.askingPrice)}
             </div>
           </div>
 
           {buyerSaving > 0 && (
             <div className="text-left">
-              <span className="inline-block px-2 py-1 rounded-md text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="inline-block px-2.5 py-1 rounded-lg text-[10.5px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm">
                 {isAr ? `وفر ${formatEGP(buyerSaving)}` : `Save ${formatEGP(buyerSaving)}`}
               </span>
             </div>

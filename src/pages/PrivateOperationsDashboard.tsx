@@ -14,7 +14,8 @@ import {
   Edit3, Scale, UserCheck, ExternalLink,
   Car as CarIcon, Tag, MessageSquare, Send,
   AlertTriangle, Trash2, Clock, Sparkles,
-  Download, FileSpreadsheet, Printer, Archive, AlertCircle, RotateCcw
+  Download, FileSpreadsheet, Printer, Archive, AlertCircle, RotateCcw,
+  Crown, Star, Flame
 } from 'lucide-react';
 import { PrintableAgreementModal } from '../components/cars/PrintableAgreementModal';
 import { geminiService } from '../services/geminiService';
@@ -95,6 +96,8 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
       result = dbListings.filter(l => l.status === 'published' || l.status === 'approved');
     } else if (moderationFilter === 'approved') {
       result = dbListings.filter(l => l.status === 'approved' || l.status === 'published');
+    } else if (moderationFilter === 'featured') {
+      result = dbListings.filter(l => l.is_featured);
     } else if (moderationFilter === 'archived') {
       result = dbListings.filter(l => l.status === 'archived' || l.status === 'withdrawn');
     } else {
@@ -150,6 +153,54 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
   const [adminFeedbackInput, setAdminFeedbackInput] = useState<string>('');
   const [moderationActionLoading, setModerationActionLoading] = useState(false);
   const [moderationMessage, setModerationMessage] = useState<string | null>(null);
+
+  // Featured & Priority Ranking Modal State (Top 3 & Top 10 by Category / Global)
+  const [listingForFeatured, setListingForFeatured] = useState<DatabaseCarListing | null>(null);
+  const [featuredActive, setFeaturedActive] = useState<boolean>(true);
+  const [featuredTier, setFeaturedTier] = useState<'top_3' | 'top_10' | 'standard'>('top_3');
+  const [featuredRank, setFeaturedRank] = useState<number>(1);
+  const [featuredScope, setFeaturedScope] = useState<'all' | 'category_only' | 'both'>('both');
+  const [featuredBadgeText, setFeaturedBadgeText] = useState<string>('');
+  const [featuredActionLoading, setFeaturedActionLoading] = useState<boolean>(false);
+
+  const openFeaturedModal = (item: DatabaseCarListing) => {
+    setListingForFeatured(item);
+    setFeaturedActive(item.is_featured ?? true);
+    setFeaturedRank(item.featured_rank ?? 1);
+    setFeaturedTier(item.featured_tier ?? (item.featured_rank && item.featured_rank <= 3 ? 'top_3' : 'top_10'));
+    setFeaturedScope(item.featured_scope ?? 'both');
+    setFeaturedBadgeText(item.featured_badge_text || '');
+  };
+
+  const handleSaveFeatured = async () => {
+    if (!listingForFeatured) return;
+    setFeaturedActionLoading(true);
+    const res = await listingService.updateListingFeatured(listingForFeatured.id, {
+      is_featured: featuredActive,
+      featured_rank: featuredRank,
+      featured_tier: featuredTier,
+      featured_scope: featuredScope,
+      featured_badge_text: featuredBadgeText.trim() || undefined
+    });
+
+    if (res.success) {
+      setDbListings(prev => prev.map(l => l.id === listingForFeatured.id ? {
+        ...l,
+        is_featured: featuredActive,
+        featured_rank: featuredActive ? featuredRank : undefined,
+        featured_tier: featuredActive ? featuredTier : undefined,
+        featured_scope: featuredActive ? featuredScope : undefined,
+        featured_badge_text: featuredActive ? featuredBadgeText.trim() : undefined
+      } : l));
+
+      alert(`✅ ${res.message}`);
+      setListingForFeatured(null);
+      await loadModerationListings();
+    } else {
+      alert(`خطأ: ${res.message}`);
+    }
+    setFeaturedActionLoading(false);
+  };
 
   // Deactivation modal state (Priority 3)
   const [listingToDeactivate, setListingToDeactivate] = useState<DatabaseCarListing | null>(null);
@@ -1683,6 +1734,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                   { id: 'all', label: 'كل الإعلانات النشطة', count: dbListings.filter(l => l.status !== 'archived' && l.status !== 'withdrawn').length },
                   { id: 'pending_review', label: '⏳ بانتظار المراجعة', count: dbListings.filter(l => l.status === 'pending_review').length },
                   { id: 'published', label: '🚀 الإعلانات المنشورة بالمعرض', count: dbListings.filter(l => l.status === 'published' || l.status === 'approved').length },
+                  { id: 'featured', label: '⭐ إعلانات مميزة (Top)', count: dbListings.filter(l => l.is_featured).length },
                   { id: 'needs_changes', label: '✏️ مطلوب تعديلات', count: dbListings.filter(l => l.status === 'needs_changes').length },
                   { id: 'rejected', label: '✕ إعلانات مرفوضة', count: dbListings.filter(l => l.status === 'rejected').length },
                   { id: 'archived', label: '📦 الأرشيف والمحذوفات', count: dbListings.filter(l => l.status === 'archived' || l.status === 'withdrawn').length }
@@ -1821,6 +1873,17 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                                   <span>🙈 مخفي مؤقتاً عن المعرض</span>
                                 </span>
                               )
+                            )}
+
+                            {/* Featured (Top 3 / Top 10) Badge */}
+                            {item.is_featured && (
+                              <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-amber-500/20 text-amber-300 border border-amber-500/60 flex items-center gap-1 shadow-sm">
+                                <Crown className="w-2.5 h-2.5 text-amber-400" />
+                                <span>
+                                  {item.featured_tier === 'top_3' ? `⭐ توب 3 (#${item.featured_rank || 1})` : `⭐ توب 10 (#${item.featured_rank || 1})`}
+                                  {item.featured_scope === 'category_only' ? ` [فئة ${item.make}]` : item.featured_scope === 'all' ? ' [المعرض العام]' : ' [عام وفئوي]'}
+                                </span>
+                              </span>
                             )}
 
                             {item.status === 'archived' && (
@@ -2100,6 +2163,21 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                               </span>
                             )}
 
+                            {/* Featured / Top Priority Setting Button */}
+                            <button
+                              type="button"
+                              onClick={() => openFeaturedModal(item)}
+                              className={`px-3 py-1.5 rounded-lg text-2xs font-bold transition flex items-center gap-1.5 border shadow-sm ${
+                                item.is_featured
+                                  ? 'bg-amber-950/80 hover:bg-amber-900 border-amber-500/80 text-amber-300'
+                                  : 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-300'
+                              }`}
+                              title="تحديد ترتيب الإعلان وتمييزه في صدارة المعرض أو الفئة"
+                            >
+                              <Crown className="w-3 h-3 text-amber-400" />
+                              <span>{item.is_featured ? `⭐ تمييز (#${item.featured_rank})` : '⭐ تمييز (Top)'}</span>
+                            </button>
+
                             <button
                               onClick={() => { setSelectedModerationListing(item); setAdminFeedbackInput(item.review_feedback || ''); }}
                               className="px-3 py-1.5 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-700 text-amber-300 text-2xs font-bold transition"
@@ -2191,11 +2269,35 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {purchaseOffers.map((offer) => {
-                  const cleanPhone = (offer.buyerPhone || '').replace(/\D/g, '');
-                  const intlPhone = cleanPhone.startsWith('0') ? `2${cleanPhone}` : cleanPhone.startsWith('20') ? cleanPhone : `20${cleanPhone}`;
-                  const waText = encodeURIComponent(
-                    `مرحباً أستاذ ${offer.buyerName}، معك مستشار الصفقات من منصة مخلصة بخصوص عرض الشراء المقدم على سيارة ${offer.carTitle} (كود الحالة: ${offer.caseReference}) بمبلغ ${offer.offeredPrice.toLocaleString()} ج.م...`
+                  const cleanBuyerPhone = (offer.buyerPhone || '').replace(/\D/g, '');
+                  const intlBuyerPhone = cleanBuyerPhone.startsWith('0') ? `2${cleanBuyerPhone}` : cleanBuyerPhone.startsWith('20') ? cleanBuyerPhone : `20${cleanBuyerPhone}`;
+                  const waBuyerText = encodeURIComponent(
+                    `مرحباً أستاذ ${offer.buyerName}، معك مستشار الصفقات من منصة «مخلصة». بخصوص عرض الشراء المقدم على سيارة ${offer.carTitle} (كود الحالة: ${offer.caseReference}) بمبلغ ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م. يسعدنا إبلاغك بموافقة البائع والبدء في تنسيق موعد المعاينة وإجراءات الفحص...`
                   );
+
+                  // Match Seller Information from listings
+                  const sellerListing = dbListings.find(
+                    l => (offer.listingId && l.id === offer.listingId) ||
+                         (offer.caseReference && (l.case_reference === offer.caseReference || l.id.slice(0, 8).toUpperCase() === offer.caseReference.replace('MK-', '')))
+                  );
+                  const sellerName = sellerListing?.seller_name || 'مالك السيارة';
+                  const sellerPhone = sellerListing?.seller_phone || sellerListing?.contact_phone || '';
+                  const cleanSellerPhone = sellerPhone.replace(/\D/g, '');
+                  const intlSellerPhone = cleanSellerPhone.startsWith('0') ? `2${cleanSellerPhone}` : cleanSellerPhone.startsWith('20') ? cleanSellerPhone : `20${cleanSellerPhone}`;
+                  const waSellerText = encodeURIComponent(
+                    `مرحباً أستاذ ${sellerName}، معك مستشار الصفقات من منصة «مخلصة». بخصوص سيارتك المعروضة (${offer.carTitle} - كود ${offer.caseReference})، تم تسجيل موافقتك على العرض المالي المقدم بمبلغ ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م، ونبدأ الآن التنسيق معك لتحديد موعد المعاينة وإتمام تسوية البنك...`
+                  );
+
+                  // Match Buyer Account Activity & Active Listings ("هل عارض إعلانات ولا لأ")
+                  const matchedCustomer = customersList.find(
+                    (c: any) => c.id === offer.buyerUserId || (offer.buyerPhone && c.phone === offer.buyerPhone) || (offer.buyerName && c.full_name === offer.buyerName)
+                  );
+                  const buyerListings = dbListings.filter(
+                    l => (offer.buyerUserId && l.user_id === offer.buyerUserId) ||
+                         (offer.buyerPhone && (l.seller_phone === offer.buyerPhone || l.contact_phone === offer.buyerPhone)) ||
+                         (offer.buyerName && l.seller_name === offer.buyerName)
+                  );
+                  const hasBuyerListings = buyerListings.length > 0;
 
                   // Price Difference Breakdown
                   const priceDiff = offer.offeredPrice - offer.askingPrice;
@@ -2221,47 +2323,46 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                           : isAnyOtherOfferAccepted
                           ? 'border-slate-800/60 opacity-80'
                           : offer.status === 'seller_accepted'
-                          ? 'border-emerald-500/50 shadow-md'
+                          ? 'border-emerald-500/50 shadow-md ring-1 ring-emerald-500/30'
+                          : offer.status === 'seller_rejected'
+                          ? 'border-rose-900/50'
                           : 'border-slate-800 hover:border-slate-700'
                       }`}
                     >
+                      {/* Top Header: Car & Automated Live Status */}
                       <div className="flex items-start justify-between gap-3 border-b border-slate-800/80 pb-3">
                         <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-extrabold text-sm text-white">{offer.buyerName}</span>
-                            <span className="px-2 py-0.5 rounded-full text-3xs font-bold bg-slate-900 border border-slate-700 text-slate-300 font-mono" dir="ltr">
-                              {offer.buyerPhone}
+                          <span className="text-sm font-black text-white block">
+                            {offer.carTitle}
+                          </span>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-2xs font-mono font-bold text-brand-green">
+                              كود: {offer.caseReference}
+                            </span>
+                            <span className="text-slate-600">|</span>
+                            <span className="text-3xs text-slate-400">
+                              تاريخ العرض: {new Date(offer.createdAt).toLocaleDateString('ar-EG')}
                             </span>
                           </div>
-                          <span className="text-2xs text-brand-green font-bold block mt-1">
-                            {offer.carTitle} (كود: {offer.caseReference})
-                          </span>
                         </div>
 
-                        <span className={`px-2.5 py-1 rounded-full text-3xs font-extrabold border ${
+                        {/* Real-time Automated Status Badge */}
+                        <span className={`px-2.5 py-1 rounded-full text-3xs font-black border ${
                           isThisOfferAccepted
-                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/60 font-black'
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/60'
                           : isAnyOtherOfferAccepted
                             ? 'bg-slate-800 text-slate-400 border-slate-700'
                           : offer.status === 'seller_accepted'
                             ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/60 animate-pulse font-black'
-                          : offer.status === 'new'
-                            ? 'bg-emerald-950/50 text-emerald-300 border-emerald-800/60'
-                          : offer.status === 'communicated_to_seller'
-                            ? 'bg-amber-950/50 text-amber-300 border-amber-800/60'
-                          : offer.status === 'contacted'
-                            ? 'bg-blue-950/50 text-blue-300 border-blue-800/60'
-                          : offer.status === 'negotiating'
-                            ? 'bg-amber-950/50 text-amber-300 border-amber-800/60'
-                          : 'bg-rose-950/50 text-rose-300 border-rose-800/60'
+                          : offer.status === 'seller_rejected'
+                            ? 'bg-rose-950/60 text-rose-300 border-rose-800/80'
+                          : 'bg-amber-950/50 text-amber-300 border-amber-800/60'
                         }`}>
-                          {isThisOfferAccepted ? '✅ صفقة معتمدة' :
+                          {isThisOfferAccepted ? '✅ صفقة معتمدة نهائياً' :
                            isAnyOtherOfferAccepted ? 'قائمة انتظار بديلة' :
                            offer.status === 'seller_accepted' ? '🎉 وافق البائع على العرض' :
-                           offer.status === 'communicated_to_seller' ? 'تم الإرسال للبائع' :
-                           offer.status === 'new' ? 'طلب جديد' :
-                           offer.status === 'contacted' ? 'تم التواصل' :
-                           offer.status === 'negotiating' ? 'جاري التفاوض' : 'مرفوض'}
+                           offer.status === 'seller_rejected' ? '✕ رفض البائع العرض' :
+                           '⏳ أرسل للبائع تلقائياً (بانتظار الرد)'}
                         </span>
                       </div>
 
@@ -2304,102 +2405,147 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                         </div>
                       )}
 
-                      {isAnyOtherOfferAccepted && (
-                        <div className="p-2.5 bg-slate-900/90 border border-amber-800/40 rounded-xl text-2xs text-amber-300 flex items-center gap-2">
-                          <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                      {offer.status === 'seller_accepted' && !isThisOfferAccepted && (
+                        <div className="p-3 bg-emerald-950/50 border border-emerald-500/60 rounded-xl text-xs text-emerald-300 space-y-1 animate-pulse">
+                          <div className="flex items-center gap-2 font-black">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                            <span>🎉 وافق البائع على السعر المعروض!</span>
+                          </div>
+                          <p className="text-2xs text-emerald-200/90 leading-relaxed pr-6">
+                            تم استلام موافقة البائع بنجاح، ويمكنك الآن التنسيق الفوري مع الطرفين عبر واتساب أو الهاتف لتحديد موعد الفحص وإتمام المبايعة.
+                          </p>
+                        </div>
+                      )}
+
+                      {offer.status === 'seller_rejected' && (
+                        <div className="p-2.5 bg-rose-950/40 border border-rose-800/60 rounded-xl text-2xs text-rose-300 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                          <span><strong>اعتذر البائع عن العرض:</strong> تم إشعار المشتري تلقائياً لتقديم عرض سعر بديل.</span>
+                        </div>
+                      )}
+
+                      {/* Buyer Account Profile & "هل عارض إعلانات ولا لأ" */}
+                      <div className="p-3 bg-slate-900/90 rounded-2xl border border-slate-800 space-y-2 text-2xs">
+                        <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-brand-green" />
+                            <span className="font-black text-white text-xs">ملف المشتري: {offer.buyerName}</span>
+                            {matchedCustomer?.is_verified && (
+                              <span className="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 font-bold text-3xs border border-emerald-800">
+                                ✓ موثق
+                              </span>
+                            )}
+                          </div>
+                          <span className="font-mono text-slate-400 text-3xs" dir="ltr">{offer.buyerPhone}</span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-slate-300">
                           <div>
-                            <strong>عرض بديل (في قائمة الانتظار):</strong> تم اعتماد صفقة أخرى بالفعل لهذه السيارة. يبقى هذا العرض كاحتياطي في حال تعثر إتمام الصفقة الأولى.
+                            <span className="text-slate-500 block text-3xs">المحافظة / المدينة:</span>
+                            <span className="font-bold">{matchedCustomer?.governorate || 'القاهرة'} {matchedCustomer?.city ? `(${matchedCustomer.city})` : ''}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block text-3xs">نشاط وحالة الحساب:</span>
+                            {hasBuyerListings ? (
+                              <span className="text-amber-300 font-black flex items-center gap-1">
+                                <CarIcon className="w-3.5 h-3.5 text-amber-400" />
+                                <span>عارض ({buyerListings.length}) سيارات بالمنصة</span>
+                              </span>
+                            ) : (
+                              <span className="text-emerald-400 font-bold flex items-center gap-1">
+                                <User className="w-3.5 h-3.5" />
+                                <span>مشتري فقط (بدون إعلانات بيع)</span>
+                              </span>
+                            )}
                           </div>
                         </div>
-                      )}
 
-                      {offer.status === 'seller_accepted' && !isThisOfferAccepted && (
-                        <div className="p-2.5 bg-emerald-950/40 border border-emerald-600/50 rounded-xl text-2xs text-emerald-300 flex items-center gap-2 animate-pulse">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                          <span><strong>وافق البائع على السعر!</strong> جاهز للاعتماد النهائي وتحديد موعد المقابلة البنكية.</span>
-                        </div>
-                      )}
-
-                      <div className="text-2xs text-slate-400 space-y-1 bg-slate-900/50 p-3 rounded-xl">
-                        <div>طريقة السداد: <strong className="text-slate-200">{offer.paymentPreference === 'cash_at_bank' ? 'سداد مباشر بالبنك' : offer.paymentPreference === 'need_new_financing' ? 'طلب تمويل جديد' : 'كاش بالشهر العقاري'}</strong></div>
-                        <div>وقت الاتصال المفضل: <strong className="text-slate-200">{offer.preferredContactTime}</strong></div>
-                        {offer.notes && <div>ملاحظات المشتري: <span className="text-slate-300 italic">"{offer.notes}"</span></div>}
-                      </div>
-
-                      <div className="flex flex-wrap items-center justify-between pt-2 border-t border-slate-800 gap-2">
-                        {/* Status update selector */}
-                        {!isThisOfferAccepted && !isAnyOtherOfferAccepted ? (
-                          <select
-                            value={offer.status}
-                            onChange={(e) => handleUpdateOfferStatus(offer.id, e.target.value as any)}
-                            className="px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 text-3xs font-bold focus:outline-none"
-                          >
-                            <option value="new">جديد</option>
-                            <option value="contacted">تم التواصل</option>
-                            <option value="communicated_to_seller">أرسل للبائع</option>
-                            <option value="seller_accepted">وافق البائع</option>
-                            <option value="negotiating">جاري التفاوض</option>
-                            <option value="accepted">مقبول ومعتمد</option>
-                            <option value="declined">مرفوض</option>
-                          </select>
-                        ) : (
-                          <span className="text-3xs text-slate-500 font-mono">
-                            {isThisOfferAccepted ? 'معاملة مغلقة ومعتمدة' : 'عرض انتظار بديل'}
-                          </span>
+                        {hasBuyerListings && (
+                          <div className="pt-1.5 border-t border-slate-800 flex flex-wrap gap-1 items-center">
+                            <span className="text-3xs text-slate-400">سيارات المشتري المعروضة:</span>
+                            {buyerListings.map(bCar => (
+                              <span key={bCar.id} className="px-2 py-0.5 rounded bg-slate-950 text-slate-300 font-bold text-3xs border border-slate-700">
+                                {bCar.make} {bCar.model} ({bCar.year})
+                              </span>
+                            ))}
+                          </div>
                         )}
 
-                        {/* Forward to Seller & Communication Actions */}
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="text-3xs text-slate-400 pt-1 border-t border-slate-800 flex justify-between">
+                          <span>طريقة السداد: <strong className="text-slate-200">{offer.paymentPreference === 'cash_at_bank' ? 'سداد مباشر بالبنك' : offer.paymentPreference === 'need_new_financing' ? 'طلب تمويل جديد' : 'كاش بالشهر العقاري'}</strong></span>
+                          <span>الوقت المفضل: <strong className="text-slate-200">{offer.preferredContactTime}</strong></span>
+                        </div>
+                        {offer.notes && <div className="text-3xs text-slate-400">ملاحظات: <span className="text-slate-300 italic">"{offer.notes}"</span></div>}
+                      </div>
+
+                      {/* Party Coordination Bar (WhatsApp & Direct Call for Seller and Buyer) */}
+                      <div className="p-3 bg-slate-900/60 rounded-2xl border border-slate-800 space-y-2.5">
+                        <div className="flex items-center justify-between text-3xs">
+                          <span className="text-slate-400 font-bold">بيانات مالك السيارة (البائع):</span>
+                          <span className="text-amber-300 font-bold">{sellerName} {sellerPhone ? `(${sellerPhone})` : ''}</span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-800/80">
+                          {/* WhatsApp Buyer */}
+                          <a
+                            href={`https://wa.me/${intlBuyerPhone}?text=${waBuyerText}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-2xs flex items-center gap-1.5 shadow-sm transition"
+                            title="مراسلة المشتري عبر واتساب للتنسيق"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            <span>واتساب المشتري</span>
+                          </a>
+
+                          {/* Call Buyer */}
+                          <a
+                            href={`tel:+${intlBuyerPhone}`}
+                            className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-2xs flex items-center gap-1 border border-slate-700 transition"
+                            title="اتصال هاتفي بالمشتري"
+                          >
+                            <PhoneCall className="w-3 h-3 text-emerald-400" />
+                            <span>اتصال</span>
+                          </a>
+
+                          {/* WhatsApp Seller */}
+                          {cleanSellerPhone ? (
+                            <a
+                              href={`https://wa.me/${intlSellerPhone}?text=${waSellerText}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-slate-950 font-black text-2xs flex items-center gap-1.5 shadow-sm transition"
+                              title="مراسلة البائع عبر واتساب للتنسيق"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                              <span>واتساب البائع</span>
+                            </a>
+                          ) : null}
+
+                          {/* Call Seller */}
+                          {cleanSellerPhone ? (
+                            <a
+                              href={`tel:+${intlSellerPhone}`}
+                              className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-2xs flex items-center gap-1 border border-slate-700 transition"
+                              title="اتصال هاتفي بالبائع"
+                            >
+                              <PhoneCall className="w-3 h-3 text-amber-400" />
+                              <span>اتصال</span>
+                            </a>
+                          ) : null}
+
+                          {/* Admin Deal Confirmation */}
                           {offer.status === 'seller_accepted' && !isThisOfferAccepted && (
                             <button
                               type="button"
                               onClick={() => handleConfirmDeal(offer.id)}
-                              className="px-3.5 py-1.5 rounded-xl bg-brand-green hover:bg-emerald-500 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md transition animate-pulse"
-                              title="اعتماد الاتفاق النهائي وإشعار المشتري والبائع بالتواصل خلال 24 ساعة للمقابلة"
+                              className="px-3.5 py-1.5 rounded-xl bg-brand-green hover:bg-emerald-500 text-slate-950 font-black text-2xs flex items-center gap-1.5 shadow-md transition animate-pulse mr-auto"
+                              title="اعتماد الاتفاق النهائي وتنسيق موعد المقابلة البنكية والمعاينة"
                             >
-                              <CheckCircle2 className="w-4 h-4 text-slate-950" />
-                              <span>اعتماد وتنسيق المقابلة (إشعار الطرفين)</span>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-slate-950" />
+                              <span>اعتماد وتنسيق المقابلة البنكية</span>
                             </button>
                           )}
-
-                          {!isThisOfferAccepted && !isAnyOtherOfferAccepted && offer.status !== 'communicated_to_seller' && offer.status !== 'seller_accepted' && offer.status !== 'accepted' && offer.status !== 'declined' && (
-                            <button
-                              type="button"
-                              onClick={() => handleForwardOffer(offer.id)}
-                              className="px-3 py-1.5 rounded-xl bg-brand-green/20 hover:bg-brand-green/30 text-brand-green border border-brand-green/40 font-bold text-xs flex items-center gap-1.5 transition"
-                              title="تمرير العرض للبائع في لوحة حسابه للقبول أو الرفض"
-                            >
-                              <Send className="w-3.5 h-3.5" />
-                              <span>إرسال العرض للبائع</span>
-                            </button>
-                          )}
-
-                          {offer.status === 'communicated_to_seller' && !isThisOfferAccepted && !isAnyOtherOfferAccepted && (
-                            <span className="px-2.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-3xs font-bold flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              <span>تم الإرسال للبائع (بانتظار رده)</span>
-                            </span>
-                          )}
-
-                          <a
-                            href={`https://wa.me/${intlPhone}?text=${waText}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3 py-1.5 rounded-xl bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-500/30 font-bold text-xs flex items-center gap-1.5 transition"
-                            title="تواصل واتساب مع المشتري"
-                          >
-                            <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>واتساب المشتري</span>
-                          </a>
-
-                          <a
-                            href={`tel:+${intlPhone}`}
-                            className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 font-bold text-xs flex items-center gap-1.5 transition"
-                            title="اتصال هاتفي بالمشتري"
-                          >
-                            <PhoneCall className="w-3.5 h-3.5 text-slate-400" />
-                            <span>اتصال</span>
-                          </a>
                         </div>
                       </div>
                     </div>
@@ -3884,6 +4030,311 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                 className="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs hover:bg-slate-700 transition"
               >
                 إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL: TOP 3 / TOP 10 LISTING & CATEGORY PRIORITY RANKING      */}
+      {/* ============================================================== */}
+      {listingForFeatured && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-950 rounded-3xl p-6 sm:p-7 max-w-xl w-full border border-amber-500/50 shadow-2xl space-y-5 animate-scaleUp max-h-[92vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex justify-between items-start pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                  <Crown className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-white flex items-center gap-2">
+                    <span>تمييز وترتيب الإعلان في صدارة المعرض</span>
+                  </h3>
+                  <p className="text-2xs text-amber-300 font-bold mt-0.5">
+                    {listingForFeatured.make} {listingForFeatured.model} ({listingForFeatured.year}) • {Number(listingForFeatured.asking_price).toLocaleString('ar-EG')} ج.م
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setListingForFeatured(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Status Switch (Active / Disabled) */}
+            <div className="p-3 bg-slate-900/90 rounded-2xl border border-slate-800 flex items-center justify-between">
+              <div>
+                <span className="text-xs font-black text-slate-200 block">حالة التمييز والصدارة</span>
+                <span className="text-3xs text-slate-400">عند التفعيل، يحصل الإعلان على أولوية الظهور والشارة المميزة</span>
+              </div>
+              <div className="flex rounded-xl bg-slate-950 p-1 border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setFeaturedActive(true)}
+                  className={`px-3 py-1.5 rounded-lg text-2xs font-black transition flex items-center gap-1.5 ${
+                    featuredActive
+                      ? 'bg-amber-500 text-slate-950 shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Crown className="w-3.5 h-3.5" />
+                  <span>🌟 مميز بالصدارة</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFeaturedActive(false)}
+                  className={`px-3 py-1.5 rounded-lg text-2xs font-bold transition ${
+                    !featuredActive
+                      ? 'bg-slate-800 text-white'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  ⚪ عادي بدون تمييز
+                </button>
+              </div>
+            </div>
+
+            {featuredActive && (
+              <div className="space-y-4">
+                {/* 1. Tier Selection */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black text-slate-300 flex items-center gap-1.5">
+                    <Flame className="w-4 h-4 text-amber-400" />
+                    <span>فئة التمييز (Tier Category):</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFeaturedTier('top_3');
+                        if (featuredRank > 3) setFeaturedRank(1);
+                      }}
+                      className={`p-3 rounded-2xl border text-right transition flex flex-col justify-between ${
+                        featuredTier === 'top_3'
+                          ? 'bg-amber-950/60 border-amber-500 text-amber-200 ring-1 ring-amber-500/50'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-black text-xs text-amber-300">🔥 Top 3 Listing</span>
+                        <Crown className="w-4 h-4 text-amber-400" />
+                      </div>
+                      <span className="text-3xs text-slate-300 leading-relaxed">
+                        صدارة المراكز الـ 3 الأولى الفائقة الأهمية بالمعرض بوهج ذهبي جذاب.
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFeaturedTier('top_10');
+                        if (featuredRank <= 3) setFeaturedRank(4);
+                      }}
+                      className={`p-3 rounded-2xl border text-right transition flex flex-col justify-between ${
+                        featuredTier === 'top_10'
+                          ? 'bg-amber-950/60 border-amber-500 text-amber-200 ring-1 ring-amber-500/50'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-black text-xs text-amber-300">⭐ Top 10 Listing</span>
+                        <Star className="w-4 h-4 text-amber-400" />
+                      </div>
+                      <span className="text-3xs text-slate-300 leading-relaxed">
+                        قائمة أفضل 10 عروض حصرية مميزة وذات طلب عالٍ في المنصة.
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. Exact Rank Selection (1 to 10) */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black text-slate-300 flex items-center gap-1.5">
+                      <Crown className="w-4 h-4 text-amber-400" />
+                      <span>تحديد رقم المركز الدقيق (Listing Rank):</span>
+                    </label>
+                    <span className="text-2xs font-bold text-amber-400 font-mono">
+                      الترتيب المختار: #{featuredRank} {featuredRank <= 3 ? '(Top 3)' : '(Top 10)'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => {
+                      const isSelected = featuredRank === num;
+                      const isTop3 = num <= 3;
+                      return (
+                        <button
+                          key={num}
+                          type="button"
+                          onClick={() => {
+                            setFeaturedRank(num);
+                            if (num <= 3) setFeaturedTier('top_3');
+                            else setFeaturedTier('top_10');
+                          }}
+                          className={`py-2 px-1 rounded-xl text-xs font-black transition flex flex-col items-center justify-center border ${
+                            isSelected
+                              ? 'bg-amber-500 text-slate-950 border-amber-400 ring-2 ring-amber-300 font-black shadow-lg scale-105'
+                              : isTop3
+                              ? 'bg-amber-950/30 text-amber-300 border-amber-800/60 hover:bg-amber-900/40'
+                              : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+                          }`}
+                        >
+                          <span className="text-2xs">#{num}</span>
+                          <span className="text-3xs opacity-80">{num === 1 ? '👑 الأول' : num <= 3 ? 'توب 3' : 'توب 10'}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 3. Category & Search Scope (User's Chery / Category requirement) */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black text-slate-300 flex items-center gap-1.5">
+                    <CarIcon className="w-4 h-4 text-brand-green" />
+                    <span>نطاق التمييز وتصنيف الفئة (Category Scope):</span>
+                  </label>
+                  <p className="text-3xs text-slate-400">
+                    حدد أين تظهر السيارة في الصدارة (في المعرض العام أو فئتها المحددة كـ {listingForFeatured.make}):
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFeaturedScope('both')}
+                      className={`p-2.5 rounded-xl border text-right transition ${
+                        featuredScope === 'both'
+                          ? 'bg-brand-green/20 border-brand-green text-emerald-200 ring-1 ring-brand-green'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="font-black text-2xs text-brand-green mb-0.5">🌟 عام وفئوي معاً (Both)</div>
+                      <div className="text-3xs text-slate-400 leading-snug">
+                        تتصدر المعرض العام لجميع الزوار، وأيضاً تتصدر قائمة ماركة {listingForFeatured.make}.
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setFeaturedScope('category_only')}
+                      className={`p-2.5 rounded-xl border text-right transition ${
+                        featuredScope === 'category_only'
+                          ? 'bg-brand-green/20 border-brand-green text-emerald-200 ring-1 ring-brand-green'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="font-black text-2xs text-brand-green mb-0.5">🚗 فئة ({listingForFeatured.make}) فقط</div>
+                      <div className="text-3xs text-slate-400 leading-snug">
+                        تتصدر فقط عند البحث أو الفلترة بماركة {listingForFeatured.make} (مثل بحث شيري).
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setFeaturedScope('all')}
+                      className={`p-2.5 rounded-xl border text-right transition ${
+                        featuredScope === 'all'
+                          ? 'bg-brand-green/20 border-brand-green text-emerald-200 ring-1 ring-brand-green'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="font-black text-2xs text-brand-green mb-0.5">🌐 المعرض العام فقط</div>
+                      <div className="text-3xs text-slate-400 leading-snug">
+                        تتصدر الصفحة الرئيسية للمعرض العام لجميع الزوار.
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4. Custom Badge Text & Presets */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black text-slate-300 block">
+                    نص الشارة التسويقية (Badge Text - يظهر على صورة السيارة):
+                  </label>
+                  <input
+                    type="text"
+                    value={featuredBadgeText}
+                    onChange={(e) => setFeaturedBadgeText(e.target.value)}
+                    placeholder="اكتب نصاً تسويقياً أو اختر من المقترحات السريعة أدناه..."
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  />
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {[
+                      `⭐ إعلان بريميوم موثق • صدارة المعرض (VIP Promoted)`,
+                      `🔥 إعلان بريميوم مميز (توب #${featuredRank})`,
+                      `⭐ إعلان بريميوم موثق • فئة ${listingForFeatured.make} (VIP)`,
+                      `⚡ إعلان بريميوم معتمد وممول`
+                    ].map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setFeaturedBadgeText(preset)}
+                        className="px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-3xs font-bold text-amber-300 transition"
+                      >
+                        + {preset}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Footer buttons */}
+            <div className="pt-3 border-t border-slate-800 flex flex-wrap gap-2.5">
+              <button
+                type="button"
+                onClick={handleSaveFeatured}
+                disabled={featuredActionLoading}
+                className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs shadow-lg transition flex items-center justify-center gap-2"
+              >
+                {featuredActionLoading ? (
+                  <RefreshCw className="w-4 h-4 animate-spin text-slate-950" />
+                ) : (
+                  <Crown className="w-4 h-4 text-slate-950" />
+                )}
+                <span>حفظ وتطبيق الترتيب فوراً</span>
+              </button>
+
+              {listingForFeatured.is_featured && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setFeaturedActive(false);
+                    setFeaturedActionLoading(true);
+                    const res = await listingService.updateListingFeatured(listingForFeatured.id, {
+                      is_featured: false
+                    });
+                    if (res.success) {
+                      setDbListings(prev => prev.map(l => l.id === listingForFeatured.id ? {
+                        ...l,
+                        is_featured: false,
+                        featured_rank: undefined,
+                        featured_tier: undefined,
+                        featured_scope: undefined,
+                        featured_badge_text: undefined
+                      } : l));
+                      alert('✓ تم إلغاء تمييز الإعلان بنجاح وإعادته إلى الترتيب العادي.');
+                      setListingForFeatured(null);
+                      await loadModerationListings();
+                    }
+                    setFeaturedActionLoading(false);
+                  }}
+                  disabled={featuredActionLoading}
+                  className="px-4 py-3 rounded-2xl bg-rose-950/60 hover:bg-rose-900 border border-rose-800 text-rose-300 font-bold text-xs transition"
+                >
+                  إلغاء التمييز
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setListingForFeatured(null)}
+                className="px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition"
+              >
+                إغلاق
               </button>
             </div>
           </div>

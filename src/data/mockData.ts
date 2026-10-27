@@ -160,6 +160,10 @@ export const INITIAL_CARS: Car[] = [
     documentsVerified: true,
     createdAt: '2026-10-24T10:00:00Z',
     featured: true,
+    featuredRank: 1,
+    featuredTier: 'top_3',
+    featuredScope: 'both',
+    featuredBadgeText: '⭐ إعلان بريميوم موثق • صدارة المعرض (VIP Promoted)',
     description: 'نيسان صني سوبر صالون أعلى فئة بصمة وجنوط وشاشة، عليها قسط بنك CIB، مطلوب تسوية المديونية بالبنك وسداد الصافي للبائع بالشهر العقاري.'
   },
   {
@@ -210,6 +214,10 @@ export const INITIAL_CARS: Car[] = [
     documentsVerified: true,
     createdAt: '2026-10-23T12:00:00Z',
     featured: true,
+    featuredRank: 2,
+    featuredTier: 'top_3',
+    featuredScope: 'both',
+    featuredBadgeText: '🔥 إعلان بريميوم موثق • تقسيط مباشر VIP',
     description: 'متاحة بالتقسيط المباشر بدون تعقيدات البنوك أو استعلام عمل. بمقدم 290 ألف واستلام فوري بصورة البطاقة والشيكات.'
   },
   {
@@ -267,6 +275,10 @@ export const INITIAL_CARS: Car[] = [
     documentsVerified: true,
     createdAt: '2026-10-25T14:00:00Z',
     featured: true,
+    featuredRank: 3,
+    featuredTier: 'top_3',
+    featuredScope: 'both',
+    featuredBadgeText: '⭐ إعلان بريميوم موثق • تسوية بنكية VIP',
     description: 'كيا سبورتاج الشكل الجديد GT-Line كسر زيرو عليها تمويل بالبنك الأهلي المصري. السداد يتم مباشرة بخزينة البنك واستلام المخالصة فورا.'
   },
   {
@@ -308,7 +320,65 @@ export const INITIAL_CARS: Car[] = [
     status: 'active',
     documentsVerified: true,
     createdAt: '2026-10-23T16:00:00Z',
-    featured: false,
+    featured: true,
+    featuredRank: 4,
+    featuredTier: 'top_10',
+    featuredScope: 'all',
+    featuredBadgeText: '⭐ إعلان بريميوم موثق • بيع كاش فوري',
     description: 'إم جي 5 لاكشري أعلى فئة فتحة سقف وكاميرا 360، بيع كاش ملكية خالصة من المالك مباشرة بدون أي أقساط أو حظر.'
+  },
+  {
+    id: 'car-chery-tiggo7-2024',
+    make: 'شيري',
+    model: 'تيجو 7 برو (Chery Tiggo 7 Pro)',
+    year: 2024,
+    trim: 'Comfort الفئة الثانية بانوراما',
+    transmission: 'CVT',
+    engineSize: '1500 CC Turbo',
+    fuelType: 'بنزين',
+    mileage: 18000,
+    city: 'التجمع الخامس',
+    cityEn: 'New Cairo',
+    color: 'رمادي تيتانيوم',
+    askingPrice: 1050000,
+    estimatedMarketValue: 1100000,
+    images: [
+      'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=1000&q=80',
+      'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=1000&q=80'
+    ],
+    saleType: 'direct_installment',
+    financingType: 'direct_installment',
+    vehicleStatus: 'direct_installment',
+    directInstallment: {
+      downPayment: 350000,
+      monthlyInstallment: 22000,
+      installmentMonths: 36,
+      totalInstallmentPrice: 1142000,
+      requiredGuarantees: ['صورة بطاقة الرقم القومي', 'شيكات بنكية', 'حظر بيع بالرخصة'],
+      sellerType: 'showroom'
+    },
+    inspection: {
+      isInspected: true,
+      score: 95,
+      inspectorName: 'فحص مخلصة الفني المعتمد',
+      date: '2026-10-26',
+      engineCondition: 'ممتاز',
+      transmissionCondition: 'ممتاز',
+      paintCondition: 'فابريكا بالكامل',
+      chassisStatus: 'سليم 100% بدون أي ملاحظات',
+      notes: 'صيانة الألف والـ 10 آلاف بالتوكيل، بدون أي ملاحظات على الإطلاق.'
+    },
+    licenseValidityMonths: 28,
+    trafficDepartment: 'مرور القاهرة الجديدة',
+    sellerType: 'مالك أول',
+    status: 'active',
+    documentsVerified: true,
+    createdAt: '2026-10-26T11:00:00Z',
+    featured: true,
+    featuredRank: 1,
+    featuredTier: 'top_3',
+    featuredScope: 'category_only',
+    featuredBadgeText: '⭐ إعلان بريميوم فئة شيري • VIP Promoted',
+    description: 'شيري تيجو 7 برو الشكل الجديد، تقسيط مباشر بدون استعلام بنكي مع تسليم فوري في نفس اليوم.'
   }
 ];

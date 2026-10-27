@@ -67,8 +67,28 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
     return Array.from(new Set(cars.map(c => c.make)));
   }, [cars]);
 
-  // Filtered and sorted cars
+  // Filtered and sorted cars with Contextual Top 3 & Top 10 Ranking
   const filteredCars = useMemo(() => {
+    // Check if user is currently filtering by a specific make/category
+    const isCategoryScoped = selectedMake !== 'all' || (
+      !!searchTerm && makes.some(m => m.toLowerCase().includes(searchTerm.trim().toLowerCase()) || searchTerm.trim().toLowerCase().includes(m.toLowerCase()))
+    );
+
+    const getEffectiveRank = (car: Car): number | null => {
+      if (!car.featured) return null;
+      const rank = car.featuredRank || 999;
+      const scope = car.featuredScope || 'both';
+
+      if (isCategoryScoped) {
+        // When searching or filtering by a specific make (e.g. "شيري"), any featured car in this category takes priority
+        return rank;
+      } else {
+        // In the general showroom, only cars designated for 'all' or 'both' take the general top positions
+        if (scope === 'category_only') return null; // regular order in general view
+        return rank;
+      }
+    };
+
     return cars
       .filter((car) => {
         const matchSearch =
@@ -96,12 +116,25 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
         return matchSearch && matchSaleType && matchFinancing && matchMake && matchPrice;
       })
       .sort((a, b) => {
+        // Priority 1: Contextual Featured Rank (Rank 1 comes before 2, 2 before 3...)
+        const rankA = getEffectiveRank(a);
+        const rankB = getEffectiveRank(b);
+
+        if (rankA !== null && rankB !== null) {
+          if (rankA !== rankB) return rankA - rankB;
+        } else if (rankA !== null) {
+          return -1;
+        } else if (rankB !== null) {
+          return 1;
+        }
+
+        // Priority 2: User-selected sort option
         if (sortBy === 'price_asc') return a.askingPrice - b.askingPrice;
         if (sortBy === 'price_desc') return b.askingPrice - a.askingPrice;
         if (sortBy === 'mileage_asc') return a.mileage - b.mileage;
-        return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
       });
-  }, [cars, searchTerm, saleTypeFilter, selectedFinancing, selectedMake, maxPrice, sortBy]);
+  }, [cars, searchTerm, saleTypeFilter, selectedFinancing, selectedMake, maxPrice, sortBy, makes]);
 
   const formatEGP = (num: number) => {
     return new Intl.NumberFormat(isAr ? 'ar-EG' : 'en-EG', { maximumFractionDigits: 0 }).format(num) + (isAr ? ' ج.م' : ' EGP');

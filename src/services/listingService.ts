@@ -76,6 +76,11 @@ export interface DatabaseCarListing {
   chassis_number?: string;
   contact_phone?: string;
   is_hidden?: boolean;
+  is_featured?: boolean;
+  featured_rank?: number;
+  featured_tier?: 'top_3' | 'top_10' | 'standard';
+  featured_scope?: 'all' | 'category_only' | 'both';
+  featured_badge_text?: string;
   documents_verified?: boolean;
   documents_verified_at?: string;
   documents_verified_by?: string;
@@ -436,6 +441,7 @@ export const listingService = {
       let localFollowups: Record<string, any> = {};
       let localModerations: Record<string, any> = {};
       let localDocs: Record<string, any> = {};
+      let localFeatured: Record<string, any> = {};
       try {
         const stored = localStorage.getItem('mokhalasa_listing_followups');
         if (stored) localFollowups = JSON.parse(stored);
@@ -443,6 +449,8 @@ export const listingService = {
         if (storedMods) localModerations = JSON.parse(storedMods);
         const storedDocs = localStorage.getItem('mokhalasa_listing_documents');
         if (storedDocs) localDocs = JSON.parse(storedDocs);
+        const storedFeatured = localStorage.getItem('mokhalasa_featured_listings');
+        if (storedFeatured) localFeatured = JSON.parse(storedFeatured);
       } catch {}
 
       const mapped: DatabaseCarListing[] = (data || []).map((item: any) => {
@@ -465,10 +473,23 @@ export const listingService = {
           docRecord?.docs?.bankStatementUrl
         );
 
+        // Featured Settings Hydration
+        const featRecord = localFeatured[item.id] || modOverride?.featuredConfig || {};
+        const isFeatured = Boolean(featRecord.is_featured ?? item.is_featured ?? modOverride?.is_featured ?? item.featured);
+        const featRank = isFeatured ? Number(featRecord.featured_rank ?? item.featured_rank ?? modOverride?.featured_rank ?? 1) : undefined;
+        const featTier = isFeatured ? (featRecord.featured_tier ?? item.featured_tier ?? (featRank && featRank <= 3 ? 'top_3' : 'top_10')) : undefined;
+        const featScope = isFeatured ? (featRecord.featured_scope ?? item.featured_scope ?? 'both') : undefined;
+        const featBadge = isFeatured ? (featRecord.featured_badge_text ?? item.featured_badge_text) : undefined;
+
         return {
           ...item,
           status: effectiveStatus,
           is_hidden: isHidden,
+          is_featured: isFeatured,
+          featured_rank: featRank,
+          featured_tier: featTier,
+          featured_scope: featScope,
+          featured_badge_text: featBadge,
           traffic_unit: item.traffic_unit || modOverride?.traffic_unit || 'مرور فيصل',
           documents_verified: isVerified,
           documents_verified_at: item.documents_verified_at || docRecord?.verifiedAt,
@@ -1324,6 +1345,7 @@ export const listingService = {
       let localFollowups: Record<string, any> = {};
       let localModerations: Record<string, any> = {};
       let localDocs: Record<string, any> = {};
+      let localFeatured: Record<string, any> = {};
       try {
         const stored = localStorage.getItem('mokhalasa_listing_followups');
         if (stored) localFollowups = JSON.parse(stored);
@@ -1331,6 +1353,8 @@ export const listingService = {
         if (storedMods) localModerations = JSON.parse(storedMods);
         const storedDocs = localStorage.getItem('mokhalasa_listing_documents');
         if (storedDocs) localDocs = JSON.parse(storedDocs);
+        const storedFeatured = localStorage.getItem('mokhalasa_featured_listings');
+        if (storedFeatured) localFeatured = JSON.parse(storedFeatured);
       } catch {}
 
       const mapped: DatabaseCarListing[] = (data || []).map((item: any) => {
@@ -1353,10 +1377,23 @@ export const listingService = {
           docRecord?.docs?.bankStatementUrl
         );
 
+        // Featured Settings Hydration
+        const featRecord = localFeatured[item.id] || modOverride?.featuredConfig || {};
+        const isFeatured = Boolean(featRecord.is_featured ?? item.is_featured ?? modOverride?.is_featured ?? item.featured);
+        const featRank = isFeatured ? Number(featRecord.featured_rank ?? item.featured_rank ?? modOverride?.featured_rank ?? 1) : undefined;
+        const featTier = isFeatured ? (featRecord.featured_tier ?? item.featured_tier ?? (featRank && featRank <= 3 ? 'top_3' : 'top_10')) : undefined;
+        const featScope = isFeatured ? (featRecord.featured_scope ?? item.featured_scope ?? 'both') : undefined;
+        const featBadge = isFeatured ? (featRecord.featured_badge_text ?? item.featured_badge_text) : undefined;
+
         return {
           ...item,
           status: effectiveStatus,
           is_hidden: isHidden,
+          is_featured: isFeatured,
+          featured_rank: featRank,
+          featured_tier: featTier,
+          featured_scope: featScope,
+          featured_badge_text: featBadge,
           traffic_unit: item.traffic_unit || modOverride?.traffic_unit || 'مرور فيصل',
           documents_verified: isVerified,
           documents_verified_at: item.documents_verified_at || docRecord?.verifiedAt,
@@ -1747,14 +1784,17 @@ export const listingService = {
    */
   async getPublicListings(): Promise<{ success: boolean; cars: Car[]; error?: string }> {
     try {
-      // Local moderation overrides and documents fallback
+      // Local moderation overrides, documents, and featured listings fallback
       let localModerations: Record<string, any> = {};
       let localDocs: Record<string, any> = {};
+      let localFeatured: Record<string, any> = {};
       try {
         const storedMods = localStorage.getItem('mokhalasa_moderation_overrides');
         if (storedMods) localModerations = JSON.parse(storedMods);
         const storedDocs = localStorage.getItem('mokhalasa_listing_documents');
         if (storedDocs) localDocs = JSON.parse(storedDocs);
+        const storedFeatured = localStorage.getItem('mokhalasa_featured_listings');
+        if (storedFeatured) localFeatured = JSON.parse(storedFeatured);
       } catch {}
 
       const { data, error } = await supabase
@@ -1810,6 +1850,14 @@ export const listingService = {
           sellerType: (override?.direct_installment_seller_type || row.direct_installment_seller_type || 'showroom') as 'showroom' | 'individual'
         } : undefined;
 
+        // Featured Settings Hydration
+        const featRecord = localFeatured[row.id] || override?.featuredConfig || {};
+        const isFeatured = Boolean(featRecord.is_featured ?? row.is_featured ?? override?.is_featured ?? row.featured);
+        const featRank = isFeatured ? Number(featRecord.featured_rank ?? row.featured_rank ?? override?.featured_rank ?? 1) : undefined;
+        const featTier = isFeatured ? (featRecord.featured_tier ?? row.featured_tier ?? (featRank && featRank <= 3 ? 'top_3' : 'top_10')) : undefined;
+        const featScope = isFeatured ? (featRecord.featured_scope ?? row.featured_scope ?? 'both') : undefined;
+        const featBadge = isFeatured ? (featRecord.featured_badge_text ?? row.featured_badge_text) : undefined;
+
         return {
           id: row.id,
           make: row.make,
@@ -1852,13 +1900,84 @@ export const listingService = {
           documentsVerified: isVerified,
           is_hidden: Boolean(override?.is_hidden || row.is_hidden),
           createdAt: row.created_at,
-          featured: false
+          featured: isFeatured,
+          featuredRank: featRank,
+          featuredTier: featTier,
+          featuredScope: featScope,
+          featuredBadgeText: featBadge
         };
       });
 
       return { success: true, cars: mapped };
     } catch (err: any) {
       return { success: false, cars: [], error: err?.message };
+    }
+  },
+
+  /**
+   * ADMIN: Update featured ranking and priority settings
+   */
+  async updateListingFeatured(
+    listingId: string,
+    featuredConfig: {
+      is_featured: boolean;
+      featured_rank?: number;
+      featured_tier?: 'top_3' | 'top_10' | 'standard';
+      featured_scope?: 'all' | 'category_only' | 'both';
+      featured_badge_text?: string;
+    }
+  ): Promise<{ success: boolean; message: string; error?: string }> {
+    try {
+      // 1. Immediately persist to localStorage overrides so it works 100% on local without any DB schema migration
+      try {
+        const stored = localStorage.getItem('mokhalasa_featured_listings') || '{}';
+        const parsed = JSON.parse(stored);
+        if (featuredConfig.is_featured) {
+          parsed[listingId] = {
+            ...featuredConfig,
+            updatedAt: new Date().toISOString()
+          };
+        } else {
+          delete parsed[listingId];
+        }
+        localStorage.setItem('mokhalasa_featured_listings', JSON.stringify(parsed));
+
+        // Also update moderation overrides mirror
+        const storedMods = localStorage.getItem('mokhalasa_moderation_overrides') || '{}';
+        const parsedMods = JSON.parse(storedMods);
+        parsedMods[listingId] = {
+          ...(parsedMods[listingId] || {}),
+          ...featuredConfig,
+          is_featured: featuredConfig.is_featured
+        };
+        localStorage.setItem('mokhalasa_moderation_overrides', JSON.stringify(parsedMods));
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('mokhalasa-listings-updated', { detail: { listingId } }));
+        }
+      } catch (e) {
+        console.error('Error saving local featured listing:', e);
+      }
+
+      // 2. Best-effort Supabase update
+      try {
+        await supabase
+          .from('car_listings')
+          .update({
+            is_featured: featuredConfig.is_featured,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', listingId);
+      } catch {}
+
+      return {
+        success: true,
+        message: featuredConfig.is_featured
+          ? `تم تمييز الإعلان بنجاح وتعيينه في المركز #${featuredConfig.featured_rank || 1} (${featuredConfig.featured_tier === 'top_3' ? 'Top 3' : 'Top 10'})!`
+          : 'تم إلغاء تمييز الإعلان وإعادته للترتيب القياسي بنجاح.'
+      };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'تعذر تحديث تمييز الإعلان' };
     }
   },
 
@@ -1912,7 +2031,7 @@ export const listingService = {
       const newOffer: PurchaseOffer = {
         ...offer,
         id: offerId,
-        status: 'new',
+        status: 'communicated_to_seller',
         createdAt: new Date().toISOString()
       };
 
@@ -1937,7 +2056,7 @@ export const listingService = {
       newOffer.buyerUserId = buyerUserId || undefined;
       newOffer.sellerUserId = sellerUserId || undefined;
 
-      // 1. Attempt insertion into public.purchase_offers
+      // 1. Attempt insertion into public.purchase_offers directly as communicated_to_seller
       const { error: poError } = await supabase
         .from('purchase_offers')
         .insert({
@@ -1955,24 +2074,37 @@ export const listingService = {
           payment_preference: offer.paymentPreference,
           preferred_contact_time: offer.preferredContactTime,
           notes: offer.notes || '',
-          status: 'new'
+          status: 'communicated_to_seller',
+          communicated_to_seller_at: new Date().toISOString()
         });
 
       if (poError && !poError.message.includes('does not exist')) {
         console.warn('Notice inserting into purchase_offers table:', poError);
       }
 
-      // 2. Also notify admin queue via admin_notifications
+      // 2. Automatically dispatch notification to the seller immediately!
+      if (sellerUserId) {
+        await this.sendCustomerNotification({
+          userId: sellerUserId,
+          type: 'offer_communicated',
+          title: 'وصلك عرض شراء وتفاوض جديد!',
+          message: `قدم المشتري (${offer.buyerName}) عرض سعر بمبلغ ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م على سيارتك (${offer.carTitle}). يرجى الدخول لمتابعة حسابك وقبول أو رفض العرض.`,
+          linkView: 'profile',
+          relatedId: offer.listingId || offer.caseReference || offerId
+        });
+      }
+
+      // 3. Also notify admin queue via admin_notifications
       try {
         await supabase.from('admin_notifications').insert({
           type: 'purchase_offer',
-          title: `عرض شراء جديد: ${offer.carTitle}`,
-          message: `قدم المشتري ${offer.buyerName} (${offer.buyerPhone}) عرض سعر ${offer.offeredPrice.toLocaleString()} ج.م على كود ${offer.caseReference}`,
+          title: `عرض شراء جديد (أُرسل تلقائياً للبائع): ${offer.carTitle}`,
+          message: `قدم المشتري ${offer.buyerName} (${offer.buyerPhone}) عرض سعر ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م على كود ${offer.caseReference} (تم التوجيه الفوري للبائع للموافقة أو الرفض)`,
           listing_id: offer.listingId || null
         });
       } catch {}
 
-      // 3. Keep local mirror in localStorage for immediate responsive feedback
+      // 4. Keep local mirror in localStorage for immediate responsive feedback
       try {
         const stored = localStorage.getItem('mokhalasa_purchase_offers') || '[]';
         const parsed: PurchaseOffer[] = JSON.parse(stored);
@@ -1983,7 +2115,7 @@ export const listingService = {
       return {
         success: true,
         offerId,
-        message: 'تم استلام وتوثيق عرض الشراء بنجاح! سيتواصل معك مستشار مخلصة لترتيب المعاينة.'
+        message: 'تم إرسال وتمرير عرضك المالي مباشرة إلى مالك السيارة! سيتم إشعارك فور تسجيل رده (قبول أو رفض) لمتابعة إجراءات المعاينة والتسوية.'
       };
     } catch (err: any) {
       return {
@@ -2270,23 +2402,38 @@ export const listingService = {
       const offer = offersRes.offers.find(o => o.id === offerId);
 
       if (offer) {
-        // 1. Notify the buyer
-        if (offer.buyerUserId) {
+        // 1. Notify the buyer (via direct userId or matched customer phone)
+        let targetBuyerId = offer.buyerUserId;
+        if (!targetBuyerId && offer.buyerPhone) {
+          try {
+            const { data: usr } = await supabase.from('customers').select('id').eq('phone', offer.buyerPhone).maybeSingle();
+            if (usr?.id) targetBuyerId = usr.id;
+          } catch {}
+          if (!targetBuyerId) {
+            try {
+              const localUsers = JSON.parse(localStorage.getItem('mokhalasa_customers_list') || '[]');
+              const match = localUsers.find((u: any) => u.phone === offer.buyerPhone);
+              if (match?.id) targetBuyerId = match.id;
+            } catch {}
+          }
+        }
+
+        if (targetBuyerId) {
           if (decision === 'accept') {
             await this.sendCustomerNotification({
-              userId: offer.buyerUserId,
+              userId: targetBuyerId,
               type: 'offer_accepted',
-              title: '🎉 تهانينا! وافق البائع مبدئياً على عرضك',
-              message: `وافق البائع على عرض الشراء بمبلغ ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م على سيارة ${offer.carTitle}. بانتظار الاعتماد النهائي وتحديد موعد المقابلة البنكية.`,
+              title: '🎉 تهانينا! وافق البائع على عرضك المالي',
+              message: `وافق البائع على عرض الشراء بمبلغ ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م على سيارة ${offer.carTitle}. بانتظار الاعتماد النهائي وتحديد موعد المقابلة والمعاينة البنكية.`,
               linkView: 'profile',
               relatedId: offerId
             });
           } else {
             await this.sendCustomerNotification({
-              userId: offer.buyerUserId,
+              userId: targetBuyerId,
               type: 'offer_rejected',
               title: 'تم الاعتذار عن عرض الشراء',
-              message: `نعتذر، لم يوافق البائع على عرض الشراء بمبلغ ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م على سيارة ${offer.carTitle}. يمكنك تقديم عرض سعر تفاوضي آخر.`,
+              message: `نعتذر، لم يوافق البائع على عرض الشراء بمبلغ ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م على سيارة ${offer.carTitle}. يمكنك تقديم عرض سعر تفاوضي آخر عبر المعرض.`,
               linkView: 'profile',
               relatedId: offerId
             });

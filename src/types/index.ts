@@ -202,7 +202,20 @@ export interface Car {
   is_hidden?: boolean;
   createdAt: string;
   featured?: boolean;
+  featuredRank?: number;
+  featuredTier?: 'top_3' | 'top_10' | 'standard';
+  featuredScope?: 'all' | 'category_only' | 'both';
+  featuredBadgeText?: string;
   description: string;
+}
+
+export interface FeaturedListingConfig {
+  is_featured: boolean;
+  featured_rank?: number;
+  featured_tier?: 'top_3' | 'top_10' | 'standard';
+  featured_scope?: 'all' | 'category_only' | 'both';
+  featured_badge_text?: string;
+  updated_at?: string;
 }
 
 // =================== MARKET RESEARCH & VALUATION ===================
