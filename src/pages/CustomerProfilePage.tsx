@@ -362,6 +362,17 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
       ? 'موافق مبدئياً على السعر المعروض ونرحب بالمعاينة الفنية الميدانية'
       : 'نعتذر، السعر المقدم غير مناسب';
     const notes = sellerResponseNotes[offerId] || defaultNotes;
+
+    // Optimistic local state update so it switches instantly without waiting
+    const newStatus = decision === 'accept' ? 'seller_accepted' : 'seller_rejected';
+    const now = new Date().toISOString();
+    setMyOffers(prev => prev.map(o => (o.id === offerId || o.listingId === offerId) ? {
+      ...o,
+      status: newStatus,
+      sellerResponseAt: now,
+      sellerResponseNotes: notes
+    } : o));
+
     const res = await listingService.respondToOfferBySeller(offerId, decision, notes);
     setRespondingOfferId(null);
     if (res.success) {
@@ -1053,7 +1064,10 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
 
               <button
                 type="button"
-                onClick={() => setProfileActiveTab('notifications')}
+                onClick={() => {
+                  setProfileActiveTab('notifications');
+                  handleMarkAllNotificationsRead();
+                }}
                 className={`pb-2.5 px-3 text-xs font-black transition border-b-2 flex items-center gap-1.5 relative ${
                   profileActiveTab === 'notifications'
                     ? 'border-brand-green text-brand-navy'
@@ -1489,7 +1503,9 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
                 ) : (
                   <div className="grid grid-cols-1 gap-3">
                     {incomingOffers.map((offer) => {
-                      const isPendingSellerResponse = offer.status === 'communicated_to_seller' || offer.status === 'new';
+                      const isAccepted = offer.status === 'seller_accepted' || offer.status === 'accepted' || offer.status === 'accepted_by_seller';
+                      const isRejected = offer.status === 'seller_rejected' || offer.status === 'rejected' || offer.status === 'declined';
+                      const isPendingSellerResponse = !isAccepted && !isRejected && (offer.status === 'communicated_to_seller' || offer.status === 'new');
                       return (
                         <div
                           key={offer.id}
@@ -1545,7 +1561,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
                                   type="button"
                                   disabled={respondingOfferId === offer.id}
                                   onClick={() => handleSellerRespondToOffer(offer.id, 'accept')}
-                                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-sm transition flex items-center gap-1.5 disabled:opacity-50"
+                                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-sm transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                                 >
                                   {respondingOfferId === offer.id ? (
                                     <Clock className="w-3.5 h-3.5 animate-spin" />
@@ -1559,27 +1575,42 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
                                   type="button"
                                   disabled={respondingOfferId === offer.id}
                                   onClick={() => handleSellerRespondToOffer(offer.id, 'reject')}
-                                  className="px-4 py-2 rounded-xl bg-white hover:bg-rose-50 text-rose-700 border border-rose-300 font-bold text-xs transition flex items-center gap-1.5 disabled:opacity-50"
+                                  className="px-4 py-2 rounded-xl bg-white hover:bg-rose-50 text-rose-700 border border-rose-300 font-bold text-xs transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                                 >
                                   <X className="w-3.5 h-3.5" />
                                   <span>✕ اعتذار عن العرض</span>
                                 </button>
                               </div>
                             </div>
+                          ) : isAccepted ? (
+                            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-1.5 shadow-sm animate-fadeIn">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-xs font-black text-emerald-800">
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                                  <span>✓ تمت الموافقة المبدئية بنجاح وسيتم الاتفاق لتحديد مقابلة</span>
+                                </div>
+                                <span className="text-3xs text-emerald-700 font-mono font-bold">
+                                  {offer.sellerResponseAt ? new Date(offer.sellerResponseAt).toLocaleString('ar-EG') : 'تم التأكيد'}
+                                </span>
+                              </div>
+                              <p className="text-2xs text-emerald-700 leading-relaxed pr-6">
+                                تم تسجيل موافقتك بنجاح وإشعار المشتري وإدارة مخلصة. سيتواصل معك مستشار الصفقات لتنسيق المعاينة والفحص والتسوية البنكية خلال 24 ساعة.
+                              </p>
+                            </div>
                           ) : (
-                            <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-2xs">
-                              <span className="text-slate-400 font-mono">
-                                تاريخ التقديم: {new Date(offer.createdAt).toLocaleString('ar-EG')}
-                              </span>
-                              <span className={`px-2.5 py-1 rounded-full font-bold ${
-                                offer.status === 'accepted' || offer.status === 'accepted_by_seller'
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : 'bg-slate-100 text-slate-600'
-                              }`}>
-                                {offer.status === 'accepted' || offer.status === 'accepted_by_seller'
-                                  ? '✓ وافقت على العرض مبدئياً'
-                                  : '✕ تم الاعتذار عن العرض'}
-                              </span>
+                            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl space-y-1">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-xs font-bold text-rose-800">
+                                  <X className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                                  <span>✕ تم الاعتذار عن هذا العرض</span>
+                                </div>
+                                <span className="text-3xs text-rose-500 font-mono">
+                                  {offer.sellerResponseAt ? new Date(offer.sellerResponseAt).toLocaleDateString('ar-EG') : ''}
+                                </span>
+                              </div>
+                              <p className="text-2xs text-rose-600 leading-relaxed pr-6">
+                                تم إشعار المشتري باعتذارك عن السعر المقدم. يمكنك مراجعة العروض الجديدة الأخرى فور ورودها.
+                              </p>
                             </div>
                           )}
                         </div>

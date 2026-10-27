@@ -46,10 +46,19 @@ export const Header: React.FC<HeaderProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
+  const [redDotDismissed, setRedDotDismissed] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
   const isAr = lang === 'ar';
   const t = translations[lang] || translations.ar;
+
+  const hasUnread = unreadNotificationsCount > 0 && !redDotDismissed;
+
+  useEffect(() => {
+    if (unreadNotificationsCount === 0) {
+      setRedDotDismissed(false);
+    }
+  }, [unreadNotificationsCount]);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -132,14 +141,21 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="relative" ref={notifRef}>
               <button
                 type="button"
-                onClick={() => setNotifDropdownOpen(prev => !prev)}
+                onClick={() => {
+                  setRedDotDismissed(true);
+                  const nextOpen = !notifDropdownOpen;
+                  setNotifDropdownOpen(nextOpen);
+                  if (unreadNotificationsCount > 0) {
+                    onMarkAllNotificationsRead?.();
+                  }
+                }}
                 className={`relative p-2 rounded-xl border text-slate-700 hover:text-brand-navy hover:bg-slate-50 transition flex items-center justify-center ${
                   notifDropdownOpen ? 'bg-slate-100 border-slate-300' : 'border-slate-200'
                 }`}
                 title={t.nav.notifications}
               >
                 <Bell className="w-4 h-4 text-slate-700" />
-                {unreadNotificationsCount > 0 && (
+                {hasUnread && (
                   <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white ring-2 ring-white animate-pulse">
                     {unreadNotificationsCount}
                   </span>
@@ -407,13 +423,19 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setNotifDropdownOpen(prev => !prev)}
+                onClick={() => {
+                  setRedDotDismissed(true);
+                  if (unreadNotificationsCount > 0) {
+                    onMarkAllNotificationsRead?.();
+                  }
+                  handleNav('profile');
+                }}
                 className="relative p-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 transition"
                 aria-label={t.nav.notifications}
                 title={t.nav.notifications}
               >
                 <Bell className="w-4 h-4 text-slate-700" />
-                {unreadNotificationsCount > 0 && (
+                {hasUnread && (
                   <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white ring-2 ring-white animate-pulse">
                     {unreadNotificationsCount}
                   </span>

@@ -1357,7 +1357,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                                   {offer.status === 'accepted' 
                                     ? '✓ تم الاعتماد النهائي (تواصل لتحديد المقابلة خلال 24 ساعة)' 
                                     : isAccepted 
-                                    ? '✓ تمت موافقتك المبدئية بنجاح' 
+                                    ? '✓ تمت الموافقة المبدئية بنجاح وسيتم الاتفاق لتحديد مقابلة' 
                                     : '✕ تم الاعتذار عن هذا العرض'}
                                 </span>
                               </div>

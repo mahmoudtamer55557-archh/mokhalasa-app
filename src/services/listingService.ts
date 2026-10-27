@@ -2266,6 +2266,34 @@ export const listingService = {
             const key = o.listingId || o.carId || o.id;
             if (!combinedMap.has(key)) {
               combinedMap.set(key, o);
+            } else {
+              // Prioritize seller decision / accepted / rejected over synthetic initial states
+              const existing = combinedMap.get(key)!;
+              if (['seller_accepted', 'seller_rejected', 'accepted', 'declined'].includes(o.status)) {
+                existing.status = o.status;
+                if (o.sellerResponseAt) existing.sellerResponseAt = o.sellerResponseAt;
+                if (o.sellerResponseNotes) existing.sellerResponseNotes = o.sellerResponseNotes;
+              }
+            }
+          }
+        }
+      } catch {}
+
+      // 5. Apply dedicated persistent overrides (Supreme Authority across reloads & sessions)
+      try {
+        const storedOverrides = localStorage.getItem('mokhalasa_offer_overrides');
+        if (storedOverrides) {
+          const overrides: Record<string, any> = JSON.parse(storedOverrides);
+          for (const [key, offer] of combinedMap.entries()) {
+            const ov = overrides[offer.id] ||
+                       (offer.listingId && overrides[offer.listingId]) ||
+                       (offer.caseReference && overrides[offer.caseReference]) ||
+                       (offer.carId && overrides[offer.carId]) ||
+                       overrides[key];
+            if (ov) {
+              offer.status = ov.status;
+              if (ov.sellerResponseAt) offer.sellerResponseAt = ov.sellerResponseAt;
+              if (ov.sellerResponseNotes) offer.sellerResponseNotes = ov.sellerResponseNotes;
             }
           }
         }
@@ -2286,17 +2314,30 @@ export const listingService = {
     status: PurchaseOffer['status']
   ): Promise<{ success: boolean; message: string }> {
     try {
+      const now = new Date().toISOString();
+
+      // Persist in overrides mirror
+      try {
+        const storedOverrides = localStorage.getItem('mokhalasa_offer_overrides') || '{}';
+        const parsedOverrides = JSON.parse(storedOverrides);
+        parsedOverrides[offerId] = {
+          status,
+          updatedAt: now
+        };
+        localStorage.setItem('mokhalasa_offer_overrides', JSON.stringify(parsedOverrides));
+      } catch {}
+
       // Update DB if table exists
       await supabase
         .from('purchase_offers')
-        .update({ status, updated_at: new Date().toISOString() })
+        .update({ status, updated_at: now })
         .eq('id', offerId);
 
       // Update localStorage mirror
       try {
         const stored = localStorage.getItem('mokhalasa_purchase_offers') || '[]';
         const parsed: PurchaseOffer[] = JSON.parse(stored);
-        const updated = parsed.map(o => o.id === offerId ? { ...o, status } : o);
+        const updated = parsed.map(o => (o.id === offerId || o.listingId === offerId) ? { ...o, status } : o);
         localStorage.setItem('mokhalasa_purchase_offers', JSON.stringify(updated));
       } catch {}
 
@@ -2386,6 +2427,40 @@ export const listingService = {
       const newStatus = decision === 'accept' ? 'seller_accepted' : 'seller_rejected';
       const notes = extraNotes || notesOrUserId || null;
 
+      // 1. Immediately persist to localStorage overrides (Immediate & 100% resilient)
+      try {
+        const storedOverrides = localStorage.getItem('mokhalasa_offer_overrides') || '{}';
+        const parsedOverrides = JSON.parse(storedOverrides);
+        const record = {
+          status: newStatus,
+          notes,
+          sellerResponseAt: now,
+          sellerResponseNotes: notes,
+          updatedAt: now
+        };
+        parsedOverrides[offerId] = record;
+
+        // Also check cached offers to tag by listingId and caseReference
+        const storedOffers = localStorage.getItem('mokhalasa_purchase_offers') || '[]';
+        const parsedOffers: PurchaseOffer[] = JSON.parse(storedOffers);
+        const found = parsedOffers.find(o => o.id === offerId || o.listingId === offerId || (o.listingId && offerId.includes(o.listingId)));
+        if (found) {
+          if (found.listingId) parsedOverrides[found.listingId] = record;
+          if (found.caseReference) parsedOverrides[found.caseReference] = record;
+          if (found.carId) parsedOverrides[found.carId] = record;
+        }
+        localStorage.setItem('mokhalasa_offer_overrides', JSON.stringify(parsedOverrides));
+
+        // Update in mokhalasa_purchase_offers array as well
+        const updatedOffers = parsedOffers.map(o => {
+          if (o.id === offerId || o.listingId === offerId || (found?.listingId && o.listingId === found.listingId)) {
+            return { ...o, status: newStatus, sellerResponseAt: now, sellerResponseNotes: notes };
+          }
+          return o;
+        });
+        localStorage.setItem('mokhalasa_purchase_offers', JSON.stringify(updatedOffers));
+      } catch {}
+
       await this.updatePurchaseOfferStatus(offerId, newStatus);
 
       await supabase
@@ -2399,9 +2474,26 @@ export const listingService = {
         .eq('id', offerId);
 
       const offersRes = await this.getPurchaseOffers();
-      const offer = offersRes.offers.find(o => o.id === offerId);
+      const offer = offersRes.offers.find(o => o.id === offerId || o.listingId === offerId || (o.listingId && offerId.includes(o.listingId)));
 
       if (offer) {
+        // Tag overrides again with accurate offer fields if available
+        try {
+          const storedOverrides = localStorage.getItem('mokhalasa_offer_overrides') || '{}';
+          const parsedOverrides = JSON.parse(storedOverrides);
+          const record = {
+            status: newStatus,
+            notes,
+            sellerResponseAt: now,
+            sellerResponseNotes: notes,
+            updatedAt: now
+          };
+          if (offer.listingId) parsedOverrides[offer.listingId] = record;
+          if (offer.caseReference) parsedOverrides[offer.caseReference] = record;
+          if (offer.carId) parsedOverrides[offer.carId] = record;
+          localStorage.setItem('mokhalasa_offer_overrides', JSON.stringify(parsedOverrides));
+        } catch {}
+
         // 1. Notify the buyer (via direct userId or matched customer phone)
         let targetBuyerId = offer.buyerUserId;
         if (!targetBuyerId && offer.buyerPhone) {
@@ -2472,6 +2564,18 @@ export const listingService = {
     try {
       const now = new Date().toISOString();
       await this.updatePurchaseOfferStatus(offerId, 'accepted');
+
+      // Update overrides
+      try {
+        const storedOverrides = localStorage.getItem('mokhalasa_offer_overrides') || '{}';
+        const parsedOverrides = JSON.parse(storedOverrides);
+        parsedOverrides[offerId] = {
+          status: 'accepted',
+          adminNotes,
+          updatedAt: now
+        };
+        localStorage.setItem('mokhalasa_offer_overrides', JSON.stringify(parsedOverrides));
+      } catch {}
 
       await supabase
         .from('purchase_offers')
@@ -2562,6 +2666,16 @@ export const listingService = {
     try {
       const notifsMap = new Map<string, InAppNotification>();
 
+      // Track read notifications locally to prevent dismissed notifications from re-triggering badges
+      let readIds = new Set<string>();
+      let readAllTimestamp = 0;
+      try {
+        const storedRead = localStorage.getItem('mokhalasa_read_notifications');
+        if (storedRead) readIds = new Set(JSON.parse(storedRead));
+        const storedTs = localStorage.getItem('mokhalasa_notifications_read_all_timestamp');
+        if (storedTs) readAllTimestamp = Number(storedTs) || 0;
+      } catch {}
+
       // 1. Try customer_notifications table
       try {
         const { data, error } = await supabase
@@ -2572,6 +2686,8 @@ export const listingService = {
 
         if (!error && data) {
           data.forEach((d: any) => {
+            const createdTs = new Date(d.created_at).getTime();
+            const isMarkedRead = Boolean(d.is_read || readIds.has(d.id) || (readAllTimestamp > 0 && createdTs <= readAllTimestamp));
             notifsMap.set(d.id, {
               id: d.id,
               userId: d.user_id,
@@ -2580,7 +2696,7 @@ export const listingService = {
               message: d.message,
               linkView: d.link_view,
               relatedId: d.related_id,
-              isRead: d.is_read,
+              isRead: isMarkedRead,
               createdAt: d.created_at
             });
           });
@@ -2602,6 +2718,8 @@ export const listingService = {
               const refMatch = an.message.match(/\[REF:([^\]]+)\]/);
               const cleanMsg = an.message.replace(/\[USER:[^\]]+\]\s*/g, '').replace(/\[VIEW:[^\]]+\]\s*/g, '').replace(/\[REF:[^\]]+\]\s*/g, '');
               const id = `admin-notif-${an.id}`;
+              const createdTs = new Date(an.created_at).getTime();
+              const isMarkedRead = Boolean(readIds.has(id) || (readAllTimestamp > 0 && createdTs <= readAllTimestamp));
               if (!notifsMap.has(id)) {
                 notifsMap.set(id, {
                   id,
@@ -2611,7 +2729,7 @@ export const listingService = {
                   message: cleanMsg,
                   linkView: linkMatch ? linkMatch[1] : 'portal',
                   relatedId: refMatch ? refMatch[1] : an.listing_id,
-                  isRead: false,
+                  isRead: isMarkedRead,
                   createdAt: an.created_at
                 });
               }
@@ -2626,7 +2744,9 @@ export const listingService = {
         if (stored) {
           const parsed: InAppNotification[] = JSON.parse(stored);
           parsed.filter(n => n.userId === userId).forEach(n => {
-            if (!notifsMap.has(n.id)) notifsMap.set(n.id, n);
+            const createdTs = new Date(n.createdAt).getTime();
+            const isMarkedRead = Boolean(n.isRead || readIds.has(n.id) || (readAllTimestamp > 0 && createdTs <= readAllTimestamp));
+            if (!notifsMap.has(n.id)) notifsMap.set(n.id, { ...n, isRead: isMarkedRead });
           });
         }
       } catch {}
@@ -2813,6 +2933,16 @@ export const listingService = {
    */
   async markNotificationAsRead(notificationId: string): Promise<{ success: boolean }> {
     try {
+      // Record in local set of read notification IDs
+      try {
+        const storedRead = localStorage.getItem('mokhalasa_read_notifications') || '[]';
+        const readArr: string[] = JSON.parse(storedRead);
+        if (!readArr.includes(notificationId)) {
+          readArr.push(notificationId);
+          localStorage.setItem('mokhalasa_read_notifications', JSON.stringify(readArr));
+        }
+      } catch {}
+
       await supabase
         .from('customer_notifications')
         .update({ is_read: true })
@@ -2836,17 +2966,21 @@ export const listingService = {
    */
   async markAllNotificationsAsRead(userId: string): Promise<{ success: boolean }> {
     try {
-      await supabase
-        .from('customer_notifications')
-        .update({ is_read: true })
-        .eq('user_id', userId);
-
+      const nowTs = Date.now();
       try {
+        localStorage.setItem('mokhalasa_notifications_read_all_timestamp', String(nowTs));
+
+        // Mark all cached in-memory and local customer notifications as read
         const stored = localStorage.getItem('mokhalasa_customer_notifications') || '[]';
         const parsed: InAppNotification[] = JSON.parse(stored);
         const updated = parsed.map(n => n.userId === userId ? { ...n, isRead: true } : n);
         localStorage.setItem('mokhalasa_customer_notifications', JSON.stringify(updated));
       } catch {}
+
+      await supabase
+        .from('customer_notifications')
+        .update({ is_read: true })
+        .eq('user_id', userId);
 
       return { success: true };
     } catch {

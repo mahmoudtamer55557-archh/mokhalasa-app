@@ -198,18 +198,30 @@ export function App() {
       }
 
       // Also synthesize alerts from in-memory distressedCases if needed
+      let readAllTs = 0;
+      let readIds = new Set<string>();
+      try {
+        readAllTs = Number(localStorage.getItem('mokhalasa_notifications_read_all_timestamp') || '0');
+        const storedRead = localStorage.getItem('mokhalasa_read_notifications');
+        if (storedRead) readIds = new Set(JSON.parse(storedRead));
+      } catch {}
+
       const problemCases = distressedCases.filter(c => c.status === 'needs_changes');
-      const synthesized: InAppNotification[] = problemCases.map(c => ({
-        id: `synth-problem-${c.caseReference}`,
-        userId: customerUser?.id || 'guest',
-        type: 'listing_status_changed',
-        title: `مطلوب تعديل على إعلان سيارتك (${c.vehicle.make} ${c.vehicle.model})`,
-        message: c.adminFeedback || c.timeline?.find(t => t.status === 'needs_changes')?.reason || 'طلبت إدارة مخلصة تعديل بيانات السعر أو العداد أو حالة السيارة للموافقة على النشر.',
-        linkView: 'seller-portal',
-        relatedId: c.caseReference,
-        isRead: false,
-        createdAt: new Date().toISOString()
-      }));
+      const synthesized: InAppNotification[] = problemCases.map(c => {
+        const id = `synth-problem-${c.caseReference}`;
+        const isRead = Boolean(readAllTs > 0 || readIds.has(id));
+        return {
+          id,
+          userId: customerUser?.id || 'guest',
+          type: 'listing_status_changed',
+          title: `مطلوب تعديل على إعلان سيارتك (${c.vehicle.make} ${c.vehicle.model})`,
+          message: c.adminFeedback || c.timeline?.find(t => t.status === 'needs_changes')?.reason || 'طلبت إدارة مخلصة تعديل بيانات السعر أو العداد أو حالة السيارة للموافقة على النشر.',
+          linkView: 'seller-portal',
+          relatedId: c.caseReference,
+          isRead,
+          createdAt: new Date().toISOString()
+        };
+      });
 
       // Merge avoiding duplicates
       const all: InAppNotification[] = [...synthesized];
@@ -272,6 +284,18 @@ export function App() {
   };
 
   const handleMarkAllNotificationsRead = async () => {
+    const nowTs = Date.now();
+    try {
+      localStorage.setItem('mokhalasa_notifications_read_all_timestamp', String(nowTs));
+      const allIds = globalNotifications.map(n => n.id);
+      const storedRead = localStorage.getItem('mokhalasa_read_notifications') || '[]';
+      const readArr: string[] = JSON.parse(storedRead);
+      for (const id of allIds) {
+        if (!readArr.includes(id)) readArr.push(id);
+      }
+      localStorage.setItem('mokhalasa_read_notifications', JSON.stringify(readArr));
+    } catch {}
+
     setGlobalNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     if (customerUser?.id) {
       await listingService.markAllNotificationsAsRead(customerUser.id);
