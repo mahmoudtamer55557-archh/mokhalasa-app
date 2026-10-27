@@ -72,6 +72,9 @@ export interface DatabaseCarListing {
   updated_at: string;
   images?: string[];
   traffic_unit?: string;
+  plate_number?: string;
+  chassis_number?: string;
+  contact_phone?: string;
   is_hidden?: boolean;
   documents_verified?: boolean;
   documents_verified_at?: string;

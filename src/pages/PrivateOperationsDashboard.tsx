@@ -14,7 +14,7 @@ import {
   Edit3, Scale, UserCheck, ExternalLink,
   Car as CarIcon, Tag, MessageSquare, Send,
   AlertTriangle, Trash2, Clock, Sparkles,
-  Download, FileSpreadsheet, Printer
+  Download, FileSpreadsheet, Printer, Archive, AlertCircle, RotateCcw
 } from 'lucide-react';
 import { PrintableAgreementModal } from '../components/cars/PrintableAgreementModal';
 import { geminiService } from '../services/geminiService';
@@ -82,18 +82,69 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
   const [dbListings, setDbListings] = useState<DatabaseCarListing[]>([]);
   const [moderationLoading, setModerationLoading] = useState(false);
   const [moderationFilter, setModerationFilter] = useState<string>('all');
+  const [moderationSearchQuery, setModerationSearchQuery] = useState<string>('');
 
-  // Filtered listings for display based on active moderationFilter
+  // Filtered listings for display based on active moderationFilter and smart search query
   const displayedListings = useMemo(() => {
-    if (moderationFilter === 'all') return dbListings;
-    if (moderationFilter === 'published') {
-      return dbListings.filter(l => l.status === 'published' || l.status === 'approved');
+    let result = dbListings;
+
+    // 1. Filter by Status Tab
+    if (moderationFilter === 'all') {
+      result = dbListings.filter(l => l.status !== 'archived' && l.status !== 'withdrawn');
+    } else if (moderationFilter === 'published') {
+      result = dbListings.filter(l => l.status === 'published' || l.status === 'approved');
+    } else if (moderationFilter === 'approved') {
+      result = dbListings.filter(l => l.status === 'approved' || l.status === 'published');
+    } else if (moderationFilter === 'archived') {
+      result = dbListings.filter(l => l.status === 'archived' || l.status === 'withdrawn');
+    } else {
+      result = dbListings.filter(l => l.status === moderationFilter);
     }
-    if (moderationFilter === 'approved') {
-      return dbListings.filter(l => l.status === 'approved' || l.status === 'published');
+
+    // 2. Smart Search Query (Cross-attribute search across all key listing identifiers)
+    const query = moderationSearchQuery.trim().toLowerCase();
+    if (query) {
+      result = result.filter(l => {
+        const idMatch = (l.id || '').toLowerCase().includes(query);
+        const refMatch = (l.case_reference || '').toLowerCase().includes(query);
+        const makeMatch = (l.make || '').toLowerCase().includes(query);
+        const modelMatch = (l.model || '').toLowerCase().includes(query);
+        const yearMatch = String(l.year || '').includes(query);
+        const sellerNameMatch = (l.seller_name || '').toLowerCase().includes(query);
+        const sellerPhoneMatch = (l.seller_phone || '').includes(query) || (l.contact_phone || '').includes(query);
+        const govMatch = (l.governorate || '').toLowerCase().includes(query);
+        const cityMatch = (l.city || '').toLowerCase().includes(query);
+        const trafficMatch = (l.traffic_unit || '').toLowerCase().includes(query);
+        const financeMatch = (l.financing_provider || '').toLowerCase().includes(query);
+        const plateMatch = (l.plate_number || '').toLowerCase().includes(query);
+        const chassisMatch = (l.chassis_number || '').toLowerCase().includes(query);
+        const descMatch = (l.condition_description || '').toLowerCase().includes(query);
+        const priceMatch = String(l.asking_price || '').includes(query);
+        const feedbackMatch = (l.review_feedback || '').toLowerCase().includes(query);
+
+        return (
+          idMatch ||
+          refMatch ||
+          makeMatch ||
+          modelMatch ||
+          yearMatch ||
+          sellerNameMatch ||
+          sellerPhoneMatch ||
+          govMatch ||
+          cityMatch ||
+          trafficMatch ||
+          financeMatch ||
+          plateMatch ||
+          chassisMatch ||
+          descMatch ||
+          priceMatch ||
+          feedbackMatch
+        );
+      });
     }
-    return dbListings.filter(l => l.status === moderationFilter);
-  }, [dbListings, moderationFilter]);
+
+    return result;
+  }, [dbListings, moderationFilter, moderationSearchQuery]);
 
   const [selectedModerationListing, setSelectedModerationListing] = useState<DatabaseCarListing | null>(null);
   const [adminFeedbackInput, setAdminFeedbackInput] = useState<string>('');
@@ -511,6 +562,23 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
     } else {
       alert(`خطأ: ${res.message}`);
     }
+  };
+
+  // Handle Permanent Listing Deletion (from Archive)
+  const handleDeletePermanently = async (listingId: string) => {
+    if (!window.confirm('هل أنت متأكد تماماً من حذف هذا الإعلان نهائياً من قاعدة البيانات؟ لن يمكن استرجاع بياناته.')) {
+      return;
+    }
+    setModerationActionLoading(true);
+    const res = await listingService.deleteListing(listingId);
+    if (res.success) {
+      alert('✅ تم حذف الإعلان نهائياً من النظام.');
+      setSelectedModerationListing(null);
+      await loadModerationListings();
+    } else {
+      alert(`خطأ: ${res.message}`);
+    }
+    setModerationActionLoading(false);
   };
 
   // Handle Verify Documents (Grant or Revoke Verified Trust Badge)
@@ -1551,22 +1619,56 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                 <div>
                   <h3 className="text-base font-black text-white flex items-center gap-2">
                     <ShieldCheck className="w-5 h-5 text-brand-green" />
-                    <span>قائمة مراجعة واعتماد إعلانات السيارات (Moderation Queue)</span>
+                    <span>قائمة مراجعة واعتماد إعلانات السيارات (Moderation & Inventory)</span>
                   </h3>
                   <p className="text-xs text-slate-400 mt-1">
-                    مراجعة بيانات السيارات المدخلة، مطابقة مواصفات المديونية، واعتماد أو رفض أو طلب تعديل الإعلانات قبل ظهورها في المعرض العام.
+                    فحص بيانات السيارات، مطابقة المديونيات، اعتماد الإعلانات للنشر بالمعرض، أو رفضها ونقلها للأرشيف.
                   </p>
                 </div>
 
-                <button
-                  onClick={loadModerationListings}
-                  disabled={moderationLoading}
-                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-white flex items-center gap-1.5 transition self-start sm:self-auto"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${moderationLoading ? 'animate-spin text-brand-green' : 'text-slate-400'}`} />
-                  <span>تحديث القائمة</span>
-                </button>
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                  <button
+                    onClick={loadModerationListings}
+                    disabled={moderationLoading}
+                    className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-white flex items-center gap-1.5 transition"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${moderationLoading ? 'animate-spin text-brand-green' : 'text-slate-400'}`} />
+                    <span>تحديث القائمة</span>
+                  </button>
+                </div>
               </div>
+
+              {/* Smart Search Bar */}
+              <div className="relative">
+                <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
+                  <Search className="w-4 h-4 text-brand-green" />
+                </div>
+                <input
+                  type="text"
+                  value={moderationSearchQuery}
+                  onChange={(e) => setModerationSearchQuery(e.target.value)}
+                  placeholder="بحث ذكي في الإعلانات: اسم البائع، رقم الموبايل، ماركة وموديل السيارة، كود الملف، المرور، البنك..."
+                  className="w-full pr-10 pl-10 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-xs focus:ring-2 focus:ring-brand-green focus:border-transparent outline-none transition"
+                />
+                {moderationSearchQuery && (
+                  <button
+                    onClick={() => setModerationSearchQuery('')}
+                    className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 hover:text-white text-xs"
+                    title="مسح البحث"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {moderationSearchQuery && (
+                <div className="flex items-center justify-between text-2xs text-brand-green font-bold bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-800">
+                  <span>نتائج البحث عن «{moderationSearchQuery}»: تم العثور على {displayedListings.length} إعلان</span>
+                  <button onClick={() => setModerationSearchQuery('')} className="text-slate-400 hover:text-white underline">
+                    إلغاء البحث وعرض الكل
+                  </button>
+                </div>
+              )}
 
               {moderationMessage && (
                 <div className="p-3 bg-slate-900 border border-brand-green/40 rounded-xl text-xs font-bold text-brand-green flex items-center justify-between">
@@ -1575,22 +1677,22 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                 </div>
               )}
 
-              {/* Status Filters */}
+              {/* Status Filters Tabs */}
               <div className="flex flex-wrap gap-2 text-xs">
                 {[
-                  { id: 'all', label: 'الكل', count: dbListings.length },
-                  { id: 'pending_review', label: 'بانتظار المراجعة', count: dbListings.filter(l => l.status === 'pending_review').length },
-                  { id: 'published', label: 'منشور بالمعرض', count: dbListings.filter(l => l.status === 'published' || l.status === 'approved').length },
-                  { id: 'needs_changes', label: 'مطلوب تعديلات', count: dbListings.filter(l => l.status === 'needs_changes').length },
-                  { id: 'rejected', label: 'مرفوض', count: dbListings.filter(l => l.status === 'rejected').length },
-                  { id: 'archived', label: 'مؤرشف', count: dbListings.filter(l => l.status === 'archived' || l.status === 'withdrawn').length }
+                  { id: 'all', label: 'كل الإعلانات النشطة', count: dbListings.filter(l => l.status !== 'archived' && l.status !== 'withdrawn').length },
+                  { id: 'pending_review', label: '⏳ بانتظار المراجعة', count: dbListings.filter(l => l.status === 'pending_review').length },
+                  { id: 'published', label: '🚀 الإعلانات المنشورة بالمعرض', count: dbListings.filter(l => l.status === 'published' || l.status === 'approved').length },
+                  { id: 'needs_changes', label: '✏️ مطلوب تعديلات', count: dbListings.filter(l => l.status === 'needs_changes').length },
+                  { id: 'rejected', label: '✕ إعلانات مرفوضة', count: dbListings.filter(l => l.status === 'rejected').length },
+                  { id: 'archived', label: '📦 الأرشيف والمحذوفات', count: dbListings.filter(l => l.status === 'archived' || l.status === 'withdrawn').length }
                 ].map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setModerationFilter(tab.id)}
                     className={`px-3 py-1.5 rounded-xl font-bold transition text-xs flex items-center gap-1.5 ${
                       moderationFilter === tab.id
-                        ? 'bg-brand-green text-slate-950 font-black'
+                        ? 'bg-brand-green text-slate-950 font-black shadow-sm'
                         : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
                     }`}
                   >
@@ -1605,7 +1707,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
               </div>
             </div>
 
-            {/* KPI Status Metrics Overview (Priority 3) */}
+            {/* KPI Status Metrics Overview */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
                 <span className="text-3xs text-emerald-400 font-bold block uppercase">منشور ونشط</span>
@@ -1636,18 +1738,18 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                 <span className="text-3xs text-slate-500">مرحلة الاتفاق</span>
               </div>
               <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
-                <span className="text-3xs text-teal-400 font-bold block uppercase">معتمدة / مباعة</span>
-                <span className="text-xl font-black text-teal-300 mt-1 block">
-                  {dbListings.filter(l => l.status === 'approved' || l.status === 'sold').length}
+                <span className="text-3xs text-rose-400 font-bold block uppercase">مرفوض</span>
+                <span className="text-xl font-black text-rose-300 mt-1 block">
+                  {dbListings.filter(l => l.status === 'rejected').length}
                 </span>
-                <span className="text-3xs text-slate-500">جاهزة أو مخلصة</span>
+                <span className="text-3xs text-slate-500">غير معتمد</span>
               </div>
               <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
-                <span className="text-3xs text-rose-400 font-bold block uppercase">مرفوض / مسحوب</span>
-                <span className="text-xl font-black text-rose-300 mt-1 block">
-                  {dbListings.filter(l => l.status === 'rejected' || l.status === 'archived').length}
+                <span className="text-3xs text-slate-400 font-bold block uppercase">الأرشيف</span>
+                <span className="text-xl font-black text-slate-300 mt-1 block">
+                  {dbListings.filter(l => l.status === 'archived' || l.status === 'withdrawn').length}
                 </span>
-                <span className="text-3xs text-slate-500">غير معتمد أو ملغي</span>
+                <span className="text-3xs text-slate-500">محفوظ بالأرشيف</span>
               </div>
             </div>
 
@@ -1660,8 +1762,18 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
             ) : displayedListings.length === 0 ? (
               <div className="py-16 text-center bg-slate-950 rounded-3xl border border-slate-800 space-y-2">
                 <CarIcon className="w-10 h-10 text-slate-600 mx-auto" />
-                <h4 className="font-extrabold text-sm text-white">لا توجد إعلانات تطابق الفلتر المحدد حالياً</h4>
-                <p className="text-xs text-slate-500">سيظهر هنا أي إعلان يقدمه العملاء عبر نموذج «اعرض عربيتك للبيع».</p>
+                <h4 className="font-extrabold text-sm text-white">لا توجد إعلانات تطابق هذا الفلتر أو البحث</h4>
+                <p className="text-xs text-slate-500">
+                  {moderationSearchQuery ? 'جرب البحث بكلمات أخرى أو امسح شريط البحث.' : 'سيظهر هنا أي إعلان يقدمه العملاء عبر نموذج «اعرض عربيتك للبيع».'}
+                </p>
+                {moderationSearchQuery && (
+                  <button
+                    onClick={() => setModerationSearchQuery('')}
+                    className="px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 text-xs font-bold mt-2 hover:bg-slate-800 transition"
+                  >
+                    مسح البحث وعرض القائمة
+                  </button>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4">
@@ -1696,6 +1808,27 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                                 🏦 تسوية بنكية
                               </span>
                             )}
+
+                            {/* Public Showroom Visibility Status */}
+                            {(item.status === 'published' || item.status === 'approved') && (
+                              !item.is_hidden ? (
+                                <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                                  <Eye className="w-2.5 h-2.5 text-emerald-400" />
+                                  <span>👁️ معروض في المعرض العام</span>
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
+                                  <span>🙈 مخفي مؤقتاً عن المعرض</span>
+                                </span>
+                              )
+                            )}
+
+                            {item.status === 'archived' && (
+                              <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-slate-800 text-slate-400 border border-slate-700 flex items-center gap-1">
+                                <Archive className="w-2.5 h-2.5 text-slate-400" />
+                                <span>📦 مؤرشف</span>
+                              </span>
+                            )}
                           </h4>
                           <div className="text-2xs text-slate-400 font-medium flex flex-wrap items-center gap-2">
                             <span>المحافظة: {item.governorate}</span>
@@ -1721,7 +1854,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                           <span className={`px-2.5 py-1 rounded-full text-3xs font-black shadow-sm ${
                             item.status === 'pending_review' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' :
                             (item.status === 'published' || item.status === 'approved') ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' :
-                            item.status === 'needs_changes' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' :
+                            item.status === 'needs_changes' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' :
                             item.status === 'rejected' ? 'bg-red-500/20 text-red-300 border border-red-500/40' :
                             'bg-slate-800 text-slate-400'
                           }`}>
@@ -1729,7 +1862,8 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                              item.status === 'published' ? '🚀 تم النشر في المعرض' :
                              item.status === 'approved' ? '✓ معتمد' :
                              item.status === 'needs_changes' ? '✏ مطلوب تعديلات' :
-                             item.status === 'rejected' ? '✕ مرفوض' : item.status}
+                             item.status === 'rejected' ? '✕ مرفوض' : 
+                             item.status === 'archived' ? '📦 مؤرشف' : item.status}
                           </span>
                         </div>
 
@@ -1743,6 +1877,32 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                       </div>
                     </div>
 
+                    {/* Prominent Rejection Reason Banner */}
+                    {item.status === 'rejected' && (
+                      <div className="p-3 bg-red-950/40 border border-red-900/60 rounded-xl text-xs space-y-1">
+                        <div className="flex items-center gap-2 font-black text-rose-300">
+                          <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                          <span>سبب الرفض الإداري:</span>
+                        </div>
+                        <p className="text-rose-200/90 text-2xs mr-6 leading-relaxed">
+                          {item.review_feedback || 'تم رفض الإعلان من قبل الإدارة لعدم توافق الشروط أو وجود مخالفة في بيانات التسوية البنكية.'}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Prominent Needs Changes Banner */}
+                    {item.status === 'needs_changes' && (
+                      <div className="p-3 bg-amber-950/40 border border-amber-900/60 rounded-xl text-xs space-y-1">
+                        <div className="flex items-center gap-2 font-black text-amber-300">
+                          <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                          <span>التعديلات والملاحظات المطلوبة من العميل:</span>
+                        </div>
+                        <p className="text-amber-200/90 text-2xs mr-6 leading-relaxed">
+                          {item.review_feedback || 'يرجى مراجعة وتدقيق بيانات السيارة ورفع المستندات المطلوبة لإعادة النشر.'}
+                        </p>
+                      </div>
+                    )}
+
                     {/* Condition Story Summary */}
                     <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800/80 text-xs space-y-1">
                       <div className="font-bold text-slate-300">وصف البائع للحالة والتعثر:</div>
@@ -1751,7 +1911,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                       </p>
                     </div>
 
-                    {/* Seller Contact & Case Code Bar (Priority 2, 3, 4) */}
+                    {/* Seller Contact & Case Code Bar */}
                     <div className="flex flex-wrap items-center justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-2xs gap-2">
                       <div className="flex items-center gap-2">
                         <span className="text-slate-400">كود الملف:</span>
@@ -1761,14 +1921,6 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                         <span className="text-slate-600">|</span>
                         <span className="text-slate-400">المرور:</span>
                         <span className="font-bold text-amber-300">{item.traffic_unit || 'مرور فيصل'}</span>
-                        {item.is_hidden && (
-                          <>
-                            <span className="text-slate-600">|</span>
-                            <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-amber-500/20 text-amber-300 border border-amber-500/50">
-                              👁️ مخفي مؤقتاً عن المعرض
-                            </span>
-                          </>
-                        )}
                         <span className="text-slate-600">|</span>
                         <span className="text-slate-400">البائع:</span>
                         <span className="font-bold text-white">{item.seller_name || 'مالك أول'}</span>
@@ -1807,8 +1959,9 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                           );
                         })()}
                       </div>
+                      
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        {/* Temporary Hide / Unhide Toggle */}
+                        {/* Showroom Visibility Toggle */}
                         {(item.status === 'published' || item.status === 'approved' || item.is_hidden) && (
                           <button
                             type="button"
@@ -1831,7 +1984,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                           title="عرض الإعلان على الموقع"
                         >
                           <ExternalLink className="w-3 h-3 text-brand-green" />
-                          <span>عرض الإعلان على الموقع</span>
+                          <span>عرض بالمعرض</span>
                         </button>
                         <button
                           type="button"
@@ -1840,7 +1993,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                           title="متابعة إدارية وتسجيل مكالمة"
                         >
                           <PhoneCall className="w-3 h-3" />
-                          <span>متابعة إدارية / مكالمات</span>
+                          <span>متابعة إدارية</span>
                         </button>
                         {item.status !== 'rejected' && item.status !== 'archived' && (
                           <button
@@ -1850,7 +2003,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                             title="سحب الإعلان مع توثيق السبب"
                           >
                             <Trash2 className="w-3 h-3" />
-                            <span>سحب الإعلان</span>
+                            <span>سحب</span>
                           </button>
                         )}
                       </div>
@@ -1867,71 +2020,115 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                       </div>
                     )}
 
-                    {/* Quick Moderate Actions */}
+                    {/* Bottom Action Bar */}
                     <div className="flex flex-wrap items-center justify-between pt-2 border-t border-slate-800/80 gap-2 text-xs">
                       <div className="text-3xs text-slate-500 font-mono">
                         تاريخ الإضافة: {new Date(item.created_at).toLocaleString('ar-EG')}
                       </div>
 
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        {/* Documents Status / Request Button */}
-                        {item.documents_verified ? (
-                          <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-3xs font-bold flex items-center gap-1">
-                            <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                            ✓ الأوراق موثقة ومضمونة
-                          </span>
-                        ) : item.documents_submitted ? (
-                          <span className="px-2.5 py-1 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/40 text-3xs font-bold flex items-center gap-1">
-                            <FileText className="w-3 h-3 text-sky-400" />
-                            📄 أوراق مرفوعة بانتظار فحصك
-                          </span>
-                        ) : item.documents_requested ? (
-                          <span className="px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/40 text-3xs font-bold flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-blue-400" />
-                            بانتظار الأوراق
-                          </span>
+                        {/* IF ARCHIVED: Show Restore & Permanent Delete buttons */}
+                        {(item.status === 'archived' || item.status === 'withdrawn') ? (
+                          <>
+                            <span className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-slate-400 text-3xs font-bold flex items-center gap-1">
+                              <Archive className="w-3 h-3 text-slate-500" />
+                              <span>محفوظ بالأرشيف</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleModerate(item.id, 'pending_review', 'استعادة من الأرشيف لإعادة المراجعة')}
+                              disabled={moderationActionLoading}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700 text-emerald-300 text-2xs font-bold transition flex items-center gap-1"
+                              title="استعادة الإعلان من الأرشيف لقائمة المراجعة"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              <span>استعادة من الأرشيف</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePermanently(item.id)}
+                              disabled={moderationActionLoading}
+                              className="px-3 py-1.5 rounded-lg bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-200 text-2xs font-black transition flex items-center gap-1 shadow-sm"
+                              title="حذف نهائي للإعلان من النظام"
+                            >
+                              <Trash2 className="w-3 h-3 text-rose-400" />
+                              <span>حذف نهائي</span>
+                            </button>
+                          </>
                         ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleRequestDocuments(item.id)}
-                            className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-3xs font-bold transition flex items-center gap-1"
-                          >
-                            <FileText className="w-3 h-3 text-brand-green" />
-                            <span>طلب المستندات</span>
-                          </button>
-                        )}
+                          <>
+                            {/* Documents Status / Request Button */}
+                            {item.documents_verified ? (
+                              <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-3xs font-bold flex items-center gap-1">
+                                <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                                ✓ الأوراق موثقة
+                              </span>
+                            ) : item.documents_submitted ? (
+                              <span className="px-2.5 py-1 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/40 text-3xs font-bold flex items-center gap-1">
+                                <FileText className="w-3 h-3 text-sky-400" />
+                                📄 أوراق مرفوعة
+                              </span>
+                            ) : item.documents_requested ? (
+                              <span className="px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/40 text-3xs font-bold flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-blue-400" />
+                                بانتظار الأوراق
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleRequestDocuments(item.id)}
+                                className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-3xs font-bold transition flex items-center gap-1"
+                              >
+                                <FileText className="w-3 h-3 text-brand-green" />
+                                <span>طلب المستندات</span>
+                              </button>
+                            )}
 
-                        {item.status !== 'approved' && item.status !== 'published' && (
-                          <button
-                            onClick={() => handleModerate(item.id, 'published')}
-                            disabled={moderationActionLoading}
-                            className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 border border-emerald-400 text-white text-2xs font-black transition flex items-center gap-1 shadow-sm"
-                          >
-                            ✓ اعتماد ونشر بالمعرض (Approve & Publish)
-                          </button>
-                        )}
+                            {item.status !== 'approved' && item.status !== 'published' && (
+                              <button
+                                onClick={() => handleModerate(item.id, 'published')}
+                                disabled={moderationActionLoading}
+                                className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 border border-emerald-400 text-white text-2xs font-black transition flex items-center gap-1 shadow-sm"
+                              >
+                                ✓ اعتماد ونشر بالمعرض
+                              </button>
+                            )}
 
-                        {(item.status === 'approved' || item.status === 'published') && (
-                          <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-3xs font-black flex items-center gap-1">
-                            ✓ منشور بالمعرض الآن
-                          </span>
-                        )}
+                            {(item.status === 'approved' || item.status === 'published') && (
+                              <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-3xs font-black flex items-center gap-1">
+                                ✓ منشور بالمعرض
+                              </span>
+                            )}
 
-                        <button
-                          onClick={() => { setSelectedModerationListing(item); setAdminFeedbackInput(item.review_feedback || ''); }}
-                          className="px-3 py-1.5 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-700 text-amber-300 text-2xs font-bold transition"
-                        >
-                          ✏ طلب تعديلات (Needs Changes)
-                        </button>
+                            <button
+                              onClick={() => { setSelectedModerationListing(item); setAdminFeedbackInput(item.review_feedback || ''); }}
+                              className="px-3 py-1.5 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-700 text-amber-300 text-2xs font-bold transition"
+                            >
+                              ✏ طلب تعديلات
+                            </button>
 
-                        {item.status !== 'rejected' && (
-                          <button
-                            onClick={() => handleModerate(item.id, 'rejected', 'الإعلان غير مطابق لمعايير المنصة')}
-                            disabled={moderationActionLoading}
-                            className="px-3 py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-800 text-rose-300 text-2xs font-bold transition"
-                          >
-                            ✕ رفض (Reject)
-                          </button>
+                            {item.status !== 'rejected' && (
+                              <button
+                                onClick={() => { setSelectedModerationListing(item); setAdminFeedbackInput(item.review_feedback || 'الإعلان غير مطابق لمعايير المنصة والتسوية'); }}
+                                disabled={moderationActionLoading}
+                                className="px-3 py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-800 text-rose-300 text-2xs font-bold transition"
+                              >
+                                ✕ رفض وتوثيق السبب
+                              </button>
+                            )}
+
+                            {/* Archive Listing Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleModerate(item.id, 'archived', 'تم نقل الإعلان إلى الأرشيف')}
+                              disabled={moderationActionLoading}
+                              className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200 text-2xs font-bold transition flex items-center gap-1"
+                              title="نقل الإعلان إلى الأرشيف"
+                            >
+                              <Archive className="w-3 h-3 text-slate-400" />
+                              <span>أرشفة</span>
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -2537,6 +2734,36 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
               <button onClick={() => setSelectedModerationListing(null)} className="text-slate-400 hover:text-white p-1">✕</button>
             </div>
 
+            {/* Prominent Feedback / Status Alert in Review Modal */}
+            {selectedModerationListing.status === 'rejected' && (
+              <div className="p-3.5 bg-red-950/50 border border-red-900/80 rounded-2xl text-xs space-y-1">
+                <div className="flex items-center gap-2 font-black text-rose-300">
+                  <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                  <span>سبب الرفض الإداري الحالي:</span>
+                </div>
+                <p className="text-rose-200/90 text-2xs mr-6 leading-relaxed">
+                  {selectedModerationListing.review_feedback || 'تم رفض الإعلان لعدم استيفاء الشروط أو وجود مخالفة في بيانات التسوية.'}
+                </p>
+              </div>
+            )}
+            {selectedModerationListing.status === 'needs_changes' && (
+              <div className="p-3.5 bg-amber-950/50 border border-amber-900/80 rounded-2xl text-xs space-y-1">
+                <div className="flex items-center gap-2 font-black text-amber-300">
+                  <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                  <span>التعديلات والملاحظات المطلوبة من العميل:</span>
+                </div>
+                <p className="text-amber-200/90 text-2xs mr-6 leading-relaxed">
+                  {selectedModerationListing.review_feedback || 'يرجى مراجعة وتدقيق بيانات السيارة والمستندات لإعادة النشر.'}
+                </p>
+              </div>
+            )}
+            {(selectedModerationListing.status === 'archived' || selectedModerationListing.status === 'withdrawn') && (
+              <div className="p-3.5 bg-slate-900 border border-slate-700 rounded-2xl text-xs flex items-center gap-2 text-slate-300">
+                <Archive className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                <span>هذا الإعلان محفوظ بالأرشيف (غير معروض للزوار). يمكنك استعادته للمراجعة أو حذفه نهائياً.</span>
+              </div>
+            )}
+
             {/* Photos Carousel/Row */}
             {selectedModerationListing.images && selectedModerationListing.images.length > 0 && (
               <div className="space-y-1.5">
@@ -3070,32 +3297,69 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                   إلغاء
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleModerate(selectedModerationListing.id, 'needs_changes', adminFeedbackInput.trim() || 'يرجى مراجعة وتدقيق بيانات الإعلان وإعادة إرساله')}
-                  disabled={moderationActionLoading}
-                  className="px-4 py-2 rounded-xl bg-amber-950 border border-amber-700 text-amber-300 hover:bg-amber-900 font-bold"
-                >
-                  طلب تعديل من العميل
-                </button>
+                {(selectedModerationListing.status === 'archived' || selectedModerationListing.status === 'withdrawn') ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleModerate(selectedModerationListing.id, 'pending_review', 'استعادة من الأرشيف')}
+                      disabled={moderationActionLoading}
+                      className="px-4 py-2 rounded-xl bg-emerald-950 border border-emerald-700 text-emerald-300 hover:bg-emerald-900 font-bold flex items-center gap-1.5"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>استعادة من الأرشيف</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePermanently(selectedModerationListing.id)}
+                      disabled={moderationActionLoading}
+                      className="px-4 py-2 rounded-xl bg-rose-950 border border-rose-800 text-rose-200 hover:bg-rose-900 font-bold flex items-center gap-1.5 shadow-sm"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>حذف نهائي من النظام</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* Archive button */}
+                    <button
+                      type="button"
+                      onClick={() => handleModerate(selectedModerationListing.id, 'archived', adminFeedbackInput || 'تم النقل للأرشيف')}
+                      disabled={moderationActionLoading}
+                      className="px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:bg-slate-800 font-bold flex items-center gap-1.5"
+                      title="نقل الإعلان للأرشيف"
+                    >
+                      <Archive className="w-3.5 h-3.5 text-slate-400" />
+                      <span>أرشفة</span>
+                    </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleModerate(selectedModerationListing.id, 'rejected', adminFeedbackInput || 'تم الرفض لعدم توافق الشروط')}
-                  disabled={moderationActionLoading}
-                  className="px-4 py-2 rounded-xl bg-rose-950 border border-rose-800 text-rose-300 hover:bg-rose-900 font-bold"
-                >
-                  رفض الإعلان
-                </button>
+                    <button
+                      type="button"
+                      onClick={() => handleModerate(selectedModerationListing.id, 'needs_changes', adminFeedbackInput.trim() || 'يرجى مراجعة وتدقيق بيانات الإعلان وإعادة إرساله')}
+                      disabled={moderationActionLoading}
+                      className="px-4 py-2 rounded-xl bg-amber-950 border border-amber-700 text-amber-300 hover:bg-amber-900 font-bold"
+                    >
+                      طلب تعديل من العميل
+                    </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleModerate(selectedModerationListing.id, 'published', adminFeedbackInput)}
-                  disabled={moderationActionLoading}
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black shadow-md flex items-center gap-1.5"
-                >
-                  ✓ اعتماد ونشر بالمعرض (Approve & Publish)
-                </button>
+                    <button
+                      type="button"
+                      onClick={() => handleModerate(selectedModerationListing.id, 'rejected', adminFeedbackInput || 'تم الرفض لعدم توافق الشروط')}
+                      disabled={moderationActionLoading}
+                      className="px-4 py-2 rounded-xl bg-rose-950 border border-rose-800 text-rose-300 hover:bg-rose-900 font-bold"
+                    >
+                      رفض الإعلان
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleModerate(selectedModerationListing.id, 'published', adminFeedbackInput)}
+                      disabled={moderationActionLoading}
+                      className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black shadow-md flex items-center gap-1.5"
+                    >
+                      ✓ اعتماد ونشر بالمعرض (Approve & Publish)
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
