@@ -49,7 +49,7 @@ const parseViewFromUrl = (): string => {
 
 export function App() {
   const [currentView, setCurrentView] = useState<string>(() => parseViewFromUrl());
-  const [cars, setCars] = useState<Car[]>([]);
+  const [cars, setCars] = useState<Car[]>(INITIAL_CARS);
   const [selectedCar, setSelectedCar] = useState<Car | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [userRole, setUserRole] = useState<'seller' | 'buyer' | 'admin' | 'staff' | 'owner'>('seller');
@@ -456,7 +456,11 @@ export function App() {
     const fetchApprovedListings = async () => {
       const res = await listingService.getPublicListings();
       if (isMounted && res.success) {
-        setCars(res.cars || []);
+        if (res.cars && res.cars.length > 0) {
+          setCars(res.cars);
+        } else {
+          setCars(INITIAL_CARS);
+        }
       }
     };
 

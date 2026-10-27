@@ -14,8 +14,9 @@ import {
   Edit3, Scale, UserCheck, ExternalLink,
   Car as CarIcon, Tag, MessageSquare, Send,
   AlertTriangle, Trash2, Clock, Sparkles,
-  Download, FileSpreadsheet
+  Download, FileSpreadsheet, Printer
 } from 'lucide-react';
+import { PrintableAgreementModal } from '../components/cars/PrintableAgreementModal';
 import { geminiService } from '../services/geminiService';
 import { isWhatsAppServiceEnabled, setWhatsAppServiceEnabled } from '../services/whatsappService';
 
@@ -74,6 +75,8 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
   const [currentStaffUser, setCurrentStaffUser] = useState<EmployeeUser | null>(null);
 
   const [activeTab, setActiveTab] = useState<'cases' | 'moderation' | 'purchase_offers' | 'customers' | 'audit_logs' | 'edits_review' | 'team' | 'compliance'>('moderation');
+  const [agreementModalOpen, setAgreementModalOpen] = useState(false);
+  const [agreementCarData, setAgreementCarData] = useState<any>(undefined);
 
   // Supabase Moderation Queue State
   const [dbListings, setDbListings] = useState<DatabaseCarListing[]>([]);
@@ -926,6 +929,18 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
           >
             <MessageSquare className={`w-3.5 h-3.5 ${isWhatsAppActive ? 'text-emerald-400' : 'text-slate-400'}`} />
             <span>{isWhatsAppActive ? 'واتساب OTP: مفعل' : 'واتساب OTP: معطل'}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setAgreementCarData(undefined);
+              setAgreementModalOpen(true);
+            }}
+            className="px-3 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/50 text-emerald-300 text-xs font-bold transition flex items-center gap-1.5"
+            title="طباعة استمارة اتفاق وساطة وحجز سيارة رسمي"
+          >
+            <Printer className="w-3.5 h-3.5 text-emerald-400" />
+            <span>طباعة استمارة اتفاق وساطة</span>
           </button>
 
           <button
@@ -3610,6 +3625,13 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
           </div>
         </div>
       )}
+
+      {/* PRINTABLE BROKERAGE AGREEMENT MODAL */}
+      <PrintableAgreementModal
+        isOpen={agreementModalOpen}
+        onClose={() => setAgreementModalOpen(false)}
+        carData={agreementCarData}
+      />
 
     </div>
   );
