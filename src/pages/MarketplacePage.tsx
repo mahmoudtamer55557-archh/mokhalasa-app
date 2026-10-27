@@ -446,7 +446,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-7">
             {filteredCars.map((car) => (
               <CarCard
                 key={car.id}

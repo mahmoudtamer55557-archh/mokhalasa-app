@@ -163,7 +163,7 @@ export const INITIAL_CARS: Car[] = [
     featuredRank: 1,
     featuredTier: 'top_3',
     featuredScope: 'both',
-    featuredBadgeText: '⭐ إعلان بريميوم موثق • صدارة المعرض (VIP Promoted)',
+    featuredBadgeText: 'أفضل صفقة • المعرض العام',
     description: 'نيسان صني سوبر صالون أعلى فئة بصمة وجنوط وشاشة، عليها قسط بنك CIB، مطلوب تسوية المديونية بالبنك وسداد الصافي للبائع بالشهر العقاري.'
   },
   {
@@ -217,7 +217,7 @@ export const INITIAL_CARS: Car[] = [
     featuredRank: 2,
     featuredTier: 'top_3',
     featuredScope: 'both',
-    featuredBadgeText: '🔥 إعلان بريميوم موثق • تقسيط مباشر VIP',
+    featuredBadgeText: 'أفضل صفقة • تقسيط مباشر',
     description: 'متاحة بالتقسيط المباشر بدون تعقيدات البنوك أو استعلام عمل. بمقدم 290 ألف واستلام فوري بصورة البطاقة والشيكات.'
   },
   {
@@ -278,7 +278,7 @@ export const INITIAL_CARS: Car[] = [
     featuredRank: 3,
     featuredTier: 'top_3',
     featuredScope: 'both',
-    featuredBadgeText: '⭐ إعلان بريميوم موثق • تسوية بنكية VIP',
+    featuredBadgeText: 'أفضل صفقة • تسوية بنكية',
     description: 'كيا سبورتاج الشكل الجديد GT-Line كسر زيرو عليها تمويل بالبنك الأهلي المصري. السداد يتم مباشرة بخزينة البنك واستلام المخالصة فورا.'
   },
   {
@@ -324,7 +324,7 @@ export const INITIAL_CARS: Car[] = [
     featuredRank: 4,
     featuredTier: 'top_10',
     featuredScope: 'all',
-    featuredBadgeText: '⭐ إعلان بريميوم موثق • بيع كاش فوري',
+    featuredBadgeText: 'أفضل صفقة • بيع كاش',
     description: 'إم جي 5 لاكشري أعلى فئة فتحة سقف وكاميرا 360، بيع كاش ملكية خالصة من المالك مباشرة بدون أي أقساط أو حظر.'
   },
   {
@@ -378,7 +378,7 @@ export const INITIAL_CARS: Car[] = [
     featuredRank: 1,
     featuredTier: 'top_3',
     featuredScope: 'category_only',
-    featuredBadgeText: '⭐ إعلان بريميوم فئة شيري • VIP Promoted',
+    featuredBadgeText: 'أفضل صفقة • فئة شيري',
     description: 'شيري تيجو 7 برو الشكل الجديد، تقسيط مباشر بدون استعلام بنكي مع تسليم فوري في نفس اليوم.'
   }
 ];

@@ -4263,10 +4263,10 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                   />
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {[
-                      `⭐ إعلان بريميوم موثق • صدارة المعرض (VIP Promoted)`,
-                      `🔥 إعلان بريميوم مميز (توب #${featuredRank})`,
-                      `⭐ إعلان بريميوم موثق • فئة ${listingForFeatured.make} (VIP)`,
-                      `⚡ إعلان بريميوم معتمد وممول`
+                      `أفضل صفقة`,
+                      `أفضل صفقة • صدارة المعرض (#${featuredRank})`,
+                      `أفضل صفقة • فئة ${listingForFeatured.make}`,
+                      `أفضل صفقة • تقسيط مباشر`
                     ].map((preset, idx) => (
                       <button
                         key={idx}
