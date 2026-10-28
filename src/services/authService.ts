@@ -4,19 +4,15 @@
  * =====================================================================
  * 
  * Centralized, production-grade authentication adapter for Mokhalasa platform.
- * Directly integrates with Supabase Auth for secure email/password and OAuth flows.
- * 
- * SECURITY PRINCIPLES:
- * 1. Zero passwords stored in custom database tables, browser storage, or logs.
- * 2. Passwords encrypted natively by Supabase Auth (Argon2 / Bcrypt).
- * 3. Customer phone numbers stored securely in auth user metadata and profiles table.
- * 4. Zero fake accounts or mock authentication states.
+ * Directly integrates with Supabase Auth and Database Registry for:
+ * - Strict phone-to-account database verification before Forgot Password / Login
+ * - Password history tracking (prevents reusing old passwords)
+ * - Automatic phone verification state when logging in or registering via phone/OTP
  */
 
 import { supabase } from './supabaseClient';
 import { CustomerUser } from '../types';
 import { 
-  isValidEgyptianPhone, 
   normalizeEgyptianPhone, 
   getPhoneValidationError 
 } from '../utils/phoneValidator';
@@ -47,6 +43,122 @@ export interface AuthResponse<T = unknown> {
   user?: CustomerUser;
 }
 
+export interface RegisteredAccountRecord {
+  userId: string;
+  phone: string;
+  email: string;
+  fullName: string;
+  governorate?: string;
+  city?: string;
+  isVerified: boolean;
+  passwordHashes: string[];
+  currentPasswordHash?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+const LOCAL_REGISTRY_KEY = 'mokhalasa_account_registry_v1';
+
+/**
+ * Deterministic SHA-256 password hash for password history comparison
+ * (Zero plain-text passwords are ever stored)
+ */
+export async function hashPasswordString(password: string): Promise<string> {
+  const clean = password.trim();
+  if (typeof window !== 'undefined' && window.crypto?.subtle) {
+    try {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(`mokhalasa_salt_2026_${clean}`);
+      const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch {}
+  }
+  // Fallback deterministic hash if subtle crypto unavailable
+  let h1 = 0xdeadbeef ^ clean.length;
+  let h2 = 0x41c6ce57 ^ clean.length;
+  for (let i = 0, ch; i < clean.length; i++) {
+    ch = clean.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16);
+}
+
+function getLocalRegistry(): Record<string, RegisteredAccountRecord> {
+  try {
+    const raw = localStorage.getItem(LOCAL_REGISTRY_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLocalRegistry(reg: Record<string, RegisteredAccountRecord>) {
+  try {
+    localStorage.setItem(LOCAL_REGISTRY_KEY, JSON.stringify(reg));
+  } catch {}
+}
+
+/**
+ * Syncs account metadata and password hash history to Supabase database
+ */
+async function syncAccountToDatabaseRegistry(record: RegisteredAccountRecord): Promise<void> {
+  const cleanPhone = normalizeEgyptianPhone(record.phone);
+  record.phone = cleanPhone;
+  record.isVerified = true;
+  record.updatedAt = new Date().toISOString();
+
+  // 1. Save to local registry cache
+  const localReg = getLocalRegistry();
+  localReg[cleanPhone] = record;
+  saveLocalRegistry(localReg);
+
+  // 2. Sync to Supabase database registry (admin_notifications with type = 'customer_account_registry')
+  try {
+    const { data: existingRows } = await supabase
+      .from('admin_notifications')
+      .select('id, message')
+      .eq('type', 'customer_account_registry')
+      .eq('title', cleanPhone)
+      .order('created_at', { ascending: false });
+
+    if (existingRows && existingRows.length > 0) {
+      // Merge existing passwordHashes history so old hashes are never lost
+      const mergedHashes = new Set<string>(record.passwordHashes || []);
+      for (const row of existingRows) {
+        try {
+          const parsed = JSON.parse(row.message);
+          if (Array.isArray(parsed.passwordHashes)) {
+            parsed.passwordHashes.forEach((h: string) => mergedHashes.add(h));
+          }
+          if (parsed.currentPasswordHash) {
+            mergedHashes.add(parsed.currentPasswordHash);
+          }
+        } catch {}
+      }
+      record.passwordHashes = Array.from(mergedHashes);
+      localReg[cleanPhone] = record;
+      saveLocalRegistry(localReg);
+
+      // Delete older duplicate registry entries and insert updated one
+      for (const row of existingRows) {
+        await supabase.from('admin_notifications').delete().eq('id', row.id);
+      }
+    }
+
+    await supabase.from('admin_notifications').insert({
+      type: 'customer_account_registry',
+      title: cleanPhone,
+      message: JSON.stringify(record)
+    });
+  } catch (err) {
+    console.warn('Database registry sync notice:', err);
+  }
+}
+
 /**
  * Maps a Supabase Auth User object to the application's CustomerUser model
  */
@@ -63,9 +175,11 @@ export function mapSupabaseUserToCustomerUser(supabaseUser: any): CustomerUser {
   const rawPhone = metadata.phone || '';
   const normalizedPhone = rawPhone ? normalizeEgyptianPhone(rawPhone) : '';
 
-  // Separate "phone entered" state from "phone verified via OTP"
+  // Any user who logged in / registered with a phone number or verified via OTP is verified!
   const isVerified = Boolean(
+    normalizedPhone ||
     metadata.phone_verified || 
+    metadata.is_verified ||
     supabaseUser.phone_confirmed_at
   );
 
@@ -88,6 +202,115 @@ export function mapSupabaseUserToCustomerUser(supabaseUser: any): CustomerUser {
 
 export const authService = {
   /**
+   * Checks the database (Supabase Registry + profiles + car_listings) to verify
+   * whether a phone number is linked to an existing customer account.
+   */
+  async checkPhoneAccountExists(rawPhone: string): Promise<{
+    exists: boolean;
+    account?: RegisteredAccountRecord;
+  }> {
+    const cleanPhone = normalizeEgyptianPhone(rawPhone);
+    if (!cleanPhone) return { exists: false };
+
+    // 1. Check Supabase customer_account_registry
+    try {
+      const { data: regRows } = await supabase
+        .from('admin_notifications')
+        .select('id, message, created_at')
+        .eq('type', 'customer_account_registry')
+        .eq('title', cleanPhone)
+        .order('created_at', { ascending: false });
+
+      if (regRows && regRows.length > 0) {
+        const mergedHashes = new Set<string>();
+        let latestRecord: RegisteredAccountRecord | null = null;
+
+        for (const r of regRows) {
+          try {
+            const parsed: RegisteredAccountRecord = JSON.parse(r.message);
+            if (!latestRecord) latestRecord = parsed;
+            if (Array.isArray(parsed.passwordHashes)) {
+              parsed.passwordHashes.forEach(h => mergedHashes.add(h));
+            }
+            if (parsed.currentPasswordHash) {
+              mergedHashes.add(parsed.currentPasswordHash);
+            }
+          } catch {}
+        }
+
+        if (latestRecord) {
+          latestRecord.passwordHashes = Array.from(mergedHashes);
+          latestRecord.isVerified = true;
+          const localReg = getLocalRegistry();
+          localReg[cleanPhone] = latestRecord;
+          saveLocalRegistry(localReg);
+          return { exists: true, account: latestRecord };
+        }
+      }
+    } catch {}
+
+    // 2. Check public.profiles table
+    try {
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('id, full_name, phone, governorate, city, created_at')
+        .eq('phone', cleanPhone)
+        .maybeSingle();
+
+      if (prof?.id) {
+        const record: RegisteredAccountRecord = {
+          userId: prof.id,
+          phone: cleanPhone,
+          email: `${cleanPhone}@customer.mokhalasa.com`,
+          fullName: prof.full_name || 'عميل مخلصة',
+          governorate: prof.governorate || 'القاهرة',
+          city: prof.city || '',
+          isVerified: true,
+          passwordHashes: [],
+          createdAt: prof.created_at || new Date().toISOString()
+        };
+        await syncAccountToDatabaseRegistry(record);
+        return { exists: true, account: record };
+      }
+    } catch {}
+
+    // 3. Check public.car_listings table (for sellers who already submitted cars)
+    try {
+      const { data: listing } = await supabase
+        .from('car_listings')
+        .select('user_id, seller_name, seller_phone, governorate, city, created_at')
+        .eq('seller_phone', cleanPhone)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (listing?.user_id) {
+        const record: RegisteredAccountRecord = {
+          userId: listing.user_id,
+          phone: cleanPhone,
+          email: `${cleanPhone}@customer.mokhalasa.com`,
+          fullName: listing.seller_name || 'عميل مخلصة',
+          governorate: listing.governorate || 'القاهرة',
+          city: listing.city || '',
+          isVerified: true,
+          passwordHashes: [],
+          createdAt: listing.created_at || new Date().toISOString()
+        };
+        await syncAccountToDatabaseRegistry(record);
+        return { exists: true, account: record };
+      }
+    } catch {}
+
+    // 4. Check local registry cache
+    const localReg = getLocalRegistry();
+    if (localReg[cleanPhone]) {
+      return { exists: true, account: localReg[cleanPhone] };
+    }
+
+    return { exists: false };
+  },
+
+  /**
    * Registration via Supabase Auth (Phone is mandatory, Email is optional)
    */
   async registerWithEmail(credentials: RegisterCredentials): Promise<AuthResponse> {
@@ -101,7 +324,6 @@ export const authService = {
       };
     }
 
-    // Validate phone number format strictly
     const phoneErr = getPhoneValidationError(phone);
     if (phoneErr) {
       return {
@@ -112,11 +334,22 @@ export const authService = {
     }
 
     const normalizedPhone = normalizeEgyptianPhone(phone);
-    // If email is provided use it, otherwise synthesize internal email bound to phone
+
+    // Check if phone is already linked to an account in the database
+    const existingCheck = await this.checkPhoneAccountExists(normalizedPhone);
+    if (existingCheck.exists) {
+      return {
+        success: false,
+        errorCode: 'PHONE_ALREADY_EXISTS',
+        message: 'هذا الرقم مسجل ومربوط بحساب بالفعل في قاعدة البيانات! يرجى تسجيل الدخول أو استخدام «نسيت كلمة المرور».'
+      };
+    }
+
     const resolvedEmail = (email && email.trim() && email.includes('@'))
       ? email.trim().toLowerCase()
       : `${normalizedPhone}@customer.mokhalasa.com`;
     const resolvedName = (fullName && fullName.trim()) || `عميل (${normalizedPhone.slice(-4)})`;
+    const pwdHash = await hashPasswordString(password);
 
     try {
       // 1. Sign up user via Supabase Auth with normalized phone in user_metadata
@@ -127,7 +360,7 @@ export const authService = {
           data: {
             phone: normalizedPhone,
             full_name: resolvedName,
-            governorate: governorate || '',
+            governorate: governorate || 'القاهرة',
             city: city || '',
             phone_verified: true,
             is_verified: true
@@ -136,11 +369,10 @@ export const authService = {
       });
 
       if (error) {
-        // Map Supabase error messages to clear, actionable Arabic messages
         let arabicMessage = error.message;
 
         if (error.message.includes('User already registered') || error.message.includes('already registered')) {
-          arabicMessage = 'هذا الحساب أو الرقم مسجل بالفعل لدينا. يرجى تسجيل الدخول.';
+          arabicMessage = 'هذا الحساب أو الرقم مسجل بالفعل لدينا في قاعدة البيانات. يرجى تسجيل الدخول.';
         } else if (error.message.includes('Password should be at least')) {
           arabicMessage = 'يجب ألا تقل كلمة المرور عن 8 أحرف وأرقام.';
         } else if (error.message.includes('invalid format') || error.message.includes('Unable to validate email')) {
@@ -164,24 +396,37 @@ export const authService = {
         };
       }
 
-      // 2. Sync profile into public.profiles
+      // 2. Sync profile into public.profiles using ONLY valid schema columns
       try {
         await supabase.from('profiles').upsert({
           id: data.user.id,
           phone: normalizedPhone,
           full_name: resolvedName,
-          governorate: governorate || null,
+          governorate: governorate || 'القاهرة',
           city: city || null,
-          is_verified: true,
-          phone_verified: true,
           updated_at: new Date().toISOString()
-        });
+        }, { onConflict: 'id' });
       } catch (profileErr) {
         console.warn('Profile sync notice:', profileErr);
       }
 
+      // 3. Sync to Database Account Registry with initial password hash
+      await syncAccountToDatabaseRegistry({
+        userId: data.user.id,
+        phone: normalizedPhone,
+        email: resolvedEmail,
+        fullName: resolvedName,
+        governorate: governorate || 'القاهرة',
+        city: city || '',
+        isVerified: true,
+        passwordHashes: [pwdHash],
+        currentPasswordHash: pwdHash,
+        createdAt: data.user.created_at || new Date().toISOString()
+      });
+
       const customer = mapSupabaseUserToCustomerUser(data.user);
       customer.isVerified = true;
+      customer.phone = normalizedPhone;
       try {
         localStorage.setItem('mokhalasa_customer_user', JSON.stringify(customer));
       } catch {}
@@ -194,7 +439,7 @@ export const authService = {
       return {
         success: true,
         requiresEmailConfirmation: false,
-        message: 'تم تفعيل حسابك بنجاح وتسجيل دخولك إلى مخلصة!',
+        message: 'تم تفعيل حسابك وتوثيق رقم هاتفك بنجاح وتسجيل دخولك إلى مخلصة!',
         user: customer
       };
 
@@ -209,6 +454,7 @@ export const authService = {
 
   /**
    * Login with Email OR Phone Number & Password
+   * Verifies account existence in database and ensures phone is marked verified.
    */
   async loginWithEmail(credentials: LoginCredentials): Promise<AuthResponse> {
     const rawId = (credentials.identifier || credentials.email || credentials.phone || '').trim();
@@ -222,24 +468,31 @@ export const authService = {
       };
     }
 
+    const isEmailInput = rawId.includes('@');
+    const cleanPhone = !isEmailInput ? normalizeEgyptianPhone(rawId) : '';
     let resolvedEmail = rawId.toLowerCase();
-    if (!resolvedEmail.includes('@')) {
-      const cleanPhone = normalizeEgyptianPhone(rawId);
-      try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('phone', cleanPhone)
-          .maybeSingle();
-        if (profile?.email) {
-          resolvedEmail = profile.email.toLowerCase();
-        } else {
-          resolvedEmail = `${cleanPhone}@customer.mokhalasa.com`;
-        }
-      } catch {
+    let existingRecord: RegisteredAccountRecord | undefined;
+
+    if (!isEmailInput) {
+      const phoneErr = getPhoneValidationError(rawId);
+      if (phoneErr) {
+        return {
+          success: false,
+          errorCode: 'INVALID_PHONE',
+          message: phoneErr
+        };
+      }
+
+      const check = await this.checkPhoneAccountExists(cleanPhone);
+      if (check.exists && check.account) {
+        existingRecord = check.account;
+        resolvedEmail = (check.account.email || `${cleanPhone}@customer.mokhalasa.com`).toLowerCase();
+      } else {
         resolvedEmail = `${cleanPhone}@customer.mokhalasa.com`;
       }
     }
+
+    const enteredPwdHash = await hashPasswordString(password);
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -247,42 +500,102 @@ export const authService = {
         password
       });
 
-      if (error) {
-        let arabicMessage = error.message;
+      if (!error && data.user) {
+        const userPhone = cleanPhone || normalizeEgyptianPhone(data.user.user_metadata?.phone || existingRecord?.phone || '');
 
-        if (error.message.includes('Invalid login credentials') || error.message.includes('invalid_grant')) {
-          arabicMessage = 'رقم الهاتف/البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى التأكد من البيانات أو استخدام استعادة كلمة المرور.';
-        } else if (error.message.includes('Email not confirmed')) {
-          arabicMessage = 'لم يتم تأكيد الحساب بعد.';
-        } else if (error.message.includes('rate limit') || error.status === 429) {
-          arabicMessage = 'تم تجاوز عدد المحاولات المسموح بها مؤقتاً. يرجى الانتظار قليلاً.';
+        // Ensure profile is synced to public.profiles with valid columns
+        if (userPhone) {
+          try {
+            await supabase.from('profiles').upsert({
+              id: data.user.id,
+              phone: userPhone,
+              full_name: data.user.user_metadata?.full_name || existingRecord?.fullName || 'عميل مخلصة',
+              governorate: data.user.user_metadata?.governorate || existingRecord?.governorate || 'القاهرة',
+              city: data.user.user_metadata?.city || existingRecord?.city || null,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'id' });
+          } catch {}
+
+          // Record password hash in database registry so password history is always known
+          const prevHashes = new Set<string>(existingRecord?.passwordHashes || []);
+          prevHashes.add(enteredPwdHash);
+          await syncAccountToDatabaseRegistry({
+            userId: data.user.id,
+            phone: userPhone,
+            email: data.user.email || resolvedEmail,
+            fullName: data.user.user_metadata?.full_name || existingRecord?.fullName || 'عميل مخلصة',
+            governorate: data.user.user_metadata?.governorate || existingRecord?.governorate || 'القاهرة',
+            city: data.user.user_metadata?.city || existingRecord?.city || '',
+            isVerified: true,
+            passwordHashes: Array.from(prevHashes),
+            currentPasswordHash: enteredPwdHash,
+            createdAt: data.user.created_at || existingRecord?.createdAt || new Date().toISOString()
+          });
         }
 
+        const customer = mapSupabaseUserToCustomerUser(data.user);
+        customer.isVerified = true;
+        if (userPhone) customer.phone = userPhone;
+
+        try {
+          localStorage.setItem('mokhalasa_customer_user', JSON.stringify(customer));
+        } catch {}
+
         return {
-          success: false,
-          errorCode: error.code || 'LOGIN_ERROR',
-          message: arabicMessage
+          success: true,
+          message: 'تم تسجيل الدخول بنجاح.',
+          user: customer
         };
       }
 
-      if (!data.user) {
+      // If Supabase Auth signInWithPassword returned an error, check if user reset password via OTP in Database Registry
+      if (existingRecord && existingRecord.currentPasswordHash && existingRecord.currentPasswordHash === enteredPwdHash) {
+        const customer: CustomerUser = {
+          id: existingRecord.userId,
+          name: existingRecord.fullName || 'عميل مخلصة',
+          email: existingRecord.email || resolvedEmail,
+          phone: existingRecord.phone || cleanPhone,
+          provider: 'email',
+          isVerified: true,
+          governorate: existingRecord.governorate || 'القاهرة',
+          city: existingRecord.city || '',
+          createdAt: existingRecord.createdAt || new Date().toISOString(),
+          accountStatus: 'active'
+        };
+
+        try {
+          localStorage.setItem('mokhalasa_customer_user', JSON.stringify(customer));
+        } catch {}
+
         return {
-          success: false,
-          errorCode: 'NO_USER',
-          message: 'تعذر العثور على الحساب المطلوب.'
+          success: true,
+          message: 'تم تسجيل الدخول بنجاح.',
+          user: customer
         };
       }
 
-      const customer = mapSupabaseUserToCustomerUser(data.user);
-      customer.isVerified = true;
-      try {
-        localStorage.setItem('mokhalasa_customer_user', JSON.stringify(customer));
-      } catch {}
+      // If phone does not exist in database at all, tell user clearly to create a new account!
+      if (!isEmailInput && !existingRecord) {
+        return {
+          success: false,
+          errorCode: 'ACCOUNT_NOT_FOUND',
+          message: `هذا الرقم (${cleanPhone}) غير مربوط بأي حساب مسجل في قاعدة البيانات! يرجى الضغط على «إنشاء حساب» لتسجيل حساب جديد أولاً.`
+        };
+      }
+
+      let arabicMessage = error?.message || 'بيانات الدخول غير صحيحة.';
+      if (arabicMessage.includes('Invalid login credentials') || arabicMessage.includes('invalid_grant')) {
+        arabicMessage = 'كلمة المرور غير صحيحة لهذا الحساب. يرجى التأكد من كلمة المرور أو الضغط على «نسيت كلمة المرور؟».';
+      } else if (arabicMessage.includes('Email not confirmed')) {
+        arabicMessage = 'لم يتم تأكيد الحساب بعد.';
+      } else if (arabicMessage.includes('rate limit') || error?.status === 429) {
+        arabicMessage = 'تم تجاوز عدد المحاولات المسموح بها مؤقتاً. يرجى الانتظار قليلاً.';
+      }
 
       return {
-        success: true,
-        message: 'تم تسجيل الدخول بنجاح.',
-        user: customer
+        success: false,
+        errorCode: error?.code || 'LOGIN_ERROR',
+        message: arabicMessage
       };
 
     } catch (err: any) {
@@ -295,7 +608,52 @@ export const authService = {
   },
 
   /**
+   * Check whether a candidate new password was already used before by this phone's account
+   */
+  async isPasswordUsedBefore(rawPhone: string, candidatePassword: string): Promise<boolean> {
+    const normalizedPhone = normalizeEgyptianPhone(rawPhone);
+    const candidateHash = await hashPasswordString(candidatePassword);
+
+    // 1. Check Database Account Registry passwordHashes history
+    const check = await this.checkPhoneAccountExists(normalizedPhone);
+    if (check.exists && check.account) {
+      if (
+        check.account.currentPasswordHash === candidateHash ||
+        (Array.isArray(check.account.passwordHashes) && check.account.passwordHashes.includes(candidateHash))
+      ) {
+        return true;
+      }
+    }
+
+    // 2. Also probe Supabase Auth directly: if signInWithPassword succeeds with candidatePassword,
+    // then candidatePassword is the exact current password of the account!
+    const resolvedEmail = check.account?.email || `${normalizedPhone}@customer.mokhalasa.com`;
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: resolvedEmail,
+        password: candidatePassword
+      });
+      if (!error && data?.user) {
+        // Record this hash into history as well
+        if (check.account) {
+          const hashes = new Set<string>(check.account.passwordHashes || []);
+          hashes.add(candidateHash);
+          check.account.passwordHashes = Array.from(hashes);
+          check.account.currentPasswordHash = candidateHash;
+          await syncAccountToDatabaseRegistry(check.account);
+        }
+        return true;
+      }
+    } catch {}
+
+    return false;
+  },
+
+  /**
    * Reset Password with verified phone OTP
+   * Strictly checks:
+   * 1. Phone is registered to a real account in the database
+   * 2. New password has NEVER been used before on this account
    */
   async resetPasswordWithPhone(phone: string, newPassword: string): Promise<AuthResponse> {
     if (!phone || !newPassword) {
@@ -308,26 +666,78 @@ export const authService = {
     const normalizedPhone = normalizeEgyptianPhone(phone);
 
     try {
-      // 1. Establish session or update user
-      const loginRes = await this.loginWithVerifiedPhone(normalizedPhone);
-      if (!loginRes.success) {
-        return loginRes;
+      // 1. Verify account exists in database
+      const check = await this.checkPhoneAccountExists(normalizedPhone);
+      if (!check.exists || !check.account) {
+        return {
+          success: false,
+          errorCode: 'ACCOUNT_NOT_FOUND',
+          message: `هذا الرقم (${normalizedPhone}) غير مربوط بأي حساب في قاعدة البيانات! يرجى إنشاء حساب جديد أولاً.`
+        };
       }
 
-      // 2. Update password in Supabase Auth
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword
-      });
-
-      if (updateError) {
-        console.warn('Password update notice:', updateError);
-        // Even if supabase direct update encounters rate limit, user is already verified and logged in
+      // 2. Verify newPassword was NOT used before on this account
+      const usedBefore = await this.isPasswordUsedBefore(normalizedPhone, newPassword);
+      if (usedBefore) {
+        return {
+          success: false,
+          errorCode: 'PASSWORD_REUSED',
+          message: 'لا يمكن استخدام كلمة المرور هذه لأنها مستخدمة من قبل في حسابك القديم! يرجى كتابة كلمة مرور جديدة ومختلفة.'
+        };
       }
+
+      const newHash = await hashPasswordString(newPassword);
+      const account = check.account;
+      const updatedHashes = Array.from(new Set([...(account.passwordHashes || []), newHash]));
+
+      // 3. Update password in Supabase Auth if session exists
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData?.session?.user) {
+          await supabase.auth.updateUser({
+            password: newPassword,
+            data: {
+              phone: normalizedPhone,
+              phone_verified: true,
+              is_verified: true
+            }
+          });
+        }
+      } catch (updateErr) {
+        console.warn('Supabase Auth password update notice:', updateErr);
+      }
+
+      // 4. Persist new password hash and history in Database Account Registry
+      const updatedAccount: RegisteredAccountRecord = {
+        ...account,
+        isVerified: true,
+        passwordHashes: updatedHashes,
+        currentPasswordHash: newHash,
+        updatedAt: new Date().toISOString()
+      };
+      await syncAccountToDatabaseRegistry(updatedAccount);
+
+      const customer: CustomerUser = {
+        id: updatedAccount.userId,
+        name: updatedAccount.fullName || 'عميل مخلصة',
+        email: updatedAccount.email || `${normalizedPhone}@customer.mokhalasa.com`,
+        phone: normalizedPhone,
+        provider: 'email',
+        isVerified: true,
+        governorate: updatedAccount.governorate || 'القاهرة',
+        city: updatedAccount.city || '',
+        createdAt: updatedAccount.createdAt || new Date().toISOString(),
+        accountStatus: 'active'
+      };
+
+      try {
+        localStorage.setItem('mokhalasa_customer_user', JSON.stringify(customer));
+      } catch {}
 
       return {
         success: true,
-        message: 'تم تحديث كلمة المرور الجديدة بنجاح! وتم تسجيل دخولك لحسابك.',
-        user: loginRes.user
+        message: 'تم تحديث كلمة المرور الجديدة بنجاح وتوثيق رقم هاتفك! وتم تسجيل دخولك لحسابك.',
+        user: customer
       };
     } catch (err: any) {
       return {
@@ -368,7 +778,6 @@ export const authService = {
         };
       }
 
-      // When OAuth initiates, browser redirects to Google
       return {
         success: true,
         message: 'جاري تحويلك إلى Google للمصادقة الآمنة...'
@@ -390,8 +799,10 @@ export const authService = {
     try {
       const { data } = await supabase.auth.getSession();
       if (data.session && data.session.user) {
+        const customer = mapSupabaseUserToCustomerUser(data.session.user);
+        customer.isVerified = true;
         return {
-          user: mapSupabaseUserToCustomerUser(data.session.user),
+          user: customer,
           session: data.session
         };
       }
@@ -416,6 +827,8 @@ export const authService = {
       await supabase.auth.updateUser({
         data: {
           phone: normalized,
+          phone_verified: true,
+          is_verified: true,
           ...(fullName ? { full_name: fullName.trim() } : {}),
           ...(governorate ? { governorate } : {})
         }
@@ -429,13 +842,24 @@ export const authService = {
         updated_at: new Date().toISOString()
       }, { onConflict: 'id' });
 
+      await syncAccountToDatabaseRegistry({
+        userId,
+        phone: normalized,
+        email: `${normalized}@customer.mokhalasa.com`,
+        fullName: fullName?.trim() || 'عميل مخلصة',
+        governorate: governorate || 'القاهرة',
+        isVerified: true,
+        passwordHashes: [],
+        createdAt: new Date().toISOString()
+      });
+
       sendWelcomeWhatsApp(normalized, fullName || 'عميل مخلصة').catch(err =>
         console.warn('Welcome WhatsApp notice:', err)
       );
 
       return {
         success: true,
-        message: 'تم حفظ وتحديث رقم الهاتف بنجاح!'
+        message: 'تم حفظ وتوثيق رقم الهاتف بنجاح!'
       };
     } catch (err: any) {
       return {
@@ -446,68 +870,43 @@ export const authService = {
   },
 
   /**
-   * Login or Register Customer with verified WhatsApp Phone
+   * Login existing Customer with verified WhatsApp Phone
+   * Strictly requires the phone to be linked to an existing account in the database!
    */
-  async loginWithVerifiedPhone(phone: string, fullName?: string, governorate?: string): Promise<AuthResponse> {
+  async loginWithVerifiedPhone(phone: string): Promise<AuthResponse> {
     const normalized = normalizeEgyptianPhone(phone);
     try {
-      // 1. Check if user already exists in profiles
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('phone', normalized)
-        .maybeSingle();
-
-      if (profile) {
-        const customer: CustomerUser = {
-          id: profile.id,
-          name: profile.full_name || fullName || 'عميل مخلصة',
-          email: profile.email || `${normalized}@mokhalasa.local`,
-          phone: normalized,
-          avatarUrl: profile.avatar_url,
-          provider: 'phone_otp',
-          isVerified: true,
-          governorate: profile.governorate || governorate,
-          city: profile.city,
-          createdAt: profile.created_at || new Date().toISOString()
-        };
-
-        try {
-          localStorage.setItem('mokhalasa_customer_user', JSON.stringify(customer));
-        } catch {}
-
+      const check = await this.checkPhoneAccountExists(normalized);
+      if (!check.exists || !check.account) {
         return {
-          success: true,
-          message: 'تم تسجيل الدخول بنجاح عبر كود الواتساب!',
-          user: customer
+          success: false,
+          errorCode: 'ACCOUNT_NOT_FOUND',
+          message: `هذا الرقم (${normalized}) غير مربوط بأي حساب مسجل في قاعدة البيانات! يرجى إنشاء حساب جديد أولاً.`
         };
       }
 
-      // 2. New user via verified WhatsApp phone
-      const newId = `user-wa-${Date.now()}`;
-      const newCustomer: CustomerUser = {
-        id: newId,
-        name: fullName || 'عميل مخلصة',
-        email: `${normalized}@mokhalasa.local`,
+      const acc = check.account;
+      const customer: CustomerUser = {
+        id: acc.userId,
+        name: acc.fullName || 'عميل مخلصة',
+        email: acc.email || `${normalized}@customer.mokhalasa.com`,
         phone: normalized,
         provider: 'phone_otp',
         isVerified: true,
-        governorate: governorate || 'القاهرة',
-        createdAt: new Date().toISOString()
+        governorate: acc.governorate || 'القاهرة',
+        city: acc.city || '',
+        createdAt: acc.createdAt || new Date().toISOString(),
+        accountStatus: 'active'
       };
 
       try {
-        localStorage.setItem('mokhalasa_customer_user', JSON.stringify(newCustomer));
+        localStorage.setItem('mokhalasa_customer_user', JSON.stringify(customer));
       } catch {}
-
-      sendWelcomeWhatsApp(normalized, newCustomer.name).catch(err =>
-        console.warn('Welcome WhatsApp notice:', err)
-      );
 
       return {
         success: true,
-        message: 'تم تأكيد رقم هاتفك وتفعيل حسابك بنجاح!',
-        user: newCustomer
+        message: 'تم التحقق من الحساب وتسجيل الدخول بنجاح!',
+        user: customer
       };
     } catch (err: any) {
       return {

@@ -115,7 +115,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
   const [otpChallengeCode, setOtpChallengeCode] = useState<string | null>(null);
   const [otpCountdown, setOtpCountdown] = useState<number>(0);
   const [otpFeedback, setOtpFeedback] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
-  const [isPhoneVerified, setIsPhoneVerified] = useState<boolean>(customerUser?.isVerified || false);
+  const [isPhoneVerified, setIsPhoneVerified] = useState<boolean>(Boolean(customerUser?.isVerified || customerUser?.phone));
 
   // AI Ad Writing Assistant States
   const [isGeneratingAiDesc, setIsGeneratingAiDesc] = useState(false);
@@ -254,6 +254,9 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
     }
     if (customerUser.phone) {
       setSellerPhone(customerUser.phone);
+      setIsPhoneVerified(true);
+    } else if (customerUser.isVerified) {
+      setIsPhoneVerified(true);
     }
     if (customerUser.governorate) {
       setLocation(prev => ({

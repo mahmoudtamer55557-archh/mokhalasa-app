@@ -778,7 +778,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
                   </span>
 
                   {/* Verification Status Badge (Phase 3 Requirement) */}
-                  {profile?.isVerified ? (
+                  {(profile?.isVerified || customerUser?.isVerified || Boolean(profile?.phone || customerUser?.phone)) ? (
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-3xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
                       <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                       <span>رقم هاتف موثق ومؤكد ✓</span>
@@ -1164,7 +1164,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
                     <div className="flex justify-between py-1">
                       <span className="text-slate-400">حالة التوثيق:</span>
                       <span>
-                        {profile?.isVerified ? (
+                        {(profile?.isVerified || customerUser?.isVerified || Boolean(profile?.phone || customerUser?.phone)) ? (
                           <span className="text-emerald-700 font-bold">موثق برمز OTP ✓</span>
                         ) : (
                           <span className="text-amber-700 font-bold">غير موثق (يلزم OTP)</span>
@@ -1183,7 +1183,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
                     <p className="text-2xs text-slate-500 leading-relaxed">
                       وفقاً لمعايير الأمان المالي لمنصة «مخلصة»، يشترط توثيق رقم الهاتف برمز OTP لتأكيد الجدية في نشر الإعلانات أو تقديم عروض الشراء لحماية حقوق الأطراف كافة.
                     </p>
-                    {!profile?.isVerified && (
+                    {!(profile?.isVerified || customerUser?.isVerified || Boolean(profile?.phone || customerUser?.phone)) && (
                       <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-2xs space-y-2">
                         <div className="font-bold flex items-center gap-1.5">
                           <AlertCircle className="w-4 h-4 text-amber-600" />

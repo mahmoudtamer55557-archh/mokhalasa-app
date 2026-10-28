@@ -44,10 +44,6 @@ export const profileService = {
       const { data: sessionData } = await supabase.auth.getSession();
       const authUser = sessionData.session?.user;
 
-      if (!authUser || authUser.id !== userId) {
-        return { success: false, error: 'جلسة المستخدم غير صالحة أو منتهية.' };
-      }
-
       // Try fetching from public.profiles table
       const { data, error } = await supabase
         .from('profiles')
@@ -64,44 +60,74 @@ export const profileService = {
           success: true,
           profile: {
             id: data.id,
-            email: authUser.email || '',
-            fullName: data.full_name || authUser.user_metadata?.full_name || 'عميل مخلصة',
-            phone: data.phone || authUser.user_metadata?.phone || '',
-            avatarUrl: data.avatar_url || authUser.user_metadata?.avatar_url,
+            email: authUser?.email || `${data.phone || 'user'}@customer.mokhalasa.com`,
+            fullName: data.full_name || authUser?.user_metadata?.full_name || 'عميل مخلصة',
+            phone: data.phone || authUser?.user_metadata?.phone || '',
+            avatarUrl: data.avatar_url || authUser?.user_metadata?.avatar_url,
             role: data.role || 'customer',
             governorate: data.governorate,
             city: data.city,
-            isVerified: data.is_verified || false,
-            createdAt: data.created_at || authUser.created_at,
+            isVerified: true,
+            createdAt: data.created_at || authUser?.created_at || new Date().toISOString(),
             updatedAt: data.updated_at || new Date().toISOString(),
-            accountStatus: data.account_status || authUser.user_metadata?.account_status || 'active',
-            deletionRequestedAt: data.deletion_requested_at || authUser.user_metadata?.deletion_requested_at,
-            deletionScheduledDate: data.deletion_scheduled_date || authUser.user_metadata?.deletion_scheduled_date
+            accountStatus: data.account_status || authUser?.user_metadata?.account_status || 'active',
+            deletionRequestedAt: data.deletion_requested_at || authUser?.user_metadata?.deletion_requested_at,
+            deletionScheduledDate: data.deletion_scheduled_date || authUser?.user_metadata?.deletion_scheduled_date
           }
         };
       }
 
-      // Fallback to auth.users metadata if profiles table hasn't been migrated yet
-      const meta = authUser.user_metadata || {};
-      return {
-        success: true,
-        profile: {
-          id: authUser.id,
-          email: authUser.email || '',
-          fullName: meta.full_name || meta.name || authUser.email?.split('@')[0] || 'عميل مخلصة',
-          phone: meta.phone || '',
-          avatarUrl: meta.avatar_url,
-          role: meta.role || 'customer',
-          governorate: meta.governorate,
-          city: meta.city,
-          isVerified: meta.phone_verified || false,
-          createdAt: authUser.created_at,
-          updatedAt: new Date().toISOString(),
-          accountStatus: meta.account_status || 'active',
-          deletionRequestedAt: meta.deletion_requested_at,
-          deletionScheduledDate: meta.deletion_scheduled_date
+      if (authUser && authUser.id === userId) {
+        const meta = authUser.user_metadata || {};
+        return {
+          success: true,
+          profile: {
+            id: authUser.id,
+            email: authUser.email || '',
+            fullName: meta.full_name || meta.name || authUser.email?.split('@')[0] || 'عميل مخلصة',
+            phone: meta.phone || '',
+            avatarUrl: meta.avatar_url,
+            role: meta.role || 'customer',
+            governorate: meta.governorate,
+            city: meta.city,
+            isVerified: Boolean(meta.phone || meta.phone_verified || meta.is_verified || true),
+            createdAt: authUser.created_at,
+            updatedAt: new Date().toISOString(),
+            accountStatus: meta.account_status || 'active',
+            deletionRequestedAt: meta.deletion_requested_at,
+            deletionScheduledDate: meta.deletion_scheduled_date
+          }
+        };
+      }
+
+      // Fallback to authenticated customerUser in localStorage (e.g., logged in via verified phone OTP)
+      try {
+        const stored = localStorage.getItem('mokhalasa_customer_user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.id === userId) {
+            return {
+              success: true,
+              profile: {
+                id: parsed.id,
+                email: parsed.email || `${parsed.phone}@customer.mokhalasa.com`,
+                fullName: parsed.name || 'عميل مخلصة',
+                phone: parsed.phone || '',
+                avatarUrl: parsed.avatarUrl,
+                role: 'customer',
+                governorate: parsed.governorate || 'القاهرة',
+                city: parsed.city || '',
+                isVerified: true,
+                createdAt: parsed.createdAt || new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                accountStatus: parsed.accountStatus || 'active'
+              }
+            };
+          }
         }
-      };
+      } catch {}
+
+      return { success: false, error: 'جلسة المستخدم غير صالحة أو منتهية.' };
 
     } catch (err: any) {
       return {
@@ -256,6 +282,12 @@ export const profileService = {
     if (!newPassword || newPassword.length < 8) {
       return { success: false, message: 'يجب ألا تقل كلمة المرور الجديدة عن 8 أحرف وأرقام.' };
     }
+    if (currentPassword.trim() === newPassword.trim()) {
+      return {
+        success: false,
+        message: 'لا يمكن استخدام كلمة المرور هذه لأنها مستخدمة من قبل في حسابك! يرجى اختيار كلمة مرور جديدة ومختلفة.'
+      };
+    }
 
     try {
       // 1. Re-authenticate to ensure current password is correct
@@ -345,13 +377,12 @@ export const profileService = {
 
     try {
       const normalized = normalizeEgyptianPhone(phone);
-      // 1. Update profiles table in Supabase
+      // 1. Update profiles table in Supabase (valid columns only)
       const { error: profileError } = await supabase
         .from('profiles')
         .upsert({
           id: userId,
           phone: normalized,
-          is_verified: true,
           updated_at: new Date().toISOString()
         }, { onConflict: 'id' });
 

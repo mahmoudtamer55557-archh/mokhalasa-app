@@ -4,20 +4,14 @@
  * منصة مخلّصة | Mokhalasa WhatsApp Notification & OTP Engine
  * =====================================================================
  * المزود الأساسي: WazzAPI (https://api.wazzapi.com/api/v1)
- * المزودات الاحتياطية: بوابة مخلصة الخاصة (Mokhalasa Gateway) + Wapilot API
+ * (تم إلغاء السيرفر المحلي نهائياً والاعتماد الكامل على الـ API الخارجي)
  */
-
-import { supabase } from './supabaseClient';
 
 // 1. إعدادات المزود الأساسي (WazzAPI)
 const WAZZAPI_BASE_URL = 'https://api.wazzapi.com/api/v1';
 const DEFAULT_WAZZAPI_KEY = 'wazz_sk_X7MpeNiN6lEzf7RvNlpMusnBKHPBn023n6akw6zZ3R4';
 
-// 2. إعدادات بوابة مخلصة الخاصة (Dedicated Self-Hosted WhatsApp Gateway)
-const DEFAULT_GATEWAY_URL = 'http://localhost:3001';
-const DEFAULT_GATEWAY_KEY = 'mokhalasa_secret_otp_key_2026';
-
-// 3. موفر الخدمة الاحتياطي (Wapilot API v2)
+// 2. موفر الخدمة الاحتياطي (Wapilot API v2)
 const WAPILOT_API_URL = 'https://api.wapilot.net/api/v2';
 const DEFAULT_INSTANCE_ID = 'instance6023';
 const DEFAULT_API_TOKEN = 'OxiCvTAE4NnJAb61AuHV5vBHSSzamrD9pIkCd761od';
@@ -41,15 +35,6 @@ export const configureWazzapiCredentials = (apiKey: string, deviceId?: string) =
     if (apiKey) localStorage.setItem('mokhalasa_wazzapi_key', apiKey.trim());
     if (deviceId !== undefined) localStorage.setItem('mokhalasa_wazzapi_device_id', deviceId.trim());
   }
-};
-
-export const getGatewayConfig = () => {
-  const gatewayUrl =
-    (import.meta.env?.VITE_WHATSAPP_GATEWAY_URL as string) ||
-    (typeof window !== 'undefined' ? localStorage.getItem('mokhalasa_wa_gateway_url') : '') ||
-    DEFAULT_GATEWAY_URL;
-  const apiKey = (import.meta.env?.VITE_WHATSAPP_API_KEY as string) || DEFAULT_GATEWAY_KEY;
-  return { gatewayUrl, apiKey };
 };
 
 export const getWapilotConfig = () => {
@@ -112,7 +97,7 @@ export function formatEgyptianWhatsAppNumber(phone: string): string {
 export interface SendWhatsAppResult {
   success: boolean;
   messageId?: string;
-  provider?: 'wazzapi' | 'gateway' | 'cloud_relay' | 'wapilot';
+  provider?: 'wazzapi' | 'wapilot';
   error?: string;
 }
 
@@ -164,7 +149,7 @@ async function resolveWazzapiDeviceId(apiKey: string, configuredDeviceId?: strin
 }
 
 /**
- * إرسال الرسالة عبر WazzAPI (المزود الرئيسي - عبر Serverless Proxy لتفادي CORS أو مباشر)
+ * إرسال الرسالة عبر WazzAPI (المزود الرئيسي - عبر Serverless Proxy أو مباشر)
  */
 async function sendViaWazzapi(phone: string, text: string): Promise<SendWhatsAppResult> {
   const { apiKey, deviceId } = getWazzapiConfig();
@@ -246,12 +231,7 @@ async function sendViaWazzapi(phone: string, text: string): Promise<SendWhatsApp
 }
 
 /**
- * إرسال رسالة نصية عامة عبر الواتساب
- * الترتيب:
- * 1. WazzAPI (`wazz_sk_...`)
- * 2. بوابة مخلصة الخاصة المباشرة (Mokhalasa Gateway)
- * 3. جسر مخلصة السحابي الفوري عبر Supabase (يعمل من الموبايل وعلى Vercel مباشرة!)
- * 4. Wapilot API (الاحتياطي)
+ * إرسال رسالة نصية عامة عبر الواتساب (عبر الـ API الخارجي فقط بدون السيرفر المحلي)
  */
 export async function sendWhatsAppMessage(phone: string, text: string): Promise<SendWhatsAppResult> {
   if (!isWhatsAppServiceEnabled()) {
@@ -263,62 +243,13 @@ export async function sendWhatsAppMessage(phone: string, text: string): Promise<
     return { success: false, error: 'رقم الهاتف غير صالح' };
   }
 
-  // 1. المحاولة الأولى عبر WazzAPI (المزود الرئيسي الجديد)
+  // 1. المحاولة الأولى عبر WazzAPI (المزود الرئيسي)
   const wazzResult = await sendViaWazzapi(cleanPhone, text);
   if (wazzResult.success) {
     return wazzResult;
   }
 
-  // 2. المحاولة الثانية عبر بوابة مخلصة الخاصة المباشرة (عند العمل على نفس الجهاز)
-  const { gatewayUrl, apiKey } = getGatewayConfig();
-  try {
-    const gatewayRes = await fetch(`${gatewayUrl}/api/send-message`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey
-      },
-      body: JSON.stringify({
-        phone: cleanPhone,
-        message: text
-      })
-    });
-
-    if (gatewayRes.ok) {
-      const data = await gatewayRes.json();
-      if (data?.success) {
-        return { success: true, messageId: data.messageId, provider: 'gateway' };
-      }
-    }
-  } catch {
-    // الانتقال للجسر السحابي
-  }
-
-  // 3. المحاولة الثالثة عبر جسر مخلصة السحابي الفوري (Supabase Cloud Relay -> Mokhalasa WhatsApp Server)
-  // يضمن وصول الرسالة خلال 1.5 ثانية حتى لو العميل يفتح المنصة على Vercel من الموبايل!
-  try {
-    const { data: relayRow, error: relayErr } = await supabase
-      .from('admin_notifications')
-      .insert({
-        type: 'whatsapp_outbox',
-        title: cleanPhone,
-        message: text
-      })
-      .select('id')
-      .single();
-
-    if (!relayErr && relayRow?.id) {
-      return {
-        success: true,
-        messageId: relayRow.id,
-        provider: 'cloud_relay'
-      };
-    }
-  } catch (relayEx) {
-    console.warn('[WhatsApp Cloud Relay] Notice:', relayEx);
-  }
-
-  // 4. المحاولة الرابعة عبر Wapilot كنسخة احتياطية
+  // 2. المحاولة الاحتياطية عبر Wapilot API
   const { token, instanceId } = getWapilotConfig();
   const chatId = formatEgyptianWhatsAppNumber(phone);
 
@@ -341,10 +272,10 @@ export async function sendWhatsAppMessage(phone: string, text: string): Promise<
     if (response.ok && data?.success) {
       return { success: true, messageId: data.message_id, provider: 'wapilot' };
     } else {
-      return { success: false, error: data?.message || 'فشل إرسال رسالة الواتساب' };
+      return { success: false, error: data?.message || 'فشل إرسال رسالة الواتساب عبر الـ API' };
     }
   } catch (err: any) {
-    return { success: false, error: err?.message || 'خطأ في الاتصال بخدمة الواتساب' };
+    return { success: false, error: err?.message || 'خطأ في الاتصال بخدمة الواتساب API' };
   }
 }
 
@@ -367,7 +298,6 @@ export async function sendOtpViaWhatsApp(phone: string, otpCode: string): Promis
     `⏱️ الكود صالح لمدة 5 دقائق فقط.\n` +
     `⚠️ لسلامة حسابك: لا تشارك هذا الكود مع أي شخص نهائياً.`;
 
-  // يرسل عبر WazzAPI أولاً ثم البوابات البديلة
   return sendWhatsAppMessage(phone, message);
 }
 

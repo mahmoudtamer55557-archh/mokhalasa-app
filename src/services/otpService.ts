@@ -227,7 +227,6 @@ export const otpService = {
         });
 
         await supabase.from('profiles').update({
-          phone_verified: true,
           updated_at: new Date().toISOString()
         }).eq('id', targetUserId);
       } catch (syncErr) {

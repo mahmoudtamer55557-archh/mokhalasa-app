@@ -56,6 +56,8 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
   const [forgotNewPassword, setForgotNewPassword] = useState('');
   const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
   const [forgotCountdown, setForgotCountdown] = useState(45);
+  const [unregisteredPhoneToCreate, setUnregisteredPhoneToCreate] = useState<string | null>(null);
+  const [matchedAccountName, setMatchedAccountName] = useState<string | null>(null);
 
   // Register Form State
   const [regFullName, setRegFullName] = useState('');
@@ -102,6 +104,8 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
       setForgotOtpCode('');
       setForgotNewPassword('');
       setForgotConfirmPassword('');
+      setUnregisteredPhoneToCreate(null);
+      setMatchedAccountName(null);
     }
   }, [isOpen, initialTab]);
 
@@ -129,6 +133,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
 
     if (response.success && response.user) {
       const user = response.user;
+      setUnregisteredPhoneToCreate(null);
       
       // Check 30-day deletion grace period
       if (user.accountStatus === 'pending_deletion') {
@@ -158,6 +163,11 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
     } else {
       setAuthStatus('error');
       setErrorMessage(response.message || 'بيانات الدخول غير صحيحة.');
+      if (response.errorCode === 'ACCOUNT_NOT_FOUND') {
+        setUnregisteredPhoneToCreate(normalizeEgyptianPhone(loginIdentifier));
+      } else {
+        setUnregisteredPhoneToCreate(null);
+      }
     }
     setIsSubmitting(false);
   };
@@ -189,11 +199,13 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
   };
 
   // -------------------------------------------------------------
-  // 2. FORGOT PASSWORD HANDLERS (VIA WHATSAPP OTP)
+  // 2. FORGOT PASSWORD HANDLERS (VIA WHATSAPP OTP + DB ACCOUNT CHECK)
   // -------------------------------------------------------------
   const handleRequestForgotOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setUnregisteredPhoneToCreate(null);
+    setMatchedAccountName(null);
 
     const phoneErr = getPhoneValidationError(forgotPhone);
     if (phoneErr) {
@@ -206,11 +218,27 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      const res = await otpService.generateAndSendOtp(cleanPhone, { purpose: 'reset_password' });
+      // 1. Check Database first: Is this phone linked to any registered account?
+      const accountCheck = await authService.checkPhoneAccountExists(cleanPhone);
+      if (!accountCheck.exists || !accountCheck.account) {
+        setUnregisteredPhoneToCreate(cleanPhone);
+        setErrorMessage(`هذا الرقم (${cleanPhone}) غير مربوط بأي حساب مسجل في قاعدة البيانات! يجب إنشاء حساب جديد أولاً.`);
+        setAuthStatus('error');
+        setIsSubmitting(false);
+        return;
+      }
+
+      setMatchedAccountName(accountCheck.account.fullName || 'عميل مخلصة');
+
+      // 2. Phone is confirmed linked to an account -> Send WhatsApp OTP
+      const res = await otpService.generateAndSendOtp(cleanPhone, {
+        userId: accountCheck.account.userId,
+        purpose: 'reset_password'
+      });
       if (res.success) {
         setLoginView('forgot_otp');
         setForgotCountdown(45);
-        setSuccessNotice(`تم إرسال كود استعادة كلمة المرور عبر الواتساب إلى رقم: ${cleanPhone}`);
+        setSuccessNotice(`تم التحقق من حساب (${accountCheck.account.fullName}) في قاعدة البيانات وإرسال كود استعادة كلمة المرور إلى واتساب: ${cleanPhone}`);
       } else {
         setErrorMessage(res.message);
         setAuthStatus('error');
@@ -365,7 +393,16 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      // Send dynamic single-use OTP via WhatsApp
+      // 1. Check Database first: Is this phone already linked to an existing account?
+      const existingCheck = await authService.checkPhoneAccountExists(cleanPhone);
+      if (existingCheck.exists) {
+        setErrorMessage(`هذا الرقم (${cleanPhone}) مربوط بالفعل بحساب مسجل في قاعدة البيانات (${existingCheck.account?.fullName || 'عميل مخلصة'})! يرجى تسجيل الدخول أو استخدام «نسيت كلمة المرور».`);
+        setAuthStatus('error');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 2. Send dynamic single-use OTP via WhatsApp
       const res = await otpService.generateAndSendOtp(cleanPhone, { purpose: 'register' });
       if (res.success) {
         setIsRegisterOtpStep(true);
@@ -571,12 +608,31 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
 
           {/* Error Alert */}
           {authStatus === 'error' && errorMessage && (
-            <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-start gap-2 animate-fadeIn">
-              <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-              <div className="space-y-0.5">
-                <span className="font-bold block">تنبيه:</span>
-                <p className="text-2xs leading-relaxed text-rose-800">{errorMessage}</p>
+            <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs space-y-2 animate-fadeIn">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <span className="font-bold block">تنبيه:</span>
+                  <p className="text-2xs leading-relaxed text-rose-800">{errorMessage}</p>
+                </div>
               </div>
+              {unregisteredPhoneToCreate && activeTab === 'login' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRegPhone(unregisteredPhoneToCreate);
+                    setActiveTab('register');
+                    setIsRegisterOtpStep(false);
+                    setErrorMessage(null);
+                    setAuthStatus('unauthenticated');
+                    setUnregisteredPhoneToCreate(null);
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-brand-navy hover:bg-slate-800 text-white font-extrabold text-2xs transition flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>إنشاء حساب جديد برقم ({unregisteredPhoneToCreate}) الآن</span>
+                </button>
+              )}
             </div>
           )}
 
@@ -763,6 +819,11 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
               {loginView === 'forgot_otp' && (
                 <form onSubmit={handleVerifyForgotOtp} className="space-y-3 animate-fadeIn">
                   <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-1">
+                    {matchedAccountName && (
+                      <span className="text-2xs text-emerald-950 font-black block">
+                        ✓ الحساب المسجل: {matchedAccountName}
+                      </span>
+                    )}
                     <span className="text-3xs text-emerald-800 font-bold block">
                       وصلك كود تحقق على الواتساب على رقمك:
                     </span>
