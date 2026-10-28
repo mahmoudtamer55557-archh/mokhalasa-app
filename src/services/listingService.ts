@@ -11,12 +11,19 @@ import { Car, PurchaseOffer, InAppNotification, ListingCallLog } from '../types'
 import {
   sendWhatsAppMessage,
   sendListingSubmittedWhatsApp,
+  sendListingUpdatedWhatsApp,
+  sendListingWithdrawnOrReactivatedWhatsApp,
   sendListingModerationWhatsApp,
+  sendListingFeaturedWhatsApp,
+  sendDocumentRequestedWhatsApp,
+  sendDocumentUploadedWhatsApp,
+  sendDocumentStatusWhatsApp,
   sendNegotiationOfferWhatsApp,
   sendOfferSubmittedBuyerConfirmationWhatsApp,
   sendOfferAcceptedToBuyerWhatsApp,
   sendOfferRejectedToBuyerWhatsApp,
   sendOfferAcceptedSellerConfirmationWhatsApp,
+  sendOfferRejectedSellerConfirmationWhatsApp,
   sendDealConfirmedWhatsApp
 } from './whatsappService';
 
@@ -320,16 +327,25 @@ export const listingService = {
           message: `تم تسجيل سيارتك ${submission.make} ${submission.model} ${submission.year} بنجاح برقم ملف (${caseReference}). الإعلان قيد مراجعة واعتماد الإدارة وسيتواصل معك مستشار مخلصة.`,
           linkView: 'profile',
           relatedId: listingId
-        });
+        }, true);
 
-        // Send dedicated WhatsApp confirmation to seller phone
+        // Send dedicated WhatsApp confirmation to seller phone with full details & links
+        const saleTrackAr =
+          submission.sale_type === 'direct_installment'
+            ? 'تقسيط مباشر (بدون بنوك)'
+            : submission.sale_type === 'cash'
+            ? 'بيع كاش (ملكية خالصة)'
+            : 'تسوية مديونية بنكية وفك حظر';
+
         if (row.seller_phone) {
           sendListingSubmittedWhatsApp(
             row.seller_phone,
             row.seller_name,
             `${submission.make} ${submission.model} ${submission.year}`,
             submission.asking_price,
-            caseReference
+            caseReference,
+            saleTrackAr,
+            listingId
           ).catch(err => console.warn('Listing submitted WhatsApp notice:', err));
         }
 
@@ -628,8 +644,13 @@ export const listingService = {
             message: `تم سحب إعلان سيارتك (${carTitle}) من المعرض العام بنجاح بناءً على طلبك. بيانات الإعلان محفوظة ومسجلة في حسابك الشخصي.`,
             linkView: 'profile',
             relatedId: listingId
-          });
+          }, true);
         } catch {}
+      }
+
+      const sellerPhone = listingInfo?.seller_phone || authUser?.user_metadata?.phone;
+      if (sellerPhone) {
+        sendListingWithdrawnOrReactivatedWhatsApp(sellerPhone, carTitle, 'withdrawn', caseCode).catch(() => {});
       }
 
       // 7. Audit log
@@ -729,6 +750,11 @@ export const listingService = {
           listing_id: listingId
         });
       } catch {}
+
+      const sellerPhone = listingInfo?.seller_phone || authUser?.user_metadata?.phone;
+      if (sellerPhone) {
+        sendListingWithdrawnOrReactivatedWhatsApp(sellerPhone, carTitle, 'reactivated', caseCode).catch(() => {});
+      }
 
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('mokhalasa-listings-updated', { detail: { listingId, status: 'pending_review' } }));
@@ -843,9 +869,20 @@ export const listingService = {
       try {
         const { data: carData } = await supabase
           .from('car_listings')
-          .select('user_id, make, model')
+          .select('user_id, make, model, year, seller_phone')
           .eq('id', listingId)
           .maybeSingle();
+
+        const carTitle = carData ? `${carData.make} ${carData.model} ${carData.year || ''}`.trim() : 'سيارتك';
+
+        if (carData?.seller_phone) {
+          sendDocumentStatusWhatsApp(
+            carData.seller_phone,
+            carTitle,
+            isVerified ? 'approved' : 'rejected',
+            adminNotes
+          ).catch(err => console.warn('Document status WhatsApp notice:', err));
+        }
 
         if (carData?.user_id) {
           if (isVerified) {
@@ -856,7 +893,7 @@ export const listingService = {
               message: `تم فحص رخصة السيارة والمستندات ومطابقتها من قبل إدارة مخلصة، ومُنح إعلانك (${carData.make} ${carData.model}) شارة «أوراق رسمية مفحوصة وموثقة إدارياً (مضمونة بنكياً وقانونياً)».`,
               linkView: 'profile',
               relatedId: listingId
-            });
+            }, true);
           } else {
             await this.sendCustomerNotification({
               userId: carData.user_id,
@@ -865,7 +902,7 @@ export const listingService = {
               message: `ملاحظة الإدارة على مستندات (${carData.make} ${carData.model}): ${adminNotes || 'يرجى إعادة رفع صور أوضح للرخصة أو البطاقة'}.`,
               linkView: 'profile',
               relatedId: listingId
-            });
+            }, true);
           }
         }
       } catch {}
@@ -949,6 +986,25 @@ export const listingService = {
         });
       } catch {}
 
+      // Send WhatsApp confirmation to seller
+      try {
+        const { data: carRow } = await supabase
+          .from('car_listings')
+          .select('make, model, year, asking_price, seller_name, seller_phone, case_reference')
+          .eq('id', listingId)
+          .maybeSingle();
+        const sellerPhone = updates.seller_phone || carRow?.seller_phone || authUser.user_metadata?.phone;
+        if (sellerPhone) {
+          sendListingUpdatedWhatsApp(
+            sellerPhone,
+            carRow?.seller_name || authUser.user_metadata?.full_name || 'مالك السيارة',
+            carRow ? `${carRow.make} ${carRow.model} ${carRow.year}` : 'سيارتك',
+            updates.asking_price ?? carRow?.asking_price ?? 0,
+            carRow?.case_reference || listingId.slice(0, 8)
+          ).catch(() => {});
+        }
+      } catch {}
+
       // Audit log
       try {
         await supabase.from('audit_logs').insert({
@@ -994,9 +1050,15 @@ export const listingService = {
       try {
         const { data: listingData } = await supabase
           .from('car_listings')
-          .select('user_id, make, model, year')
+          .select('user_id, make, model, year, seller_phone')
           .eq('id', listingId)
           .maybeSingle();
+
+        const carTitle = listingData ? `${listingData.make} ${listingData.model} ${listingData.year || ''}`.trim() : 'سيارتك';
+
+        if (listingData?.seller_phone) {
+          sendDocumentRequestedWhatsApp(listingData.seller_phone, carTitle, notes).catch(() => {});
+        }
 
         if (listingData?.user_id) {
           await this.sendCustomerNotification({
@@ -1006,7 +1068,7 @@ export const listingService = {
             message: `إدارة مخلصة تطلب منك رفع صور المستندات الرسمية (الرخصة، بطاقة الرقم القومي، وبيان المديونية البنكي) لسيارتك (${listingData.make} ${listingData.model}). يرجى الدخول لصفحة حسابك وإرفاقها.`,
             linkView: 'profile',
             relatedId: listingId
-          });
+          }, true);
         }
       } catch {}
 
@@ -1101,7 +1163,7 @@ export const listingService = {
           .eq('id', listingId);
       } catch {}
 
-      // 3. Notify Admin in admin_notifications
+      // 3. Notify Admin in admin_notifications & send WhatsApp receipt to Seller
       try {
         await supabase.from('admin_notifications').insert({
           type: 'documents_uploaded',
@@ -1109,6 +1171,20 @@ export const listingService = {
           message: `قام العميل برفع الأوراق الرسمية (الرخصة/البطاقة/بيان البنك) للإعلان (كود: ${listingId.slice(0, 8)}). يمكنك مراجعتها وتدقيقها الآن في لوحة الإدارة لمنح شارة الثقة.`,
           listing_id: listingId
         });
+
+        const { data: carRow } = await supabase
+          .from('car_listings')
+          .select('make, model, year, seller_phone')
+          .eq('id', listingId)
+          .maybeSingle();
+        if (carRow?.seller_phone) {
+          const uploadedCount = [docs.licenseFrontUrl || docs.licenseUrl, docs.licenseBackUrl, docs.nationalIdUrl, docs.bankStatementUrl].filter(Boolean).length;
+          sendDocumentUploadedWhatsApp(
+            carRow.seller_phone,
+            `${carRow.make} ${carRow.model} ${carRow.year || ''}`.trim(),
+            uploadedCount || undefined
+          ).catch(() => {});
+        }
       } catch {}
 
       if (typeof window !== 'undefined') {
@@ -1185,12 +1261,22 @@ export const listingService = {
       try {
         const { data: carData } = await supabase
           .from('car_listings')
-          .select('user_id, make, model')
+          .select('user_id, make, model, year, seller_phone')
           .eq('id', listingId)
           .maybeSingle();
 
         const userId = carData?.user_id;
-        const carTitle = carData ? `${carData.make} ${carData.model}` : 'سيارتك';
+        const carTitle = carData ? `${carData.make} ${carData.model} ${carData.year || ''}`.trim() : 'سيارتك';
+
+        if (carData?.seller_phone) {
+          sendDocumentStatusWhatsApp(
+            carData.seller_phone,
+            carTitle,
+            decision === 'reject' ? 'rejected' : 'approved',
+            rejectReason,
+            docNameAr
+          ).catch(() => {});
+        }
 
         if (userId) {
           if (decision === 'reject') {
@@ -1202,7 +1288,7 @@ export const listingService = {
               linkView: 'seller-portal',
               relatedId: listingId,
               targetDocField: docField
-            });
+            }, true);
           } else {
             await this.sendCustomerNotification({
               userId,
@@ -1211,7 +1297,7 @@ export const listingService = {
               message: `تم فحص ${docNameAr} لسيارتك (${carTitle}) من قبل الإدارة واعتماده رسمياً.`,
               linkView: 'seller-portal',
               relatedId: listingId
-            });
+            }, true);
           }
         }
       } catch {}
@@ -1311,7 +1397,7 @@ export const listingService = {
         localStorage.setItem('mokhalasa_moderation_overrides', JSON.stringify(parsed));
       } catch {}
 
-      // 3. Notify Admin
+      // 3. Notify Admin & Send WhatsApp confirmation to Seller
       try {
         await supabase.from('admin_notifications').insert({
           type: 'listing_resubmitted',
@@ -1319,6 +1405,21 @@ export const listingService = {
           message: `قام العميل بتعديل كامل بيانات الإعلان (${data.make} ${data.model} ${data.year} - كود: ${listingId.slice(0, 8)}) عبر معالج البيع وإعادة إرساله للاعتماد.`,
           listing_id: listingId
         });
+
+        const { data: carRow } = await supabase
+          .from('car_listings')
+          .select('seller_name, seller_phone, case_reference')
+          .eq('id', listingId)
+          .maybeSingle();
+        if (carRow?.seller_phone) {
+          sendListingUpdatedWhatsApp(
+            carRow.seller_phone,
+            carRow.seller_name || 'مالك السيارة',
+            `${data.make} ${data.model} ${data.year}`,
+            data.asking_price,
+            carRow.case_reference || listingId.slice(0, 8)
+          ).catch(() => {});
+        }
       } catch {}
 
       if (typeof window !== 'undefined') {
@@ -1487,6 +1588,8 @@ export const listingService = {
       } catch {}
 
       // 1. First attempt: PostgreSQL Security Definer RPC (most reliable across all permission sets)
+      let rpcSucceeded = false;
+      let rpcMessage = '';
       try {
         const { data: rpcData, error: rpcError } = await supabase.rpc('admin_moderate_listing', {
           p_listing_id: listingId,
@@ -1496,35 +1599,35 @@ export const listingService = {
         });
 
         if (!rpcError && rpcData && rpcData.success) {
-          return {
-            success: true,
-            message: rpcData.message || 'تم اعتماد ونشر الإعلان بنجاح في المعرض العام وإشعار العميل.'
-          };
+          rpcSucceeded = true;
+          rpcMessage = rpcData.message || 'تم اعتماد ونشر الإعلان بنجاح في المعرض العام وإشعار العميل.';
         }
       } catch {
         // Fall through to direct table update if RPC not registered yet
       }
 
-      // 2. Second attempt: Direct table update with only valid verified columns
-      const updatePayload: Record<string, any> = {
-        status: newStatus,
-        updated_at: new Date().toISOString()
-      };
+      // 2. Second attempt: Direct table update if RPC did not succeed
+      if (!rpcSucceeded) {
+        const updatePayload: Record<string, any> = {
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        };
 
-      if (feedback !== undefined) {
-        updatePayload.review_feedback = feedback.trim();
+        if (feedback !== undefined) {
+          updatePayload.review_feedback = feedback.trim();
+        }
+
+        const { error: updateError } = await supabase
+          .from('car_listings')
+          .update(updatePayload)
+          .eq('id', listingId);
+
+        if (updateError) {
+          console.warn('Direct update warning:', updateError);
+        }
       }
 
-      const { error: updateError } = await supabase
-        .from('car_listings')
-        .update(updatePayload)
-        .eq('id', listingId);
-
-      if (updateError) {
-        console.warn('Direct update warning:', updateError);
-      }
-
-      // 3. Fetch listing details to notify the seller
+      // 3. Always fetch listing details to notify the seller via WhatsApp & In-App Notification
       try {
         const { data: listingData } = await supabase
           .from('car_listings')
@@ -1539,7 +1642,8 @@ export const listingService = {
             carTitle,
             newStatus as 'published' | 'approved' | 'needs_changes' | 'rejected',
             feedback,
-            listingData.case_reference || listingId.slice(0, 8)
+            listingData.case_reference || listingId.slice(0, 8),
+            listingId
           ).catch(err => console.warn('Moderation WhatsApp notice:', err));
         }
 
@@ -1552,7 +1656,7 @@ export const listingService = {
               message: `تمت مراجعة واعتماد إعلان سيارتك (${listingData.make} ${listingData.model} ${listingData.year}) بنجاح من قِبل إدارة مخلصة، وأصبح الآن منشوراً ومتاحاً لجميع المشترين في المعرض العام.`,
               linkView: 'profile',
               relatedId: listingId
-            });
+            }, true);
           } else if (newStatus === 'needs_changes') {
             await this.sendCustomerNotification({
               userId: listingData.user_id,
@@ -1561,7 +1665,7 @@ export const listingService = {
               message: `يرجى مراجعة إعلان سيارتك (${listingData.make} ${listingData.model} ${listingData.year}) وتحديث المطلوب: ${feedback || 'يرجى مراجعة ملاحظات الإدارة وتعديل الإعلان وإعادة إرساله'}.`,
               linkView: 'profile',
               relatedId: listingId
-            });
+            }, true);
           } else if (newStatus === 'rejected') {
             await this.sendCustomerNotification({
               userId: listingData.user_id,
@@ -1570,10 +1674,17 @@ export const listingService = {
               message: `نعتذر، لم يتم اعتماد إعلان سيارتك (${listingData.make} ${listingData.model} ${listingData.year}) للسبب التالي: ${feedback || 'الإعلان غير مطابق لمعايير المنصة'}. يمكنك تعديل الإعلان وإعادة إرساله.`,
               linkView: 'profile',
               relatedId: listingId
-            });
+            }, true);
           }
         }
       } catch {}
+
+      if (rpcSucceeded) {
+        return {
+          success: true,
+          message: rpcMessage
+        };
+      }
 
       // 4. Log admin audit event
       try {
@@ -1624,7 +1735,7 @@ export const listingService = {
 
       const { data: listingData } = await supabase
         .from('car_listings')
-        .select('user_id, status, make, model, year, case_reference')
+        .select('user_id, status, make, model, year, case_reference, seller_phone')
         .eq('id', listingId)
         .maybeSingle();
 
@@ -1675,7 +1786,19 @@ export const listingService = {
         });
       } catch {}
 
-      // Notify the seller
+      // Send WhatsApp & In-App notification to the seller
+      if (listingData?.seller_phone) {
+        const carTitle = `${listingData.make} ${listingData.model} ${listingData.year || ''}`.trim();
+        sendListingModerationWhatsApp(
+          listingData.seller_phone,
+          carTitle,
+          'rejected',
+          cleanReason,
+          listingData.case_reference || listingId.slice(0, 8),
+          listingId
+        ).catch(() => {});
+      }
+
       if (listingData?.user_id) {
         await this.sendCustomerNotification({
           userId: listingData.user_id,
@@ -1684,7 +1807,7 @@ export const listingService = {
           message: `قام المشرف (${staffName}) بسحب الإعلان للسبب التالي: ${cleanReason}. يمكنك تعديل الإعلان وإعادة إرساله.`,
           linkView: 'profile',
           relatedId: listingId
-        });
+        }, true);
       }
 
       return {
@@ -1991,7 +2114,7 @@ export const listingService = {
         console.error('Error saving local featured listing:', e);
       }
 
-      // 2. Best-effort Supabase update
+      // 2. Best-effort Supabase update & WhatsApp notification to Seller when featured
       try {
         await supabase
           .from('car_listings')
@@ -2000,6 +2123,23 @@ export const listingService = {
             updated_at: new Date().toISOString()
           })
           .eq('id', listingId);
+
+        if (featuredConfig.is_featured) {
+          const { data: carRow } = await supabase
+            .from('car_listings')
+            .select('make, model, year, seller_phone')
+            .eq('id', listingId)
+            .maybeSingle();
+          if (carRow?.seller_phone) {
+            sendListingFeaturedWhatsApp(
+              carRow.seller_phone,
+              `${carRow.make} ${carRow.model} ${carRow.year || ''}`.trim(),
+              featuredConfig.featured_rank || 1,
+              featuredConfig.featured_badge_text || 'أفضل صفقة',
+              listingId
+            ).catch(() => {});
+          }
+        }
       } catch {}
 
       return {
@@ -2087,6 +2227,12 @@ export const listingService = {
         if (cl?.user_id && !sellerUserId) sellerUserId = cl.user_id;
         if (cl?.seller_phone && !sellerPhone) sellerPhone = cl.seller_phone;
       }
+      if (!sellerPhone && sellerUserId && isUuid(sellerUserId)) {
+        try {
+          const { data: prof } = await supabase.from('profiles').select('phone').eq('id', sellerUserId).maybeSingle();
+          if (prof?.phone) sellerPhone = prof.phone;
+        } catch {}
+      }
 
       newOffer.buyerUserId = buyerUserId || undefined;
       newOffer.sellerUserId = sellerUserId || undefined;
@@ -2117,7 +2263,7 @@ export const listingService = {
         console.warn('Notice inserting into purchase_offers table:', poError);
       }
 
-      // 2. Automatically dispatch notification to the seller immediately!
+      // 2. Automatically dispatch in-app notification to the seller immediately!
       if (sellerUserId) {
         await this.sendCustomerNotification({
           userId: sellerUserId,
@@ -2126,7 +2272,7 @@ export const listingService = {
           message: `قدم المشتري (${offer.buyerName}) عرض سعر بمبلغ ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م على سيارتك (${offer.carTitle}). يرجى الدخول لمتابعة حسابك وقبول أو رفض العرض.`,
           linkView: 'profile',
           relatedId: offer.listingId || offer.caseReference || offerId
-        });
+        }, true);
       }
 
       // 2b. Send direct WhatsApp alert to seller phone & confirmation to buyer phone
@@ -2136,7 +2282,9 @@ export const listingService = {
           offer.carTitle,
           offer.offeredPrice,
           offer.caseReference || offerId,
-          offer.buyerName
+          offer.buyerName,
+          offer.askingPrice,
+          offer.paymentPreference
         ).catch(err => console.warn('Seller offer WhatsApp notice:', err));
       }
       if (offer.buyerPhone) {
@@ -2145,7 +2293,8 @@ export const listingService = {
           offer.buyerName,
           offer.carTitle,
           offer.offeredPrice,
-          offer.caseReference || offerId
+          offer.caseReference || offerId,
+          offer.listingId || offer.carId
         ).catch(err => console.warn('Buyer offer confirmation WhatsApp notice:', err));
       }
 
@@ -2574,7 +2723,7 @@ export const listingService = {
               message: `وافق البائع على عرض الشراء بمبلغ ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م على سيارة ${offer.carTitle}. بانتظار الاعتماد النهائي وتحديد موعد المقابلة والمعاينة البنكية.`,
               linkView: 'profile',
               relatedId: offerId
-            });
+            }, true);
           } else {
             await this.sendCustomerNotification({
               userId: targetBuyerId,
@@ -2583,7 +2732,7 @@ export const listingService = {
               message: `نعتذر، لم يوافق البائع على عرض الشراء بمبلغ ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م على سيارة ${offer.carTitle}. يمكنك تقديم عرض سعر تفاوضي آخر عبر المعرض.`,
               linkView: 'profile',
               relatedId: offerId
-            });
+            }, true);
           }
         }
 
@@ -2595,7 +2744,8 @@ export const listingService = {
               offer.buyerName,
               offer.carTitle,
               offer.offeredPrice,
-              offer.caseReference || offerId
+              offer.caseReference || offerId,
+              offer.listingId || offer.carId
             ).catch(err => console.warn('Offer accepted buyer WhatsApp notice:', err));
           } else {
             sendOfferRejectedToBuyerWhatsApp(
@@ -2604,30 +2754,50 @@ export const listingService = {
               offer.carTitle,
               offer.offeredPrice,
               offer.caseReference || offerId,
-              notes
+              notes,
+              offer.listingId || offer.carId
             ).catch(err => console.warn('Offer rejected buyer WhatsApp notice:', err));
           }
         }
 
-        // 1c. Also send WhatsApp confirmation to seller when accepting
-        if (decision === 'accept' && offer.listingId) {
-          try {
+        // 1c. Also send WhatsApp confirmation to seller when accepting or rejecting
+        try {
+          let resolvedSellerPhone: string | undefined;
+          if (offer.listingId) {
             const { data: sellerCar } = await supabase
               .from('car_listings')
               .select('seller_phone')
               .eq('id', offer.listingId)
               .maybeSingle();
-            if (sellerCar?.seller_phone) {
+            resolvedSellerPhone = sellerCar?.seller_phone;
+          }
+          if (!resolvedSellerPhone && typeof window !== 'undefined') {
+            const rawUser = localStorage.getItem('mokhalasa_customer_user');
+            if (rawUser) {
+              const parsedUser = JSON.parse(rawUser);
+              if (parsedUser?.phone) resolvedSellerPhone = parsedUser.phone;
+            }
+          }
+          if (resolvedSellerPhone) {
+            if (decision === 'accept') {
               sendOfferAcceptedSellerConfirmationWhatsApp(
-                sellerCar.seller_phone,
+                resolvedSellerPhone,
                 offer.carTitle,
                 offer.offeredPrice,
                 offer.buyerName,
                 offer.caseReference || offerId
               ).catch(err => console.warn('Seller acceptance WhatsApp notice:', err));
+            } else {
+              sendOfferRejectedSellerConfirmationWhatsApp(
+                resolvedSellerPhone,
+                offer.carTitle,
+                offer.offeredPrice,
+                offer.buyerName,
+                offer.caseReference || offerId
+              ).catch(err => console.warn('Seller rejection WhatsApp notice:', err));
             }
-          } catch {}
-        }
+          }
+        } catch {}
 
         // 2. Notify admin operations (fail-safe)
         try {
@@ -2721,7 +2891,7 @@ export const listingService = {
             message: `تم اعتماد عرض سعرك بمبلغ ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م على سيارة (${offer.carTitle}). سيتم التواصل معك خلال 24 ساعة لتحديد موعد المقابلة والمعاينة البنكية وإنهاء الإجراءات.`,
             linkView: 'profile',
             relatedId: offerId
-          });
+          }, true);
         }
 
         // 2. Notify Seller
@@ -2745,7 +2915,7 @@ export const listingService = {
             message: `تم اعتماد موافقتك على بيع السيارة (${offer.carTitle}) بمبلغ ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م. سيتم التواصل معك خلال 24 ساعة لتحديد موعد المقابلة مع المشتري والتنسيق مع البنك.`,
             linkView: 'profile',
             relatedId: offerId
-          });
+          }, true);
         }
 
         // 3. Direct WhatsApp confirmation to both Buyer & Seller phones
@@ -2882,7 +3052,8 @@ export const listingService = {
    * NOTIFICATIONS: Send persistent in-app notification to user
    */
   async sendCustomerNotification(
-    notif: Omit<InAppNotification, 'id' | 'createdAt' | 'isRead'>
+    notif: Omit<InAppNotification, 'id' | 'createdAt' | 'isRead'>,
+    skipWhatsApp: boolean = false
   ): Promise<{ success: boolean }> {
     try {
       const isUuid = (val?: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val || '');
@@ -2927,51 +3098,53 @@ export const listingService = {
         localStorage.setItem('mokhalasa_customer_notifications', JSON.stringify(parsed));
       } catch {}
 
-      // 4. Dispatch real-time WhatsApp alert to recipient phone
-      try {
-        let recipientPhone: string | undefined;
+      // 4. Dispatch real-time WhatsApp alert to recipient phone (if not already sent by a specialized template)
+      if (!skipWhatsApp) {
+        try {
+          let recipientPhone: string | undefined;
 
-        // Try getting phone from profiles
-        if (isUuid(notif.userId)) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('phone')
-            .eq('id', notif.userId)
-            .maybeSingle();
-          if (profile?.phone) {
-            recipientPhone = profile.phone;
-          }
-        }
-
-        // Fallback: Check car_listings phone
-        if (!recipientPhone && notif.relatedId) {
-          const { data: car } = await supabase
-            .from('car_listings')
-            .select('contact_phone, phone')
-            .eq('id', notif.relatedId)
-            .maybeSingle();
-          recipientPhone = car?.contact_phone || car?.phone;
-        }
-
-        // Fallback: Check active customer user
-        if (!recipientPhone) {
-          try {
-            const raw = localStorage.getItem('mokhalasa_customer_user');
-            if (raw) {
-              const u = JSON.parse(raw);
-              if (u.phone && (u.id === notif.userId || !notif.userId)) {
-                recipientPhone = u.phone;
-              }
+          // Try getting phone from profiles
+          if (isUuid(notif.userId)) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('phone')
+              .eq('id', notif.userId)
+              .maybeSingle();
+            if (profile?.phone) {
+              recipientPhone = profile.phone;
             }
-          } catch {}
-        }
+          }
 
-        if (recipientPhone) {
-          const waText = `🚗 *منصة مخلّصة | إشعار جديد*\n\n📌 *${notif.title}*\n${notif.message}\n\n🌐 لمتابعة طلباتك عبر المنصة:\nhttps://mokhalasa.com/my-requests`;
-          sendWhatsAppMessage(recipientPhone, waText).catch(e => console.warn('WhatsApp alert warning:', e));
+          // Fallback: Check car_listings phone
+          if (!recipientPhone && notif.relatedId) {
+            const { data: car } = await supabase
+              .from('car_listings')
+              .select('seller_phone, contact_phone')
+              .eq('id', notif.relatedId)
+              .maybeSingle();
+            recipientPhone = car?.seller_phone || car?.contact_phone;
+          }
+
+          // Fallback: Check active customer user
+          if (!recipientPhone) {
+            try {
+              const raw = localStorage.getItem('mokhalasa_customer_user');
+              if (raw) {
+                const u = JSON.parse(raw);
+                if (u.phone && (u.id === notif.userId || !notif.userId)) {
+                  recipientPhone = u.phone;
+                }
+              }
+            } catch {}
+          }
+
+          if (recipientPhone) {
+            const waText = `🚗 *منصة مخلّصة | إشعار جديد*\n\n📌 *${notif.title}*\n${notif.message}\n\n🌐 *لمتابعة حسابك وطلباتك عبر المنصة:*\nhttps://mokhalasa-app.vercel.app/#/profile`;
+            sendWhatsAppMessage(recipientPhone, waText).catch(e => console.warn('WhatsApp alert warning:', e));
+          }
+        } catch (waErr) {
+          console.warn('WhatsApp notification dispatch error:', waErr);
         }
-      } catch (waErr) {
-        console.warn('WhatsApp notification dispatch error:', waErr);
       }
 
       return { success: true };

@@ -16,7 +16,7 @@ import {
   normalizeEgyptianPhone, 
   getPhoneValidationError 
 } from '../utils/phoneValidator';
-import { sendWelcomeWhatsApp } from './whatsappService';
+import { sendWelcomeWhatsApp, sendPasswordChangedWhatsApp } from './whatsappService';
 
 export interface RegisterCredentials {
   email?: string;
@@ -432,7 +432,7 @@ export const authService = {
       } catch {}
 
       // Send Welcome WhatsApp Message on new account creation
-      sendWelcomeWhatsApp(normalizedPhone, resolvedName).catch(err =>
+      sendWelcomeWhatsApp(normalizedPhone, resolvedName, governorate || 'القاهرة').catch(err =>
         console.warn('Welcome WhatsApp notice:', err)
       );
 
@@ -733,6 +733,11 @@ export const authService = {
       try {
         localStorage.setItem('mokhalasa_customer_user', JSON.stringify(customer));
       } catch {}
+
+      // Send WhatsApp confirmation of password change
+      sendPasswordChangedWhatsApp(normalizedPhone, updatedAccount.fullName || 'عميل مخلصة').catch(err =>
+        console.warn('Password reset confirmation WhatsApp notice:', err)
+      );
 
       return {
         success: true,

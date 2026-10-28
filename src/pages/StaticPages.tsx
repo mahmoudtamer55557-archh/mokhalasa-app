@@ -3,6 +3,9 @@ import {
   ShieldCheck, CheckCircle2, 
   HelpCircle, PhoneCall, Mail, MapPin, Clock, MessageSquare, Send
 } from 'lucide-react';
+import { supabase } from '../services/supabaseClient';
+import { sendConsultationReceivedWhatsApp } from '../services/whatsappService';
+import { normalizeEgyptianPhone } from '../utils/phoneValidator';
 
 interface StaticPagesProps {
   type: 'how-it-works' | 'faq' | 'terms' | 'privacy' | 'contact';
@@ -391,9 +394,25 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
                   </div>
                 ) : (
                   <form
-                    onSubmit={(e) => {
+                    onSubmit={async (e) => {
                       e.preventDefault();
                       setContactSubmitted(true);
+                      const cleanPhone = normalizeEgyptianPhone(contactPhone);
+                      try {
+                        await supabase.from('admin_notifications').insert({
+                          type: 'general',
+                          title: `📩 رسالة جديدة من صفحة تواصل معنا: ${contactName}`,
+                          message: `الاسم: ${contactName} | الهاتف: ${cleanPhone || contactPhone} | الرسالة: ${contactMsg}`
+                        });
+                      } catch {}
+                      if (cleanPhone) {
+                        sendConsultationReceivedWhatsApp(
+                          cleanPhone,
+                          contactName,
+                          'تواصل واستفسار مباشر',
+                          contactMsg
+                        ).catch(() => {});
+                      }
                     }}
                     className="space-y-3 text-xs"
                   >

@@ -3,6 +3,7 @@ import { CustomerUser } from '../../types';
 import { supabase } from '../../services/supabaseClient';
 import { isValidEgyptianPhone, normalizeEgyptianPhone, getPhoneValidationError } from '../../utils/phoneValidator';
 import { otpService } from '../../services/otpService';
+import { sendWelcomeWhatsApp } from '../../services/whatsappService';
 import MokhalasaSvgLogo from '../brand/MokhalasaSvgLogo';
 import { Phone, ShieldCheck, AlertCircle, CheckCircle2, Lock, MessageSquare, ArrowRight, RotateCcw } from 'lucide-react';
 
@@ -148,14 +149,12 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
         }
       });
 
-      // 2. Upsert profile in Supabase
+      // 2. Upsert profile in Supabase (using valid schema columns)
       await supabase.from('profiles').upsert({
         id: customerUser.id,
         phone: cleanPhone,
         full_name: resolvedName,
         governorate: governorateInput,
-        is_verified: true,
-        phone_verified: true,
         updated_at: new Date().toISOString()
       }, { onConflict: 'id' });
 
@@ -171,6 +170,11 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
       try {
         localStorage.setItem('mokhalasa_customer_user', JSON.stringify(updated));
       } catch {}
+
+      // 4. Send Welcome WhatsApp message with account details & platform links
+      sendWelcomeWhatsApp(cleanPhone, resolvedName, governorateInput).catch(err =>
+        console.warn('Welcome WhatsApp notice:', err)
+      );
 
       setSuccessMsg('تم التحقق من رقم الواتساب بنجاح وتفعيل حسابك!');
 

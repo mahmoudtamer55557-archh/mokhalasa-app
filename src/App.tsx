@@ -21,7 +21,8 @@ import { CustomerProfilePage } from './pages/CustomerProfilePage';
 import { supabase } from './services/supabaseClient';
 import { mapSupabaseUserToCustomerUser } from './services/authService';
 import { listingService } from './services/listingService';
-import { isValidEgyptianPhone } from './utils/phoneValidator';
+import { sendConsultationReceivedWhatsApp } from './services/whatsappService';
+import { isValidEgyptianPhone, normalizeEgyptianPhone } from './utils/phoneValidator';
 import { MessageSquare, CheckCircle2, X, AlertTriangle, ChevronLeft } from 'lucide-react';
 
 // Helper to parse view from URL path OR hash (SEO-friendly clean URLs)
@@ -312,8 +313,23 @@ export function App() {
 
   // Listen to popstate (HTML5 History API) and hash changes for deep linking
   useEffect(() => {
-    const handleUrlChange = () => {
-      const clean = (window.location.pathname.replace(/^\//, '') || window.location.hash.replace(/^#\/?/, '')).trim();
+    const syncUrlAndCarSelection = () => {
+      const searchParams = new URLSearchParams(window.location.search);
+      const rawHash = window.location.hash.replace(/^#\/?/, '');
+      const hashQueryIdx = rawHash.indexOf('?');
+      const hashParams = hashQueryIdx >= 0 ? new URLSearchParams(rawHash.slice(hashQueryIdx)) : null;
+      const targetCarId = searchParams.get('car') || searchParams.get('id') || hashParams?.get('car') || hashParams?.get('id');
+
+      if (targetCarId && cars.length > 0) {
+        const matched = cars.find(c => c.id === targetCarId);
+        if (matched) {
+          setSelectedCar(matched);
+          setCurrentView('car-detail');
+          return;
+        }
+      }
+
+      const clean = (window.location.pathname.replace(/^\//, '') || rawHash.split('?')[0]).trim();
       if (clean === 'login' || clean === 'customer-login') {
         setCustomerAuthTab('login');
         setCustomerLoginOpen(true);
@@ -326,13 +342,14 @@ export function App() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    window.addEventListener('popstate', handleUrlChange);
-    window.addEventListener('hashchange', handleUrlChange);
+    syncUrlAndCarSelection();
+    window.addEventListener('popstate', syncUrlAndCarSelection);
+    window.addEventListener('hashchange', syncUrlAndCarSelection);
     return () => {
-      window.removeEventListener('popstate', handleUrlChange);
-      window.removeEventListener('hashchange', handleUrlChange);
+      window.removeEventListener('popstate', syncUrlAndCarSelection);
+      window.removeEventListener('hashchange', syncUrlAndCarSelection);
     };
-  }, []);
+  }, [cars]);
 
   // Sync document title and direction
   useEffect(() => {
@@ -429,9 +446,30 @@ export function App() {
     setUserRole(role);
   };
 
-  const handleConsultationSubmit = (e: React.FormEvent) => {
+  const handleConsultationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setConsultationSubmitted(true);
+
+    const cleanPhone = normalizeEgyptianPhone(consultationPhone);
+    // 1. Log consultation / inspection booking to admin_notifications in Supabase
+    try {
+      await supabase.from('admin_notifications').insert({
+        type: 'general',
+        title: `📞 طلب استشارة / فحص جديد من: ${consultationName}`,
+        message: `العميل: ${consultationName} (${cleanPhone || consultationPhone}) | الجهة: ${consultationBank} | التفاصيل: ${consultationQuestion || 'استشارة مجانية عامة'}`
+      });
+    } catch {}
+
+    // 2. Send instant WhatsApp confirmation to client phone via wAIsend API
+    if (cleanPhone) {
+      sendConsultationReceivedWhatsApp(
+        cleanPhone,
+        consultationName,
+        consultationBank,
+        consultationQuestion
+      ).catch(() => {});
+    }
+
     setTimeout(() => {
       setConsultationSubmitted(false);
       setConsultationModalOpen(false);
@@ -614,16 +652,16 @@ export function App() {
         )}
 
         {/* PUBLIC: Single Car Detail */}
-        {currentView === 'car-detail' && selectedCar && (
+        {currentView === 'car-detail' && (selectedCar || cars[0]) && (
           <CarDetailPage
-            car={selectedCar}
+            car={selectedCar || cars[0]}
             onBack={() => handleNavigate('marketplace')}
             onBookInspection={(c) => {
               setConsultationQuestion(`أرغب في حجز موعد فحص فني معتمد لسيارة ${c.make} ${c.model} ${c.year} (كود: ${c.id}).`);
               setConsultationModalOpen(true);
             }}
             onAddBuyerInquiry={handleAddBuyerInquiry}
-            isFavorite={favorites.includes(selectedCar.id)}
+            isFavorite={favorites.includes((selectedCar || cars[0]).id)}
             onToggleFavorite={handleToggleFavorite}
             customerUser={customerUser}
             onOpenLogin={() => setCustomerLoginOpen(true)}

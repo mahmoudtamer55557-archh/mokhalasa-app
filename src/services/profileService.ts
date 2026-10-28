@@ -9,6 +9,7 @@
 import { supabase } from './supabaseClient';
 import { otpService } from './otpService';
 import { normalizeEgyptianPhone } from '../utils/phoneValidator';
+import { sendPasswordChangedWhatsApp, sendProfileUpdatedWhatsApp } from './whatsappService';
 
 export interface UserProfileData {
   id: string;
@@ -192,6 +193,15 @@ export const profileService = {
         });
       } catch {}
 
+      // 4. Send WhatsApp profile update confirmation if phone available
+      const targetPhone = payload.phone || authUser?.user_metadata?.phone;
+      if (targetPhone) {
+        sendProfileUpdatedWhatsApp(
+          targetPhone,
+          payload.fullName || authUser?.user_metadata?.full_name || 'عميل مخلصة'
+        ).catch(() => {});
+      }
+
       return {
         success: true,
         message: 'تم حفظ تعديلات الملف الشخصي بنجاح.'
@@ -308,6 +318,22 @@ export const profileService = {
       if (updateError) {
         return { success: false, message: updateError.message };
       }
+
+      // Send WhatsApp confirmation
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const meta = sessionData.session?.user?.user_metadata;
+        let userPhone = meta?.phone;
+        let userName = meta?.full_name || 'عميل مخلصة';
+        if (!userPhone && typeof window !== 'undefined') {
+          const cached = JSON.parse(localStorage.getItem('mokhalasa_customer_user') || '{}');
+          userPhone = cached.phone;
+          if (cached.name) userName = cached.name;
+        }
+        if (userPhone) {
+          sendPasswordChangedWhatsApp(userPhone, userName).catch(() => {});
+        }
+      } catch {}
 
       return { success: true, message: 'تم تحديث كلمة المرور بنجاح وبأمان.' };
     } catch (err: any) {
