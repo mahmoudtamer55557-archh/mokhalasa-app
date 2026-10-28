@@ -17,7 +17,7 @@ export default async function handler(req, res) {
 
   try {
     const { phone, text, apiKey: bodyKey, deviceId: bodyDeviceId } = req.body || {};
-    const apiKey = bodyKey || process.env.VITE_WAZZAPI_API_KEY || 'wazz_sk_QaG6JA2B84ZfqhSAddXHoo6d7iW6Mq7QahXPYG7IXN0';
+    const apiKey = bodyKey || process.env.VITE_WAZZAPI_API_KEY || 'wazz_sk_X7MpeNiN6lEzf7RvNlpMusnBKHPBn023n6akw6zZ3R4';
 
     if (!phone || !text) {
       return res.status(400).json({ success: false, error: 'Missing phone or text' });

@@ -11,7 +11,7 @@ import { supabase } from './supabaseClient';
 
 // 1. إعدادات المزود الأساسي (WazzAPI)
 const WAZZAPI_BASE_URL = 'https://api.wazzapi.com/api/v1';
-const DEFAULT_WAZZAPI_KEY = 'wazz_sk_QaG6JA2B84ZfqhSAddXHoo6d7iW6Mq7QahXPYG7IXN0';
+const DEFAULT_WAZZAPI_KEY = 'wazz_sk_X7MpeNiN6lEzf7RvNlpMusnBKHPBn023n6akw6zZ3R4';
 
 // 2. إعدادات بوابة مخلصة الخاصة (Dedicated Self-Hosted WhatsApp Gateway)
 const DEFAULT_GATEWAY_URL = 'http://localhost:3001';
