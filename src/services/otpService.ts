@@ -111,26 +111,27 @@ export const otpService = {
     };
     saveOtpStore(store);
 
-    // إرسال الكود عبر الواتساب الفعلي بواسطة Wapilot
+    // إرسال الكود عبر الواتساب الفعلي بواسطة wAIsend API
     const sendResult = purpose === 'reset_password'
       ? await sendPasswordResetOtpViaWhatsApp(normalizedPhone, randomCode)
       : await sendOtpViaWhatsApp(normalizedPhone, randomCode);
 
     if (!sendResult.success) {
       console.warn('WhatsApp API notice:', sendResult.error);
-      // في حالة وجود بطء بالشبكة نحتفظ بالكود ليتمكن من تجربته
+      // لا نقفل فترة الانتظار إذا تعذر الإرسال لكي يتمكن من المحاولة فوراً
+      store[normalizedPhone].lastSentAt = 0;
+      saveOtpStore(store);
       return {
-        success: true,
-        message: `تم توليد كود التحقق بنجاح وإرساله إلى رقم الواتساب (${normalizedPhone}).`,
-        cooldownSeconds: 45,
-        code: randomCode // للاختبار السريع في الكونسول
+        success: false,
+        message: sendResult.error || 'تعذر إرسال رسالة الواتساب حالياً، يرجى المحاولة مرة أخرى.',
+        code: randomCode
       };
     }
 
     return {
       success: true,
       message: `تم إرسال كود التحقق (OTP) إلى رقمك على الواتساب (${normalizedPhone}) بنجاح!`,
-      cooldownSeconds: 45,
+      cooldownSeconds: 30,
       code: randomCode
     };
   },

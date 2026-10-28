@@ -3,13 +3,14 @@
  * خدمة إرسال رسائل وتنبيهات الواتساب ورموز التحقق (OTP)
  * منصة مخلّصة | Mokhalasa WhatsApp Notification & OTP Engine
  * =====================================================================
- * المزود الأساسي: WazzAPI (https://api.wazzapi.com/api/v1)
+ * المزود الأساسي: wAIsend API (https://waisend.com/api/external)
  * (تم إلغاء السيرفر المحلي نهائياً والاعتماد الكامل على الـ API الخارجي)
  */
 
-// 1. إعدادات المزود الأساسي (WazzAPI)
-const WAZZAPI_BASE_URL = 'https://api.wazzapi.com/api/v1';
+// 1. إعدادات المزود الأساسي (wAIsend API)
+const WAISEND_BASE_URL = 'https://waisend.com/api/external';
 const DEFAULT_WAZZAPI_KEY = 'wazz_sk_X7MpeNiN6lEzf7RvNlpMusnBKHPBn023n6akw6zZ3R4';
+const REVOKED_WAZZAPI_KEYS = new Set(['wazz_sk_QaG6JA2B84ZfqhSAddXHoo6d7iW6Mq7QahXPYG7IXN0']);
 
 // 2. موفر الخدمة الاحتياطي (Wapilot API v2)
 const WAPILOT_API_URL = 'https://api.wapilot.net/api/v2';
@@ -19,10 +20,17 @@ const DEFAULT_API_TOKEN = 'OxiCvTAE4NnJAb61AuHV5vBHSSzamrD9pIkCd761od';
 const PLATFORM_URL = 'https://mokhalasa-app.vercel.app';
 
 export const getWazzapiConfig = () => {
-  const apiKey =
-    (import.meta.env?.VITE_WAZZAPI_API_KEY as string) ||
-    (typeof window !== 'undefined' ? localStorage.getItem('mokhalasa_wazzapi_key') : '') ||
-    DEFAULT_WAZZAPI_KEY;
+  let storedKey = '';
+  if (typeof window !== 'undefined') {
+    storedKey = (localStorage.getItem('mokhalasa_wazzapi_key') || '').trim();
+    if (storedKey && REVOKED_WAZZAPI_KEYS.has(storedKey)) {
+      localStorage.setItem('mokhalasa_wazzapi_key', DEFAULT_WAZZAPI_KEY);
+      storedKey = DEFAULT_WAZZAPI_KEY;
+    }
+  }
+  const envKey = ((import.meta.env?.VITE_WAZZAPI_API_KEY as string) || '').trim();
+  const validEnvKey = envKey && !REVOKED_WAZZAPI_KEYS.has(envKey) ? envKey : '';
+  const apiKey = validEnvKey || storedKey || DEFAULT_WAZZAPI_KEY;
   const deviceId =
     (import.meta.env?.VITE_WAZZAPI_DEVICE_ID as string) ||
     (typeof window !== 'undefined' ? localStorage.getItem('mokhalasa_wazzapi_device_id') : '') ||
@@ -32,7 +40,9 @@ export const getWazzapiConfig = () => {
 
 export const configureWazzapiCredentials = (apiKey: string, deviceId?: string) => {
   if (typeof window !== 'undefined') {
-    if (apiKey) localStorage.setItem('mokhalasa_wazzapi_key', apiKey.trim());
+    if (apiKey && !REVOKED_WAZZAPI_KEYS.has(apiKey.trim())) {
+      localStorage.setItem('mokhalasa_wazzapi_key', apiKey.trim());
+    }
     if (deviceId !== undefined) localStorage.setItem('mokhalasa_wazzapi_device_id', deviceId.trim());
   }
 };
@@ -48,7 +58,7 @@ export const getWapilotConfig = () => {
  */
 export const isWhatsAppServiceEnabled = (): boolean => {
   if (typeof window !== 'undefined') {
-    const override = localStorage.getItem('mokhalasa_whatsapp_enabled');
+    const override = localStorage.getItem('mokhalasa_whatsapp_v2_enabled');
     if (override !== null) {
       return override === 'true';
     }
@@ -62,7 +72,7 @@ export const isWhatsAppServiceEnabled = (): boolean => {
 
 export const setWhatsAppServiceEnabled = (enabled: boolean): void => {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('mokhalasa_whatsapp_enabled', String(enabled));
+    localStorage.setItem('mokhalasa_whatsapp_v2_enabled', String(enabled));
     window.dispatchEvent(new CustomEvent('mokhalasa-whatsapp-status-changed', { detail: { enabled } }));
   }
 };
@@ -97,64 +107,17 @@ export function formatEgyptianWhatsAppNumber(phone: string): string {
 export interface SendWhatsAppResult {
   success: boolean;
   messageId?: string;
-  provider?: 'wazzapi' | 'wapilot';
+  provider?: 'waisend' | 'wazzapi' | 'wapilot';
   error?: string;
 }
 
-// ذاكرة مؤقتة لمعرف جهاز الواتساب المتصل في WazzAPI
-let cachedWazzapiDeviceId: string | null = null;
-
 /**
- * جلب معرف الجهاز المتصل (whatsapp_account_id) تلقائياً من حساب WazzAPI
+ * إرسال الرسالة عبر wAIsend API (المزود الرئيسي - عبر Serverless Proxy أو مباشر)
  */
-async function resolveWazzapiDeviceId(apiKey: string, configuredDeviceId?: string): Promise<string | null> {
-  if (configuredDeviceId) return configuredDeviceId;
-  if (cachedWazzapiDeviceId) return cachedWazzapiDeviceId;
-
-  try {
-    const res = await fetch(`${WAZZAPI_BASE_URL}/devices`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Accept': 'application/json'
-      }
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      const devices: any[] = data?.devices || (Array.isArray(data) ? data : []);
-      if (devices.length > 0) {
-        const primaryOrConnected =
-          devices.find(d => d.status === 'connected' && d.is_primary) ||
-          devices.find(d => d.status === 'connected') ||
-          devices.find(d => d.is_primary) ||
-          devices[0];
-
-        if (primaryOrConnected?.id) {
-          cachedWazzapiDeviceId = primaryOrConnected.id;
-          if (typeof window !== 'undefined') {
-            try {
-              localStorage.setItem('mokhalasa_wazzapi_device_id', primaryOrConnected.id);
-            } catch {}
-          }
-          return primaryOrConnected.id;
-        }
-      }
-    }
-  } catch (err) {
-    console.warn('[WazzAPI] Auto-resolve device ID notice:', err);
-  }
-
-  return null;
-}
-
-/**
- * إرسال الرسالة عبر WazzAPI (المزود الرئيسي - عبر Serverless Proxy أو مباشر)
- */
-async function sendViaWazzapi(phone: string, text: string): Promise<SendWhatsAppResult> {
-  const { apiKey, deviceId } = getWazzapiConfig();
+async function sendViaWaisend(phone: string, text: string): Promise<SendWhatsAppResult> {
+  const { apiKey } = getWazzapiConfig();
   if (!apiKey) {
-    return { success: false, error: 'مفتاح WazzAPI غير متوفر' };
+    return { success: false, error: 'مفتاح wAIsend API غير متوفر' };
   }
 
   const intlPhone = normalizeInternationalEgyptianPhone(phone);
@@ -163,71 +126,66 @@ async function sendViaWazzapi(phone: string, text: string): Promise<SendWhatsApp
   }
 
   // 1. المحاولة عبر Vercel Serverless Proxy (/api/whatsapp) لتفادي حظر CORS في المتصفح
-  try {
-    const proxyRes = await fetch('/api/whatsapp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        phone: intlPhone,
-        text,
-        apiKey,
-        deviceId: deviceId || cachedWazzapiDeviceId || undefined
-      })
-    });
+  const proxyEndpoints = ['/api/whatsapp', `${PLATFORM_URL}/api/whatsapp`];
+  for (const endpoint of proxyEndpoints) {
+    try {
+      const proxyRes = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: intlPhone,
+          text,
+          message: text,
+          apiKey
+        })
+      });
 
-    if (proxyRes.ok) {
-      const proxyData = await proxyRes.json();
-      if (proxyData?.success) {
-        if (proxyData.deviceId) cachedWazzapiDeviceId = proxyData.deviceId;
-        return {
-          success: true,
-          messageId: proxyData.messageId,
-          provider: 'wazzapi'
-        };
+      if (proxyRes.ok) {
+        const proxyData = await proxyRes.json();
+        if (proxyData?.success) {
+          return {
+            success: true,
+            messageId: proxyData.messageId,
+            provider: 'waisend'
+          };
+        }
       }
+    } catch {
+      // الانتقال للمحاولة التالية
     }
-  } catch {
-    // الانتقال للمحاولة المباشرة
   }
 
+  // 2. المحاولة المباشرة عبر wAIsend API (https://waisend.com/api/external/send-message)
   try {
-    const resolvedDeviceId = await resolveWazzapiDeviceId(apiKey, deviceId);
-
-    const payload: Record<string, any> = {
-      phone_number: `+${intlPhone}`,
-      content: text,
-      message_type: 'text'
-    };
-
-    if (resolvedDeviceId) {
-      payload.whatsapp_account_id = resolvedDeviceId;
-    }
-
-    const response = await fetch(`${WAZZAPI_BASE_URL}/messages/send`, {
+    const response = await fetch(`${WAISEND_BASE_URL}/send-message`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        phone: intlPhone,
+        message: text,
+        typing: false
+      })
     });
 
     if (response.ok) {
       const data = await response.json();
-      if (data?.success || data?.message_id || data?.id) {
+      if (data?.success || data?.messageId || data?.data?.id) {
         return {
           success: true,
-          messageId: data.message_id || data.id,
-          provider: 'wazzapi'
+          messageId: data.messageId || data?.data?.id,
+          provider: 'waisend'
         };
       }
     }
   } catch (err: any) {
-    console.warn('[WazzAPI] Send warning:', err?.message || err);
+    console.warn('[wAIsend API] Direct send notice:', err?.message || err);
   }
 
-  return { success: false, error: 'تعذر الإرسال عبر WazzAPI' };
+  return { success: false, error: 'تعذر الإرسال عبر wAIsend API' };
 }
 
 /**
@@ -243,10 +201,10 @@ export async function sendWhatsAppMessage(phone: string, text: string): Promise<
     return { success: false, error: 'رقم الهاتف غير صالح' };
   }
 
-  // 1. المحاولة الأولى عبر WazzAPI (المزود الرئيسي)
-  const wazzResult = await sendViaWazzapi(cleanPhone, text);
-  if (wazzResult.success) {
-    return wazzResult;
+  // 1. المحاولة الأولى عبر wAIsend API (المزود الرئيسي)
+  const waisendResult = await sendViaWaisend(cleanPhone, text);
+  if (waisendResult.success) {
+    return waisendResult;
   }
 
   // 2. المحاولة الاحتياطية عبر Wapilot API
