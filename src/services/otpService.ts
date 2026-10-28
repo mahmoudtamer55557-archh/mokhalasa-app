@@ -31,8 +31,8 @@ export interface PendingOtpRecord {
 
 const STORAGE_KEY = 'mokhalasa_active_otps_v1';
 const OTP_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
-const RESEND_COOLDOWN_MS = 45 * 1000; // 45 seconds
-const MAX_ATTEMPTS = 4;
+const RESEND_COOLDOWN_MS = 10 * 1000; // 10 seconds
+const MAX_ATTEMPTS = 5;
 
 function loadOtpStore(): Record<string, PendingOtpRecord> {
   try {

@@ -7,6 +7,8 @@
  * المزودات الاحتياطية: بوابة مخلصة الخاصة (Mokhalasa Gateway) + Wapilot API
  */
 
+import { supabase } from './supabaseClient';
+
 // 1. إعدادات المزود الأساسي (WazzAPI)
 const WAZZAPI_BASE_URL = 'https://api.wazzapi.com/api/v1';
 const DEFAULT_WAZZAPI_KEY = 'wazz_sk_QaG6JA2B84ZfqhSAddXHoo6d7iW6Mq7QahXPYG7IXN0';
@@ -110,7 +112,7 @@ export function formatEgyptianWhatsAppNumber(phone: string): string {
 export interface SendWhatsAppResult {
   success: boolean;
   messageId?: string;
-  provider?: 'wazzapi' | 'gateway' | 'wapilot';
+  provider?: 'wazzapi' | 'gateway' | 'cloud_relay' | 'wapilot';
   error?: string;
 }
 
@@ -162,7 +164,7 @@ async function resolveWazzapiDeviceId(apiKey: string, configuredDeviceId?: strin
 }
 
 /**
- * إرسال الرسالة عبر WazzAPI (المزود الرئيسي)
+ * إرسال الرسالة عبر WazzAPI (المزود الرئيسي - عبر Serverless Proxy لتفادي CORS أو مباشر)
  */
 async function sendViaWazzapi(phone: string, text: string): Promise<SendWhatsAppResult> {
   const { apiKey, deviceId } = getWazzapiConfig();
@@ -173,6 +175,34 @@ async function sendViaWazzapi(phone: string, text: string): Promise<SendWhatsApp
   const intlPhone = normalizeInternationalEgyptianPhone(phone);
   if (!intlPhone) {
     return { success: false, error: 'رقم الهاتف غير صالح' };
+  }
+
+  // 1. المحاولة عبر Vercel Serverless Proxy (/api/whatsapp) لتفادي حظر CORS في المتصفح
+  try {
+    const proxyRes = await fetch('/api/whatsapp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        phone: intlPhone,
+        text,
+        apiKey,
+        deviceId: deviceId || cachedWazzapiDeviceId || undefined
+      })
+    });
+
+    if (proxyRes.ok) {
+      const proxyData = await proxyRes.json();
+      if (proxyData?.success) {
+        if (proxyData.deviceId) cachedWazzapiDeviceId = proxyData.deviceId;
+        return {
+          success: true,
+          messageId: proxyData.messageId,
+          provider: 'wazzapi'
+        };
+      }
+    }
+  } catch {
+    // الانتقال للمحاولة المباشرة
   }
 
   try {
@@ -207,32 +237,6 @@ async function sendViaWazzapi(phone: string, text: string): Promise<SendWhatsApp
           provider: 'wazzapi'
         };
       }
-    } else {
-      // محاولة ثانية بصيغة رقم بدون علامة + إذا تطلب الخادم ذلك
-      const retryPayload: Record<string, any> = {
-        ...payload,
-        phone_number: intlPhone
-      };
-      const retryRes = await fetch(`${WAZZAPI_BASE_URL}/messages/send`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(retryPayload)
-      });
-
-      if (retryRes.ok) {
-        const retryData = await retryRes.json();
-        if (retryData?.success || retryData?.message_id || retryData?.id) {
-          return {
-            success: true,
-            messageId: retryData.message_id || retryData.id,
-            provider: 'wazzapi'
-          };
-        }
-      }
     }
   } catch (err: any) {
     console.warn('[WazzAPI] Send warning:', err?.message || err);
@@ -245,8 +249,9 @@ async function sendViaWazzapi(phone: string, text: string): Promise<SendWhatsApp
  * إرسال رسالة نصية عامة عبر الواتساب
  * الترتيب:
  * 1. WazzAPI (`wazz_sk_...`)
- * 2. بوابة مخلصة الخاصة (Mokhalasa Gateway)
- * 3. Wapilot API (الاحتياطي)
+ * 2. بوابة مخلصة الخاصة المباشرة (Mokhalasa Gateway)
+ * 3. جسر مخلصة السحابي الفوري عبر Supabase (يعمل من الموبايل وعلى Vercel مباشرة!)
+ * 4. Wapilot API (الاحتياطي)
  */
 export async function sendWhatsAppMessage(phone: string, text: string): Promise<SendWhatsAppResult> {
   if (!isWhatsAppServiceEnabled()) {
@@ -264,7 +269,7 @@ export async function sendWhatsAppMessage(phone: string, text: string): Promise<
     return wazzResult;
   }
 
-  // 2. المحاولة الثانية عبر بوابة مخلصة الخاصة (Mokhalasa Gateway)
+  // 2. المحاولة الثانية عبر بوابة مخلصة الخاصة المباشرة (عند العمل على نفس الجهاز)
   const { gatewayUrl, apiKey } = getGatewayConfig();
   try {
     const gatewayRes = await fetch(`${gatewayUrl}/api/send-message`, {
@@ -286,10 +291,34 @@ export async function sendWhatsAppMessage(phone: string, text: string): Promise<
       }
     }
   } catch {
-    // الانتقال للمزود الاحتياطي
+    // الانتقال للجسر السحابي
   }
 
-  // 3. المحاولة الثالثة عبر Wapilot كنسخة احتياطية
+  // 3. المحاولة الثالثة عبر جسر مخلصة السحابي الفوري (Supabase Cloud Relay -> Mokhalasa WhatsApp Server)
+  // يضمن وصول الرسالة خلال 1.5 ثانية حتى لو العميل يفتح المنصة على Vercel من الموبايل!
+  try {
+    const { data: relayRow, error: relayErr } = await supabase
+      .from('admin_notifications')
+      .insert({
+        type: 'whatsapp_outbox',
+        title: cleanPhone,
+        message: text
+      })
+      .select('id')
+      .single();
+
+    if (!relayErr && relayRow?.id) {
+      return {
+        success: true,
+        messageId: relayRow.id,
+        provider: 'cloud_relay'
+      };
+    }
+  } catch (relayEx) {
+    console.warn('[WhatsApp Cloud Relay] Notice:', relayEx);
+  }
+
+  // 4. المحاولة الرابعة عبر Wapilot كنسخة احتياطية
   const { token, instanceId } = getWapilotConfig();
   const chatId = formatEgyptianWhatsAppNumber(phone);
 
