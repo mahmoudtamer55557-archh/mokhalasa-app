@@ -20,6 +20,7 @@ import {
   normalizeEgyptianPhone, 
   getPhoneValidationError 
 } from '../utils/phoneValidator';
+import { sendWelcomeWhatsApp } from './whatsappService';
 
 export interface RegisterCredentials {
   email?: string;
@@ -184,6 +185,11 @@ export const authService = {
       try {
         localStorage.setItem('mokhalasa_customer_user', JSON.stringify(customer));
       } catch {}
+
+      // Send Welcome WhatsApp Message on new account creation
+      sendWelcomeWhatsApp(normalizedPhone, resolvedName).catch(err =>
+        console.warn('Welcome WhatsApp notice:', err)
+      );
 
       return {
         success: true,
@@ -423,6 +429,10 @@ export const authService = {
         updated_at: new Date().toISOString()
       }, { onConflict: 'id' });
 
+      sendWelcomeWhatsApp(normalized, fullName || 'عميل مخلصة').catch(err =>
+        console.warn('Welcome WhatsApp notice:', err)
+      );
+
       return {
         success: true,
         message: 'تم حفظ وتحديث رقم الهاتف بنجاح!'
@@ -489,6 +499,10 @@ export const authService = {
       try {
         localStorage.setItem('mokhalasa_customer_user', JSON.stringify(newCustomer));
       } catch {}
+
+      sendWelcomeWhatsApp(normalized, newCustomer.name).catch(err =>
+        console.warn('Welcome WhatsApp notice:', err)
+      );
 
       return {
         success: true,

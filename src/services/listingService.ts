@@ -8,7 +8,17 @@
 
 import { supabase } from './supabaseClient';
 import { Car, PurchaseOffer, InAppNotification, ListingCallLog } from '../types';
-import { sendWhatsAppMessage } from './whatsappService';
+import {
+  sendWhatsAppMessage,
+  sendListingSubmittedWhatsApp,
+  sendListingModerationWhatsApp,
+  sendNegotiationOfferWhatsApp,
+  sendOfferSubmittedBuyerConfirmationWhatsApp,
+  sendOfferAcceptedToBuyerWhatsApp,
+  sendOfferRejectedToBuyerWhatsApp,
+  sendOfferAcceptedSellerConfirmationWhatsApp,
+  sendDealConfirmedWhatsApp
+} from './whatsappService';
 
 // In-flight submissions mutex set to prevent concurrent duplicate submissions
 const inFlightSubmissions = new Set<string>();
@@ -311,6 +321,17 @@ export const listingService = {
           linkView: 'profile',
           relatedId: listingId
         });
+
+        // Send dedicated WhatsApp confirmation to seller phone
+        if (row.seller_phone) {
+          sendListingSubmittedWhatsApp(
+            row.seller_phone,
+            row.seller_name,
+            `${submission.make} ${submission.model} ${submission.year}`,
+            submission.asking_price,
+            caseReference
+          ).catch(err => console.warn('Listing submitted WhatsApp notice:', err));
+        }
 
         // Insert audit log
         try {
@@ -1507,9 +1528,20 @@ export const listingService = {
       try {
         const { data: listingData } = await supabase
           .from('car_listings')
-          .select('user_id, make, model, year')
+          .select('user_id, make, model, year, seller_phone, case_reference')
           .eq('id', listingId)
           .maybeSingle();
+
+        const carTitle = listingData ? `${listingData.make} ${listingData.model} ${listingData.year}` : 'سيارتك';
+        if (listingData?.seller_phone && ['published', 'approved', 'needs_changes', 'rejected'].includes(newStatus)) {
+          sendListingModerationWhatsApp(
+            listingData.seller_phone,
+            carTitle,
+            newStatus as 'published' | 'approved' | 'needs_changes' | 'rejected',
+            feedback,
+            listingData.case_reference || listingId.slice(0, 8)
+          ).catch(err => console.warn('Moderation WhatsApp notice:', err));
+        }
 
         if (listingData?.user_id) {
           if (newStatus === 'published' || newStatus === 'approved') {
@@ -2044,13 +2076,16 @@ export const listingService = {
       const buyerUserId = offer.buyerUserId || sessionData?.session?.user?.id || null;
 
       let sellerUserId = offer.sellerUserId || null;
-      if (!sellerUserId && validListingId) {
-        const { data: cl } = await supabase.from('car_listings').select('user_id').eq('id', validListingId).maybeSingle();
-        if (cl?.user_id) sellerUserId = cl.user_id;
+      let sellerPhone: string | null = null;
+      if (validListingId) {
+        const { data: cl } = await supabase.from('car_listings').select('user_id, seller_phone').eq('id', validListingId).maybeSingle();
+        if (cl?.user_id && !sellerUserId) sellerUserId = cl.user_id;
+        if (cl?.seller_phone) sellerPhone = cl.seller_phone;
       }
-      if (!sellerUserId && offer.caseReference) {
-        const { data: cl } = await supabase.from('car_listings').select('user_id').eq('case_reference', offer.caseReference).maybeSingle();
-        if (cl?.user_id) sellerUserId = cl.user_id;
+      if ((!sellerUserId || !sellerPhone) && offer.caseReference) {
+        const { data: cl } = await supabase.from('car_listings').select('user_id, seller_phone').eq('case_reference', offer.caseReference).maybeSingle();
+        if (cl?.user_id && !sellerUserId) sellerUserId = cl.user_id;
+        if (cl?.seller_phone && !sellerPhone) sellerPhone = cl.seller_phone;
       }
 
       newOffer.buyerUserId = buyerUserId || undefined;
@@ -2092,6 +2127,26 @@ export const listingService = {
           linkView: 'profile',
           relatedId: offer.listingId || offer.caseReference || offerId
         });
+      }
+
+      // 2b. Send direct WhatsApp alert to seller phone & confirmation to buyer phone
+      if (sellerPhone) {
+        sendNegotiationOfferWhatsApp(
+          sellerPhone,
+          offer.carTitle,
+          offer.offeredPrice,
+          offer.caseReference || offerId,
+          offer.buyerName
+        ).catch(err => console.warn('Seller offer WhatsApp notice:', err));
+      }
+      if (offer.buyerPhone) {
+        sendOfferSubmittedBuyerConfirmationWhatsApp(
+          offer.buyerPhone,
+          offer.buyerName,
+          offer.carTitle,
+          offer.offeredPrice,
+          offer.caseReference || offerId
+        ).catch(err => console.warn('Buyer offer confirmation WhatsApp notice:', err));
       }
 
       // 3. Also notify admin queue via admin_notifications
@@ -2532,6 +2587,48 @@ export const listingService = {
           }
         }
 
+        // 1b. Direct WhatsApp alert to buyer's phone (works even if buyer is not in profiles table)
+        if (offer.buyerPhone) {
+          if (decision === 'accept') {
+            sendOfferAcceptedToBuyerWhatsApp(
+              offer.buyerPhone,
+              offer.buyerName,
+              offer.carTitle,
+              offer.offeredPrice,
+              offer.caseReference || offerId
+            ).catch(err => console.warn('Offer accepted buyer WhatsApp notice:', err));
+          } else {
+            sendOfferRejectedToBuyerWhatsApp(
+              offer.buyerPhone,
+              offer.buyerName,
+              offer.carTitle,
+              offer.offeredPrice,
+              offer.caseReference || offerId,
+              notes
+            ).catch(err => console.warn('Offer rejected buyer WhatsApp notice:', err));
+          }
+        }
+
+        // 1c. Also send WhatsApp confirmation to seller when accepting
+        if (decision === 'accept' && offer.listingId) {
+          try {
+            const { data: sellerCar } = await supabase
+              .from('car_listings')
+              .select('seller_phone')
+              .eq('id', offer.listingId)
+              .maybeSingle();
+            if (sellerCar?.seller_phone) {
+              sendOfferAcceptedSellerConfirmationWhatsApp(
+                sellerCar.seller_phone,
+                offer.carTitle,
+                offer.offeredPrice,
+                offer.buyerName,
+                offer.caseReference || offerId
+              ).catch(err => console.warn('Seller acceptance WhatsApp notice:', err));
+            }
+          } catch {}
+        }
+
         // 2. Notify admin operations (fail-safe)
         try {
           await supabase.from('admin_notifications').insert({
@@ -2629,13 +2726,15 @@ export const listingService = {
 
         // 2. Notify Seller
         let sellerId = offer.sellerUserId;
-        if (!sellerId && offer.listingId) {
+        let sellerPhone: string | null = null;
+        if (offer.listingId) {
           const { data: car } = await supabase
             .from('car_listings')
-            .select('user_id')
+            .select('user_id, seller_phone')
             .eq('id', offer.listingId)
             .maybeSingle();
-          sellerId = car?.user_id;
+          if (!sellerId && car?.user_id) sellerId = car.user_id;
+          if (car?.seller_phone) sellerPhone = car.seller_phone;
         }
 
         if (sellerId) {
@@ -2647,6 +2746,28 @@ export const listingService = {
             linkView: 'profile',
             relatedId: offerId
           });
+        }
+
+        // 3. Direct WhatsApp confirmation to both Buyer & Seller phones
+        if (offer.buyerPhone) {
+          sendDealConfirmedWhatsApp(
+            offer.buyerPhone,
+            'buyer',
+            offer.carTitle,
+            offer.offeredPrice,
+            offer.caseReference || offerId,
+            adminNotes
+          ).catch(err => console.warn('Buyer deal confirm WhatsApp notice:', err));
+        }
+        if (sellerPhone) {
+          sendDealConfirmedWhatsApp(
+            sellerPhone,
+            'seller',
+            offer.carTitle,
+            offer.offeredPrice,
+            offer.caseReference || offerId,
+            adminNotes
+          ).catch(err => console.warn('Seller deal confirm WhatsApp notice:', err));
         }
       }
 
