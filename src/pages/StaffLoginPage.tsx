@@ -3,6 +3,14 @@ import MokhalasaSvgLogo from '../components/brand/MokhalasaSvgLogo';
 import { EmployeeUser } from '../types';
 import { MOCK_EMPLOYEES } from '../data/mockDistressedCases';
 import { supabase } from '../services/supabaseClient';
+import {
+  checkRateLimit,
+  recordFailedAttempt,
+  clearRateLimit,
+  sanitizeEmailInput,
+  hashPasswordSecurely,
+  logInternalSecurityError
+} from '../utils/securityGuard';
 import { 
   Lock, Mail, Key, ShieldCheck, Eye, EyeOff, 
   ArrowRight, ShieldAlert
@@ -37,13 +45,19 @@ export const StaffLoginPage: React.FC<StaffLoginPageProps> = ({
     e.preventDefault();
     setErrorMessage(null);
 
-    // Rate limiting simulation for security auditing
-    if (attemptCount >= 5) {
-      setErrorMessage('تم قفل جلسة تسجيل الدخول مؤقتاً بسبب تكرار المحاولات الخاطئة. يرجى التواصل مع مسؤول تكنولوجيا المعلومات.');
+    const cleanEmail = sanitizeEmailInput(email);
+
+    // Persistent Rate Limiting against Brute-Force attacks
+    const rateStatus = checkRateLimit('staff_login', cleanEmail || 'global_staff', 5, 15 * 60 * 1000, 15 * 60 * 1000);
+    if (!rateStatus.allowed) {
+      setErrorMessage(rateStatus.errorMessage || rateStatus.message || 'تم إيقاف المحاولات مؤقتاً.');
       return;
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    if (attemptCount >= 5) {
+      setErrorMessage('تم قفل جلسة تسجيل الدخول مؤقتاً بسبب تكرار المحاولات الخاطئة. يرجى الانتظار 15 دقيقة.');
+      return;
+    }
 
     // Enforce corporate domain constraint
     if (!cleanEmail.endsWith('@mokhalasa.com')) {
@@ -51,8 +65,8 @@ export const StaffLoginPage: React.FC<StaffLoginPageProps> = ({
       return;
     }
 
-    if (password.length < 6) {
-      setErrorMessage('كلمة المرور يجب أن تتكون من 6 خانات على الأقل.');
+    if (password.length < 8) {
+      setErrorMessage('كلمة المرور يجب أن تتكون من 8 خانات على الأقل.');
       return;
     }
 
@@ -76,31 +90,35 @@ export const StaffLoginPage: React.FC<StaffLoginPageProps> = ({
       };
 
       if (!authError && authData.session) {
+        clearRateLimit('staff_login', cleanEmail);
         onLoginSuccess(matchedEmployee);
       } else {
-        // Fallback for offline/local staff credentials (Mahmoud Tamer primary owner)
-        const isMahmoudMatch = cleanEmail === 'mahmoud@mokhalasa.com' && (password === 'MahmoudOps@2026' || password === 'MokhalasaOps@2026');
-        const localMatch = isMahmoudMatch 
-          ? (MOCK_EMPLOYEES.find(e => e.email === 'mahmoud@mokhalasa.com') || {
-              id: 'emp-mahmoud',
-              name: 'محمود تامر',
-              email: 'mahmoud@mokhalasa.com',
-              role: 'owner',
-              assignedCasesCount: 12,
-              isActive: true
-            })
-          : MOCK_EMPLOYEES.find(emp => emp.email.toLowerCase() === cleanEmail && (password === 'MokhalasaOps@2026' || password === 'MahmoudOps@2026'));
+        // Verify password strictly via one-way PBKDF2-SHA256 hash comparison (zero plaintext credentials in bundle)
+        const enteredHash = await hashPasswordSecurely(password, 'mokhalasa_staff_v2');
+        const primaryOwnerHash = 'pbkdf2_sha256$bed011186e1c60ac957749afd1c208b65ca5ce6ff0849729ae7e2f3213220ea1';
+        const opsFallbackHash = 'pbkdf2_sha256$d439b07a4c27dd1d2a18fa7bf8e519c01fca1aa3c073982c8df830d2799c5b4f';
+
+        const isVerifiedHash = enteredHash === primaryOwnerHash || enteredHash === opsFallbackHash;
+        const localMatch = isVerifiedHash
+          ? MOCK_EMPLOYEES.find(emp => emp.email.toLowerCase() === cleanEmail)
+          : undefined;
 
         if (localMatch && localMatch.isActive) {
+          clearRateLimit('staff_login', cleanEmail);
           onLoginSuccess(localMatch);
         } else {
+          const updatedRate = recordFailedAttempt('staff_login', cleanEmail, 5, 15 * 60 * 1000, 15 * 60 * 1000);
           setAttemptCount(prev => prev + 1);
-          setErrorMessage(authError?.message || `بيانات الاعتماد غير متطابقة، أو أن هذا الحساب غير مصرح له بالدخول للنظام الداخلي. تبقى ${5 - (attemptCount + 1)} محاولات.`);
+          setErrorMessage(
+            updatedRate.errorMessage ||
+              `بيانات الاعتماد غير متطابقة، أو أن هذا الحساب غير مصرح له بالدخول للنظام الداخلي. تبقى ${updatedRate.remainingAttempts} محاولات.`
+          );
         }
       }
-    } catch {
-      const localMatch = MOCK_EMPLOYEES.find(emp => emp.email.toLowerCase() === cleanEmail);
-      if (localMatch) onLoginSuccess(localMatch);
+    } catch (err) {
+      logInternalSecurityError('STAFF_LOGIN_EXCEPTION', err);
+      recordFailedAttempt('staff_login', cleanEmail, 5, 15 * 60 * 1000, 15 * 60 * 1000);
+      setErrorMessage('تعذر التحقق من بيانات الدخول حالياً، يرجى المحاولة مرة أخرى.');
     } finally {
       setIsSubmitting(false);
     }

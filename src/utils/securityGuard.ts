@@ -85,6 +85,10 @@ export function sanitizeInput(value: unknown, maxLength = 1000): string {
   return str;
 }
 
+export function sanitizeEmailInput(email: unknown): string {
+  return sanitizeInput(email, 160).toLowerCase().replace(/\s+/g, '');
+}
+
 /**
  * Recursively sanitizes an object payload and blocks prototype pollution keys.
  */
@@ -131,6 +135,7 @@ export interface PasswordStrengthResult {
   label: 'ضعيفة جداً' | 'ضعيفة' | 'متوسطة' | 'قوية' | 'قوية جداً (آمنة)';
   colorClass: string;
   errors: string[];
+  errorMessage: string;
   checks: {
     minLength: boolean;
     hasUppercase: boolean;
@@ -235,6 +240,7 @@ export function validateStrongPassword(
     label,
     colorClass,
     errors,
+    errorMessage: errors[0] || '',
     checks: {
       minLength,
       hasUppercase,
@@ -250,9 +256,9 @@ export function validateStrongPassword(
 /**
  * Multi-round salted SHA-256 / PBKDF2 password hashing via Web Crypto API.
  */
-export async function hashPasswordSecurely(rawPassword: string): Promise<string> {
+export async function hashPasswordSecurely(rawPassword: string, customSalt?: string): Promise<string> {
   const normalized = String(rawPassword || '').trim();
-  const saltedInput = `${PASSWORD_SALT_PREFIX}${normalized}`;
+  const saltedInput = `${PASSWORD_SALT_PREFIX}${customSalt ? `${customSalt}::` : ''}${normalized}`;
   try {
     if (typeof window !== 'undefined' && window.crypto?.subtle) {
       const encoder = new TextEncoder();
@@ -266,7 +272,7 @@ export async function hashPasswordSecurely(rawPassword: string): Promise<string>
       const derivedBits = await window.crypto.subtle.deriveBits(
         {
           name: 'PBKDF2',
-          salt: encoder.encode('MOKHALASA_EGYPT_ENTERPRISE_SALT_2026'),
+          salt: encoder.encode(customSalt ? `MOKHALASA_${customSalt}` : 'MOKHALASA_EGYPT_ENTERPRISE_SALT_2026'),
           iterations: 50000,
           hash: 'SHA-256',
         },
@@ -309,6 +315,7 @@ export interface RateLimitStatus {
   remainingAttempts: number;
   retryAfterSeconds: number;
   message?: string;
+  errorMessage?: string;
 }
 
 const RATE_LIMIT_CONFIG: Record<
@@ -316,6 +323,7 @@ const RATE_LIMIT_CONFIG: Record<
   { maxAttempts: number; windowMs: number; lockoutMs: number }
 > = {
   login: { maxAttempts: 5, windowMs: 10 * 60 * 1000, lockoutMs: 15 * 60 * 1000 }, // 5 attempts -> 15 min lock
+  staff_login: { maxAttempts: 5, windowMs: 15 * 60 * 1000, lockoutMs: 15 * 60 * 1000 },
   otp: { maxAttempts: 4, windowMs: 10 * 60 * 1000, lockoutMs: 10 * 60 * 1000 }, // 4 OTP requests -> 10 min lock
   register: { maxAttempts: 5, windowMs: 15 * 60 * 1000, lockoutMs: 15 * 60 * 1000 },
   password_reset: { maxAttempts: 4, windowMs: 15 * 60 * 1000, lockoutMs: 15 * 60 * 1000 },
@@ -339,8 +347,16 @@ function writeRateLimitStore(store: Record<string, RateLimitRecord>): void {
   }
 }
 
-export function checkRateLimit(action: string, identifier = 'global'): RateLimitStatus {
-  const cfg = RATE_LIMIT_CONFIG[action] || RATE_LIMIT_CONFIG.login;
+export function checkRateLimit(
+  action: string,
+  identifier = 'global',
+  customMaxAttempts?: number,
+  customWindowMs?: number,
+  _customLockoutMs?: number
+): RateLimitStatus {
+  const baseCfg = RATE_LIMIT_CONFIG[action] || RATE_LIMIT_CONFIG.login;
+  const maxAttempts = customMaxAttempts ?? baseCfg.maxAttempts;
+  const windowMs = customWindowMs ?? baseCfg.windowMs;
   const key = `${action}::${identifier.trim().toLowerCase()}`;
   const store = readRateLimitStore();
   const now = Date.now();
@@ -349,7 +365,7 @@ export function checkRateLimit(action: string, identifier = 'global'): RateLimit
   if (!record) {
     return {
       allowed: true,
-      remainingAttempts: cfg.maxAttempts,
+      remainingAttempts: maxAttempts,
       retryAfterSeconds: 0,
     };
   }
@@ -357,26 +373,28 @@ export function checkRateLimit(action: string, identifier = 'global'): RateLimit
   if (record.lockedUntil && record.lockedUntil > now) {
     const retryAfterSeconds = Math.ceil((record.lockedUntil - now) / 1000);
     const minutes = Math.ceil(retryAfterSeconds / 60);
+    const msg = `تم إيقاف المحاولات مؤقتاً لحماية الحساب بسبب تكرار المحاولات الخاطئة. يرجى الانتظار ${minutes} دقيقة (${retryAfterSeconds} ثانية) قبل المحاولة مجدداً.`;
     return {
       allowed: false,
       remainingAttempts: 0,
       retryAfterSeconds,
-      message: `تم إيقاف المحاولات مؤقتاً لحماية الحساب بسبب تكرار المحاولات الخاطئة. يرجى الانتظار ${minutes} دقيقة (${retryAfterSeconds} ثانية) قبل المحاولة مجدداً.`,
+      message: msg,
+      errorMessage: msg,
     };
   }
 
   // Reset if window expired
-  if (now - record.firstAttemptAt > cfg.windowMs) {
+  if (now - record.firstAttemptAt > windowMs) {
     delete store[key];
     writeRateLimitStore(store);
     return {
       allowed: true,
-      remainingAttempts: cfg.maxAttempts,
+      remainingAttempts: maxAttempts,
       retryAfterSeconds: 0,
     };
   }
 
-  const remaining = Math.max(0, cfg.maxAttempts - record.attempts);
+  const remaining = Math.max(0, maxAttempts - record.attempts);
   return {
     allowed: remaining > 0,
     remainingAttempts: remaining,
@@ -384,15 +402,24 @@ export function checkRateLimit(action: string, identifier = 'global'): RateLimit
   };
 }
 
-export function recordFailedAttempt(action: string, identifier = 'global'): RateLimitStatus {
-  const cfg = RATE_LIMIT_CONFIG[action] || RATE_LIMIT_CONFIG.login;
+export function recordFailedAttempt(
+  action: string,
+  identifier = 'global',
+  customMaxAttempts?: number,
+  customWindowMs?: number,
+  customLockoutMs?: number
+): RateLimitStatus {
+  const baseCfg = RATE_LIMIT_CONFIG[action] || RATE_LIMIT_CONFIG.login;
+  const maxAttempts = customMaxAttempts ?? baseCfg.maxAttempts;
+  const windowMs = customWindowMs ?? baseCfg.windowMs;
+  const lockoutMs = customLockoutMs ?? baseCfg.lockoutMs;
   const key = `${action}::${identifier.trim().toLowerCase()}`;
   const store = readRateLimitStore();
   const now = Date.now();
   const current = store[key];
 
   let nextRecord: RateLimitRecord;
-  if (!current || now - current.firstAttemptAt > cfg.windowMs) {
+  if (!current || now - current.firstAttemptAt > windowMs) {
     nextRecord = {
       attempts: 1,
       firstAttemptAt: now,
@@ -400,7 +427,7 @@ export function recordFailedAttempt(action: string, identifier = 'global'): Rate
     };
   } else {
     const attempts = current.attempts + 1;
-    const lockedUntil = attempts >= cfg.maxAttempts ? now + cfg.lockoutMs : null;
+    const lockedUntil = attempts >= maxAttempts ? now + lockoutMs : null;
     nextRecord = {
       attempts,
       firstAttemptAt: current.firstAttemptAt,
@@ -410,7 +437,7 @@ export function recordFailedAttempt(action: string, identifier = 'global'): Rate
 
   store[key] = nextRecord;
   writeRateLimitStore(store);
-  return checkRateLimit(action, identifier);
+  return checkRateLimit(action, identifier, maxAttempts, windowMs, lockoutMs);
 }
 
 export function resetRateLimit(action: string, identifier = 'global'): void {
@@ -421,6 +448,8 @@ export function resetRateLimit(action: string, identifier = 'global'): void {
     writeRateLimitStore(store);
   }
 }
+
+export const clearRateLimit = resetRateLimit;
 
 // ---------------------------------------------------------------------------
 // 5. Mandatory Age Verification (18+ Years Old)
@@ -577,6 +606,8 @@ export function logInternalError(context: string, error: unknown): void {
     // Never throw from internal logger
   }
 }
+
+export const logInternalSecurityError = logInternalError;
 
 /**
  * Translates any exception into a safe, user-friendly Arabic message.

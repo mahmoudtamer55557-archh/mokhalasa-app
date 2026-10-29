@@ -10,6 +10,13 @@ import { supabase } from './supabaseClient';
 import { otpService } from './otpService';
 import { normalizeEgyptianPhone } from '../utils/phoneValidator';
 import { sendPasswordChangedWhatsApp, sendProfileUpdatedWhatsApp } from './whatsappService';
+import {
+  assertResourceOwnership,
+  sanitizeInput,
+  validateStrongPassword,
+  hashPasswordSecurely,
+  logInternalSecurityError
+} from '../utils/securityGuard';
 
 export interface UserProfileData {
   id: string;
@@ -38,12 +45,25 @@ export interface ProfileUpdatePayload {
 
 export const profileService = {
   /**
-   * Fetch current authenticated user's profile
+   * Fetch current authenticated user's profile (Strict Anti-IDOR Guard)
    */
   async getProfile(userId: string): Promise<{ success: boolean; profile?: UserProfileData; error?: string }> {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const authUser = sessionData.session?.user;
+
+      // Determine active user ID from session or verified local session
+      let activeUserId = authUser?.id || '';
+      if (!activeUserId && typeof window !== 'undefined') {
+        try {
+          const stored = JSON.parse(localStorage.getItem('mokhalasa_customer_user') || '{}');
+          if (stored && stored.id) activeUserId = stored.id;
+        } catch {}
+      }
+
+      if (!assertResourceOwnership(activeUserId, userId)) {
+        return { success: false, error: 'غير مصرح لك بالاطلاع على بيانات هذا الحساب.' };
+      }
 
       // Try fetching from public.profiles table
       const { data, error } = await supabase
@@ -53,7 +73,7 @@ export const profileService = {
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116' && !error.message.includes('does not exist')) {
-        console.warn('Error fetching profile from table:', error);
+        logInternalSecurityError('PROFILE_FETCH_DB', error);
       }
 
       if (data) {
@@ -131,9 +151,10 @@ export const profileService = {
       return { success: false, error: 'جلسة المستخدم غير صالحة أو منتهية.' };
 
     } catch (err: any) {
+      logInternalSecurityError('GET_PROFILE_EXCEPTION', err);
       return {
         success: false,
-        error: err?.message || 'تعذر جلب بيانات الحساب.'
+        error: 'تعذر جلب بيانات الحساب.'
       };
     }
   },
@@ -150,15 +171,20 @@ export const profileService = {
       const { data: sessionData } = await supabase.auth.getSession();
       const authUser = sessionData.session?.user;
 
-      if (!authUser || authUser.id !== userId) {
+      if (!assertResourceOwnership(authUser?.id, userId)) {
         return { success: false, message: 'غير مصرح لك بتعديل هذا الحساب.' };
       }
 
+      const cleanFullName = payload.fullName !== undefined ? sanitizeInput(payload.fullName, 120) : undefined;
+      const cleanPhone = payload.phone !== undefined ? normalizeEgyptianPhone(payload.phone) : undefined;
+      const cleanGov = payload.governorate !== undefined ? sanitizeInput(payload.governorate, 80) : undefined;
+      const cleanCity = payload.city !== undefined ? sanitizeInput(payload.city, 120) : undefined;
+
       // 1. Update user_metadata in Auth
       const updateAuthMeta: Record<string, any> = {};
-      if (payload.fullName !== undefined) updateAuthMeta.full_name = payload.fullName.trim();
-      if (payload.phone !== undefined) updateAuthMeta.phone = payload.phone.trim();
-      if (payload.avatarUrl !== undefined) updateAuthMeta.avatar_url = payload.avatarUrl;
+      if (cleanFullName !== undefined) updateAuthMeta.full_name = cleanFullName;
+      if (cleanPhone !== undefined) updateAuthMeta.phone = cleanPhone;
+      if (payload.avatarUrl !== undefined) updateAuthMeta.avatar_url = sanitizeInput(payload.avatarUrl, 500);
 
       await supabase.auth.updateUser({
         data: updateAuthMeta
@@ -169,18 +195,18 @@ export const profileService = {
         id: userId,
         updated_at: new Date().toISOString()
       };
-      if (payload.fullName !== undefined) profileRow.full_name = payload.fullName.trim();
-      if (payload.phone !== undefined) profileRow.phone = payload.phone.trim();
-      if (payload.avatarUrl !== undefined) profileRow.avatar_url = payload.avatarUrl;
-      if (payload.governorate !== undefined) profileRow.governorate = payload.governorate;
-      if (payload.city !== undefined) profileRow.city = payload.city;
+      if (cleanFullName !== undefined) profileRow.full_name = cleanFullName;
+      if (cleanPhone !== undefined) profileRow.phone = cleanPhone;
+      if (payload.avatarUrl !== undefined) profileRow.avatar_url = sanitizeInput(payload.avatarUrl, 500);
+      if (cleanGov !== undefined) profileRow.governorate = cleanGov;
+      if (cleanCity !== undefined) profileRow.city = cleanCity;
 
       const { error } = await supabase
         .from('profiles')
         .upsert(profileRow, { onConflict: 'id' });
 
       if (error && !error.message.includes('does not exist')) {
-        console.warn('Profiles table update notice:', error);
+        logInternalSecurityError('PROFILE_UPSERT_DB', error);
       }
 
       // 3. Log audit event
@@ -194,11 +220,11 @@ export const profileService = {
       } catch {}
 
       // 4. Send WhatsApp profile update confirmation if phone available
-      const targetPhone = payload.phone || authUser?.user_metadata?.phone;
+      const targetPhone = cleanPhone || authUser?.user_metadata?.phone;
       if (targetPhone) {
         sendProfileUpdatedWhatsApp(
           targetPhone,
-          payload.fullName || authUser?.user_metadata?.full_name || 'عميل مخلصة'
+          cleanFullName || authUser?.user_metadata?.full_name || 'عميل مخلصة'
         ).catch(() => {});
       }
 
@@ -208,10 +234,10 @@ export const profileService = {
       };
 
     } catch (err: any) {
+      logInternalSecurityError('UPDATE_PROFILE_EXCEPTION', err);
       return {
         success: false,
-        message: 'حدث خطأ أثناء حفظ التعديلات.',
-        error: err?.message
+        message: 'حدث خطأ أثناء حفظ التعديلات.'
       };
     }
   },
@@ -289,8 +315,9 @@ export const profileService = {
     currentPassword: string,
     newPassword: string
   ): Promise<{ success: boolean; message: string }> {
-    if (!newPassword || newPassword.length < 8) {
-      return { success: false, message: 'يجب ألا تقل كلمة المرور الجديدة عن 8 أحرف وأرقام.' };
+    const pwCheck = validateStrongPassword(newPassword);
+    if (!pwCheck.isValid) {
+      return { success: false, message: pwCheck.errorMessage };
     }
     if (currentPassword.trim() === newPassword.trim()) {
       return {
@@ -310,13 +337,16 @@ export const profileService = {
         return { success: false, message: 'كلمة المرور الحالية غير صحيحة، يرجى التحقق وإعادة المحاولة.' };
       }
 
-      // 2. Apply new password
+      const newPwHash = await hashPasswordSecurely(newPassword, email.trim().toLowerCase());
+
+      // 2. Apply new password + update hashed password history
       const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword
+        password: newPassword,
+        data: { password_hash: newPwHash }
       });
 
       if (updateError) {
-        return { success: false, message: updateError.message };
+        return { success: false, message: 'تعذر تحديث كلمة المرور. يرجى اختيار كلمة مرور غير مستخدمة سابقاً.' };
       }
 
       // Send WhatsApp confirmation
@@ -337,7 +367,8 @@ export const profileService = {
 
       return { success: true, message: 'تم تحديث كلمة المرور بنجاح وبأمان.' };
     } catch (err: any) {
-      return { success: false, message: err?.message || 'تعذر تحديث كلمة المرور.' };
+      logInternalSecurityError('CHANGE_PASSWORD_REAUTH', err);
+      return { success: false, message: 'تعذر تحديث كلمة المرور.' };
     }
   },
 
@@ -345,8 +376,9 @@ export const profileService = {
    * Update authenticated user's password securely via Supabase Auth
    */
   async updatePassword(newPassword: string): Promise<{ success: boolean; message: string }> {
-    if (!newPassword || newPassword.length < 8) {
-      return { success: false, message: 'يجب ألا تقل كلمة المرور الجديدة عن 8 أحرف وأرقام.' };
+    const pwCheck = validateStrongPassword(newPassword);
+    if (!pwCheck.isValid) {
+      return { success: false, message: pwCheck.errorMessage };
     }
 
     try {
@@ -355,17 +387,18 @@ export const profileService = {
       });
 
       if (error) {
-        return { success: false, message: error.message };
+        return { success: false, message: 'تعذر تحديث كلمة المرور.' };
       }
 
       return { success: true, message: 'تم تحديث كلمة المرور بنجاح.' };
     } catch (err: any) {
-      return { success: false, message: err?.message || 'تعذر تحديث كلمة المرور.' };
+      logInternalSecurityError('UPDATE_PASSWORD', err);
+      return { success: false, message: 'تعذر تحديث كلمة المرور.' };
     }
   },
 
   /**
-   * PHONE VERIFICATION: Request OTP via WhatsApp through wapilot engine
+   * PHONE VERIFICATION: Request OTP via WhatsApp through secure backend proxy
    */
   async requestPhoneOtp(phone: string, userId?: string): Promise<{
     success: boolean;
@@ -381,7 +414,6 @@ export const profileService = {
 
     return {
       success: res.success,
-      challengeCode: res.code,
       expiresAt: Date.now() + 5 * 60 * 1000,
       isStagingProvider: false,
       message: res.message

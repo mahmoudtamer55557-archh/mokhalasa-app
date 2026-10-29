@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import { Car, DistressedVehicleCase, BuyerInquiryRecord, CustomerUser, InAppNotification } from './types';
 import { INITIAL_CARS } from './data/mockData';
 import { INITIAL_DISTRESSED_CASES } from './data/mockDistressedCases';
@@ -6,24 +6,27 @@ import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { HomePage } from './pages/HomePage';
 import { MarketplacePage } from './pages/MarketplacePage';
-import { CarDetailPage } from './pages/CarDetailPage';
-import { CalculatorPage } from './pages/CalculatorPage';
-import { SellCarWizardPage } from './pages/SellCarWizardPage';
-import { SellerCasePortalPage } from './pages/SellerCasePortalPage';
-import { PrivateOperationsDashboard } from './pages/PrivateOperationsDashboard';
-import { StaticPages } from './pages/StaticPages';
-import { BlogPage } from './pages/BlogPage';
 import { CustomerLoginModal } from './components/auth/CustomerLoginModal';
 import { CompleteProfileModal } from './components/auth/CompleteProfileModal';
 import { CustomerSupportChatbot } from './components/ai/CustomerSupportChatbot';
-import { RegisterPage } from './pages/RegisterPage';
-import { CustomerProfilePage } from './pages/CustomerProfilePage';
 import { supabase } from './services/supabaseClient';
 import { mapSupabaseUserToCustomerUser } from './services/authService';
 import { listingService } from './services/listingService';
 import { sendConsultationReceivedWhatsApp } from './services/whatsappService';
 import { isValidEgyptianPhone, normalizeEgyptianPhone } from './utils/phoneValidator';
+import { sanitizeInput } from './utils/securityGuard';
 import { MessageSquare, CheckCircle2, X, AlertTriangle, ChevronLeft } from 'lucide-react';
+
+// Route-based Code Splitting (Lazy-loaded secondary & heavy admin/wizard modules for ultra-fast initial load)
+const CarDetailPage = lazy(() => import('./pages/CarDetailPage').then(m => ({ default: m.CarDetailPage })));
+const CalculatorPage = lazy(() => import('./pages/CalculatorPage').then(m => ({ default: m.CalculatorPage })));
+const SellCarWizardPage = lazy(() => import('./pages/SellCarWizardPage').then(m => ({ default: m.SellCarWizardPage })));
+const SellerCasePortalPage = lazy(() => import('./pages/SellerCasePortalPage').then(m => ({ default: m.SellerCasePortalPage })));
+const PrivateOperationsDashboard = lazy(() => import('./pages/PrivateOperationsDashboard').then(m => ({ default: m.PrivateOperationsDashboard })));
+const StaticPages = lazy(() => import('./pages/StaticPages').then(m => ({ default: m.StaticPages })));
+const BlogPage = lazy(() => import('./pages/BlogPage').then(m => ({ default: m.BlogPage })));
+const RegisterPage = lazy(() => import('./pages/RegisterPage').then(m => ({ default: m.RegisterPage })));
+const CustomerProfilePage = lazy(() => import('./pages/CustomerProfilePage').then(m => ({ default: m.CustomerProfilePage })));
 
 // Helper to parse view from URL path OR hash (SEO-friendly clean URLs)
 const parseViewFromUrl = (): string => {
@@ -187,9 +190,13 @@ export function App() {
     };
   }, []);
 
-  // Sync notifications from Database and Active Cases
+  // Sync notifications from Database and Active Cases (Visibility-aware smart polling)
   useEffect(() => {
     const loadGlobalNotifications = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return;
+      }
+
       let loadedNotifs: InAppNotification[] = [];
       if (customerUser?.id) {
         const res = await listingService.getCustomerNotifications(customerUser.id);
@@ -236,9 +243,19 @@ export function App() {
 
     loadGlobalNotifications();
 
-    // Auto-poll every 5 seconds so notifications arrive live across devices without refresh
-    const pollInterval = setInterval(loadGlobalNotifications, 5000);
-    return () => clearInterval(pollInterval);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadGlobalNotifications();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Smart auto-poll every 15 seconds only while tab is visible
+    const pollInterval = setInterval(loadGlobalNotifications, 15000);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(pollInterval);
+    };
   }, [customerUser, distressedCases]);
 
   const unreadNotificationsCount = useMemo(() => {
@@ -450,23 +467,27 @@ export function App() {
     e.preventDefault();
     setConsultationSubmitted(true);
 
+    const cleanName = sanitizeInput(consultationName, 100);
     const cleanPhone = normalizeEgyptianPhone(consultationPhone);
+    const cleanBank = sanitizeInput(consultationBank, 120);
+    const cleanQuestion = sanitizeInput(consultationQuestion, 1000);
+
     // 1. Log consultation / inspection booking to admin_notifications in Supabase
     try {
       await supabase.from('admin_notifications').insert({
         type: 'general',
-        title: `📞 طلب استشارة / فحص جديد من: ${consultationName}`,
-        message: `العميل: ${consultationName} (${cleanPhone || consultationPhone}) | الجهة: ${consultationBank} | التفاصيل: ${consultationQuestion || 'استشارة مجانية عامة'}`
+        title: `📞 طلب استشارة / فحص جديد من: ${cleanName}`,
+        message: `العميل: ${cleanName} (${cleanPhone || consultationPhone}) | الجهة: ${cleanBank} | التفاصيل: ${cleanQuestion || 'استشارة مجانية عامة'}`
       });
     } catch {}
 
-    // 2. Send instant WhatsApp confirmation to client phone via wAIsend API
-    if (cleanPhone) {
+    // 2. Send instant WhatsApp confirmation to client phone via secure backend proxy
+    if (cleanPhone && isValidEgyptianPhone(cleanPhone)) {
       sendConsultationReceivedWhatsApp(
         cleanPhone,
-        consultationName,
-        consultationBank,
-        consultationQuestion
+        cleanName,
+        cleanBank,
+        cleanQuestion
       ).catch(() => {});
     }
 
@@ -479,43 +500,14 @@ export function App() {
     }, 2800);
   };
 
-  // Listen to Supabase auth state changes
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        const customer = mapSupabaseUserToCustomerUser(session.user);
-        setCustomerUser(customer);
-        try {
-          localStorage.setItem('mokhalasa_customer_user', JSON.stringify(customer));
-        } catch {}
-      }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        const customer = mapSupabaseUserToCustomerUser(session.user);
-        setCustomerUser(customer);
-        try {
-          localStorage.setItem('mokhalasa_customer_user', JSON.stringify(customer));
-        } catch {}
-      } else {
-        setCustomerUser(null);
-        try {
-          localStorage.removeItem('mokhalasa_customer_user');
-        } catch {}
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
   // Fetch verified & approved public listings from Supabase to merge with marketplace
   useEffect(() => {
     let isMounted = true;
 
     const fetchApprovedListings = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return;
+      }
       const res = await listingService.getPublicListings();
       if (isMounted && res.success) {
         if (res.cars && res.cars.length > 0) {
@@ -538,6 +530,13 @@ export function App() {
     };
     window.addEventListener('mokhalasa-listings-updated', handleListingsUpdated);
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchApprovedListings();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     // Subscribe to car_listings changes so when an admin approves/publishes, the marketplace refreshes immediately
     const channel = supabase
       .channel('mokhalasa-public-cars-live')
@@ -546,12 +545,13 @@ export function App() {
       })
       .subscribe();
 
-    // Polling fallback every 12s
-    const pollInterval = setInterval(fetchApprovedListings, 12000);
+    // Visibility-aware fallback sync every 25s (since Realtime WebSocket handles live updates)
+    const pollInterval = setInterval(fetchApprovedListings, 25000);
 
     return () => {
       isMounted = false;
       window.removeEventListener('mokhalasa-listings-updated', handleListingsUpdated);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       supabase.removeChannel(channel);
       clearInterval(pollInterval);
     };
@@ -651,123 +651,133 @@ export function App() {
           />
         )}
 
-        {/* PUBLIC: Single Car Detail */}
-        {currentView === 'car-detail' && (selectedCar || cars[0]) && (
-          <CarDetailPage
-            car={selectedCar || cars[0]}
-            onBack={() => handleNavigate('marketplace')}
-            onBookInspection={(c) => {
-              setConsultationQuestion(`أرغب في حجز موعد فحص فني معتمد لسيارة ${c.make} ${c.model} ${c.year} (كود: ${c.id}).`);
-              setConsultationModalOpen(true);
-            }}
-            onAddBuyerInquiry={handleAddBuyerInquiry}
-            isFavorite={favorites.includes((selectedCar || cars[0]).id)}
-            onToggleFavorite={handleToggleFavorite}
-            customerUser={customerUser}
-            onOpenLogin={() => setCustomerLoginOpen(true)}
-            lang={lang}
-          />
-        )}
+        {/* Lazy-loaded views wrapped in lightweight Suspense */}
+        <Suspense
+          fallback={
+            <div className="w-full py-16 flex flex-col items-center justify-center gap-3">
+              <div className="w-8 h-8 border-2 border-brand-green border-t-transparent rounded-full animate-spin" />
+              <span className="text-xs font-bold text-slate-400">جاري فتح الصفحة...</span>
+            </div>
+          }
+        >
+          {/* PUBLIC: Single Car Detail */}
+          {currentView === 'car-detail' && (selectedCar || cars[0]) && (
+            <CarDetailPage
+              car={selectedCar || cars[0]}
+              onBack={() => handleNavigate('marketplace')}
+              onBookInspection={(c) => {
+                setConsultationQuestion(`أرغب في حجز موعد فحص فني معتمد لسيارة ${c.make} ${c.model} ${c.year} (كود: ${c.id}).`);
+                setConsultationModalOpen(true);
+              }}
+              onAddBuyerInquiry={handleAddBuyerInquiry}
+              isFavorite={favorites.includes((selectedCar || cars[0]).id)}
+              onToggleFavorite={handleToggleFavorite}
+              customerUser={customerUser}
+              onOpenLogin={() => setCustomerLoginOpen(true)}
+              lang={lang}
+            />
+          )}
 
-        {/* PUBLIC: Settlement & Fee Calculator */}
-        {currentView === 'calculator' && (
-          <CalculatorPage
-            onNavigate={handleNavigate}
-            lang={lang}
-          />
-        )}
+          {/* PUBLIC: Settlement & Fee Calculator */}
+          {currentView === 'calculator' && (
+            <CalculatorPage
+              onNavigate={handleNavigate}
+              lang={lang}
+            />
+          )}
 
-        {/* PUBLIC: Seller Intake Wizard */}
-        {currentView === 'sell-wizard' && (
-          <SellCarWizardPage
-            customerUser={customerUser}
-            onListingCreated={handleListingCreated}
-            onNavigate={handleNavigate}
-            onRequirePhoneCompletion={() => setShowCompletePhoneModal(true)}
-            editingCase={editingCase}
-            onFinishEdit={() => setEditingCase(null)}
-            lang={lang}
-          />
-        )}
+          {/* PUBLIC: Seller Intake Wizard */}
+          {currentView === 'sell-wizard' && (
+            <SellCarWizardPage
+              customerUser={customerUser}
+              onListingCreated={handleListingCreated}
+              onNavigate={handleNavigate}
+              onRequirePhoneCompletion={() => setShowCompletePhoneModal(true)}
+              editingCase={editingCase}
+              onFinishEdit={() => setEditingCase(null)}
+              lang={lang}
+            />
+          )}
 
-        {/* PUBLIC: Seller Request Tracking (متابعة طلبي) */}
-        {currentView === 'seller-portal' && (
-          <SellerCasePortalPage
-            cases={distressedCases}
-            onUpdateCase={handleUpdateCase}
-            onNavigate={handleNavigate}
-            customerUser={customerUser}
-            initialCaseRef={lastCaseRef}
-            lang={lang}
-            targetProblemCaseRef={targetProblemCaseRef}
-            targetProblemAction={targetProblemAction}
-            onClearTargetProblem={() => {
-              setTargetProblemAction(null);
-            }}
-            onStartEditCase={handleStartEditCase}
-          />
-        )}
+          {/* PUBLIC: Seller Request Tracking (متابعة طلبي) */}
+          {currentView === 'seller-portal' && (
+            <SellerCasePortalPage
+              cases={distressedCases}
+              onUpdateCase={handleUpdateCase}
+              onNavigate={handleNavigate}
+              customerUser={customerUser}
+              initialCaseRef={lastCaseRef}
+              lang={lang}
+              targetProblemCaseRef={targetProblemCaseRef}
+              targetProblemAction={targetProblemAction}
+              onClearTargetProblem={() => {
+                setTargetProblemAction(null);
+              }}
+              onStartEditCase={handleStartEditCase}
+            />
+          )}
 
-        {/* PRIVATE: Operations Dashboard for Staff / Case Officers */}
-        {currentView === 'staff' && (
-          <PrivateOperationsDashboard
-            cases={distressedCases}
-            onUpdateCase={handleUpdateCase}
-            onNavigate={handleNavigate}
-            initialRole="staff"
-            lang={lang}
-          />
-        )}
+          {/* PRIVATE: Operations Dashboard for Staff / Case Officers */}
+          {currentView === 'staff' && (
+            <PrivateOperationsDashboard
+              cases={distressedCases}
+              onUpdateCase={handleUpdateCase}
+              onNavigate={handleNavigate}
+              initialRole="staff"
+              lang={lang}
+            />
+          )}
 
-        {/* PRIVATE: Operations Dashboard for Platform Owner / Executive */}
-        {(currentView === 'owner' || currentView === 'dashboards') && (
-          <PrivateOperationsDashboard
-            cases={distressedCases}
-            onUpdateCase={handleUpdateCase}
-            onNavigate={handleNavigate}
-            initialRole="owner"
-            lang={lang}
-          />
-        )}
+          {/* PRIVATE: Operations Dashboard for Platform Owner / Executive */}
+          {(currentView === 'owner' || currentView === 'dashboards') && (
+            <PrivateOperationsDashboard
+              cases={distressedCases}
+              onUpdateCase={handleUpdateCase}
+              onNavigate={handleNavigate}
+              initialRole="owner"
+              lang={lang}
+            />
+          )}
 
-        {/* PUBLIC: Registration Page */}
-        {currentView === 'register' && (
-          <RegisterPage
-            onNavigate={handleNavigate}
-            onOpenLogin={() => {
-              setCustomerLoginOpen(true);
-            }}
-            lang={lang}
-          />
-        )}
+          {/* PUBLIC: Registration Page */}
+          {currentView === 'register' && (
+            <RegisterPage
+              onNavigate={handleNavigate}
+              onOpenLogin={() => {
+                setCustomerLoginOpen(true);
+              }}
+              lang={lang}
+            />
+          )}
 
-        {/* AUTHENTICATED: Customer Profile & Listings Portal */}
-        {currentView === 'profile' && (
-          <CustomerProfilePage
-            customerUser={customerUser}
-            onNavigate={handleNavigate}
-            onCustomerLogout={handleCustomerLogout}
-            onOpenCustomerLogin={() => setCustomerLoginOpen(true)}
-            lang={lang}
-          />
-        )}
+          {/* AUTHENTICATED: Customer Profile & Listings Portal */}
+          {currentView === 'profile' && (
+            <CustomerProfilePage
+              customerUser={customerUser}
+              onNavigate={handleNavigate}
+              onCustomerLogout={handleCustomerLogout}
+              onOpenCustomerLogin={() => setCustomerLoginOpen(true)}
+              lang={lang}
+            />
+          )}
 
-        {/* PUBLIC: Static Informational & Trust Pages */}
-        {['how-it-works', 'faq', 'terms', 'privacy', 'contact'].includes(currentView) && (
-          <StaticPages
-            type={currentView as 'how-it-works' | 'faq' | 'terms' | 'privacy' | 'contact'}
-            onNavigate={handleNavigate}
-            lang={lang}
-          />
-        )}
+          {/* PUBLIC: Static Informational & Trust Pages */}
+          {['how-it-works', 'faq', 'terms', 'privacy', 'contact'].includes(currentView) && (
+            <StaticPages
+              type={currentView as 'how-it-works' | 'faq' | 'terms' | 'privacy' | 'contact'}
+              onNavigate={handleNavigate}
+              lang={lang}
+            />
+          )}
 
-        {/* PUBLIC: Blog & Educational Guides for SEO */}
-        {['blog', 'guides', 'articles'].includes(currentView) && (
-          <BlogPage
-            onNavigate={handleNavigate}
-            lang={lang}
-          />
-        )}
+          {/* PUBLIC: Blog & Educational Guides for SEO */}
+          {['blog', 'guides', 'articles'].includes(currentView) && (
+            <BlogPage
+              onNavigate={handleNavigate}
+              lang={lang}
+            />
+          )}
+        </Suspense>
       </main>
 
       {/* Universal Footer */}

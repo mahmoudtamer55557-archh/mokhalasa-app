@@ -72,8 +72,6 @@ export default async function handler(req, res) {
       phone,
       message,
       text,
-      apiKey: bodyApiKey,
-      endpointUrl: bodyEndpointUrl,
       sessionName: bodySessionName,
     } = req.body || {};
 
@@ -87,22 +85,21 @@ export default async function handler(req, res) {
       });
     }
 
+    // Secret keys are strictly server-managed (never accepted from client body to prevent SSRF/key spoofing)
     const apiKey =
       process.env.WHATSAPP_API_KEY ||
       process.env.VITE_WHATSAPP_API_KEY ||
-      bodyApiKey ||
       'wazz_sk_X7MpeNiN6lEzf7RvNlpMusnBKHPBn023n6akw6zZ3R4';
 
     const endpointUrl =
       process.env.WHATSAPP_API_URL ||
       process.env.VITE_WHATSAPP_API_URL ||
-      bodyEndpointUrl ||
       'https://waisend.com/api/external/send-message';
 
     const sessionName =
       process.env.WHATSAPP_SESSION_NAME ||
       process.env.VITE_WHATSAPP_SESSION_NAME ||
-      bodySessionName ||
+      sanitizeServerText(bodySessionName || 'test', 40) ||
       'test';
 
     let digits = String(rawRecipient).replace(/\D/g, '');
@@ -124,58 +121,95 @@ export default async function handler(req, res) {
 
     const e164Plus = `+${digits}`;
 
-    const upstreamResponse = await fetch(endpointUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-        'x-api-key': apiKey,
-        apikey: apiKey,
-      },
-      body: JSON.stringify({
-        sessionName,
-        session: sessionName,
-        to: digits,
-        phone: digits,
-        recipient: e164Plus,
-        number: digits,
-        chatId: `${digits}@c.us`,
-        message: finalMessage,
-        text: finalMessage,
-        body: finalMessage,
-        content: finalMessage,
-      }),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6500);
 
-    const rawText = await upstreamResponse.text();
-    let data = {};
     try {
-      data = JSON.parse(rawText);
+      const upstreamResponse = await fetch(endpointUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+          'x-api-key': apiKey,
+          apikey: apiKey,
+        },
+        body: JSON.stringify({
+          sessionName,
+          session: sessionName,
+          to: digits,
+          phone: digits,
+          recipient: e164Plus,
+          number: digits,
+          chatId: `${digits}@c.us`,
+          message: finalMessage,
+          text: finalMessage,
+          body: finalMessage,
+          content: finalMessage,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      const rawText = await upstreamResponse.text();
+      let data = {};
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        data = { status: 'processed' };
+      }
+
+      if (upstreamResponse.ok && (!data || data.success !== false)) {
+        return res.status(200).json({
+          success: true,
+          recipient: digits,
+          sessionName,
+          messageId: data?.messageId || data?.data?.id || undefined,
+        });
+      }
+    } catch (primaryErr) {
+      clearTimeout(timeoutId);
+      console.error('[INTERNAL_SECURITY_LOG] Primary WhatsApp upstream notice:', primaryErr?.message || primaryErr);
+    }
+
+    // Server-side Backup Failover (Wapilot Cloud API) — keeps backup token strictly on the server
+    const wapilotToken = process.env.WAPILOT_API_TOKEN || 'OxiCvTAE4NnJAb61AuHV5vBHSSzamrD9pIkCd761od';
+    const wapilotInstance = process.env.WAPILOT_INSTANCE_ID || 'instance6023';
+    try {
+      const backupCtrl = new AbortController();
+      const backupTimeout = setTimeout(() => backupCtrl.abort(), 5000);
+      const backupRes = await fetch(`https://api.wapilot.net/api/v2/${wapilotInstance}/send-message`, {
+        method: 'POST',
+        headers: {
+          token: wapilotToken,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          chat_id: `${digits}@c.us`,
+          text: finalMessage,
+        }),
+        signal: backupCtrl.signal,
+      });
+      clearTimeout(backupTimeout);
+      if (backupRes.ok) {
+        const backupData = await backupRes.json().catch(() => ({}));
+        if (backupData?.success) {
+          return res.status(200).json({
+            success: true,
+            recipient: digits,
+            messageId: backupData.message_id,
+          });
+        }
+      }
     } catch {
-      data = { status: 'processed' };
+      // ignore backup error
     }
 
-    if (!upstreamResponse.ok) {
-      console.error('[INTERNAL_SECURITY_LOG] WhatsApp Upstream HTTP Error:', upstreamResponse.status);
-      return res.status(upstreamResponse.status).json({
-        success: false,
-        error: 'تعذر تسليم الرسالة عبر مزود خدمة واتساب في الوقت الحالي.',
-      });
-    }
-
-    if (data && data.success === false) {
-      console.error('[INTERNAL_SECURITY_LOG] WhatsApp Provider Logic Error');
-      return res.status(400).json({
-        success: false,
-        error: 'تعذر إرسال رسالة الواتساب، يرجى التأكد من الرقم والمحاولة لاحقاً.',
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      recipient: digits,
-      sessionName,
+    return res.status(502).json({
+      success: false,
+      error: 'تعذر تسليم الرسالة عبر مزود خدمة واتساب في الوقت الحالي.',
     });
   } catch (err) {
     console.error('[INTERNAL_SECURITY_LOG] /api/whatsapp Exception:', err?.message || err);

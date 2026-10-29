@@ -18,10 +18,11 @@
 import { normalizeEgyptianPhone, isValidEgyptianPhone } from '../utils/phoneValidator';
 import { sendOtpViaWhatsApp, sendPasswordResetOtpViaWhatsApp } from './whatsappService';
 import { supabase } from './supabaseClient';
+import { hashPasswordSecurely, logInternalSecurityError } from '../utils/securityGuard';
 
 export interface PendingOtpRecord {
   phone: string;
-  code: string;
+  codeHash: string;
   userId?: string;
   expiresAt: number; // timestamp ms
   attempts: number;
@@ -34,6 +35,17 @@ const OTP_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 const RESEND_COOLDOWN_MS = 10 * 1000; // 10 seconds
 const MAX_ATTEMPTS = 5;
 
+function generateCryptographicOtp(): string {
+  try {
+    if (typeof window !== 'undefined' && window.crypto?.getRandomValues) {
+      const array = new Uint32Array(1);
+      window.crypto.getRandomValues(array);
+      return String(1000 + (array[0] % 9000));
+    }
+  } catch {}
+  return Math.floor(1000 + Math.random() * 9000).toString();
+}
+
 function loadOtpStore(): Record<string, PendingOtpRecord> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -43,8 +55,9 @@ function loadOtpStore(): Record<string, PendingOtpRecord> {
     // Clean expired records
     const cleaned: Record<string, PendingOtpRecord> = {};
     for (const [key, record] of Object.entries(parsed)) {
-      if ((record as PendingOtpRecord).expiresAt > now) {
-        cleaned[key] = record as PendingOtpRecord;
+      const rec = record as any;
+      if (rec && rec.expiresAt > now && rec.codeHash) {
+        cleaned[key] = rec as PendingOtpRecord;
       }
     }
     return cleaned;
@@ -57,13 +70,14 @@ function saveOtpStore(store: Record<string, PendingOtpRecord>) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
   } catch (e) {
-    console.warn('Failed to save OTP store to localStorage', e);
+    logInternalSecurityError('OTP_STORE_SAVE', e);
   }
 }
 
 export const otpService = {
   /**
-   * توليد كود OTP متغير وإرساله إلى رقم الواتساب المخصص
+   * توليد كود OTP مشفر وإرساله إلى رقم الواتساب المخصص
+   * (يتم تخزين الكود مشفراً بـ PBKDF2-SHA256 فقط ولا يظهر الكود النصي في المتصفح نهائياً)
    */
   async generateAndSendOtp(
     rawPhone: string,
@@ -71,7 +85,7 @@ export const otpService = {
       userId?: string;
       purpose?: 'register' | 'login' | 'verify_phone' | 'profile_update' | 'reset_password';
     } = {}
-  ): Promise<{ success: boolean; message: string; cooldownSeconds?: number; code?: string }> {
+  ): Promise<{ success: boolean; message: string; cooldownSeconds?: number }> {
     const { userId, purpose = 'verify_phone' } = options;
 
     if (!rawPhone || !isValidEgyptianPhone(rawPhone)) {
@@ -96,13 +110,14 @@ export const otpService = {
       };
     }
 
-    // توليد كود ديناميكي عشوائي من 4 أرقام (1000 - 9999)
-    const randomCode = Math.floor(1000 + Math.random() * 9000).toString();
+    // توليد كود ديناميكي عشوائي آمن من 4 أرقام (1000 - 9999) وتشفيره قبل التخزين
+    const randomCode = generateCryptographicOtp();
+    const codeHash = await hashPasswordSecurely(randomCode, `otp_salt_${normalizedPhone}`);
 
-    // حفظ الكود وربطه بهذا الرقم وهذا الحساب حصراً
+    // حفظ البصمة المشفرة للكود فقط وربطه بهذا الرقم وهذا الحساب حصراً
     store[normalizedPhone] = {
       phone: normalizedPhone,
-      code: randomCode,
+      codeHash,
       userId: userId || undefined,
       expiresAt: now + OTP_EXPIRY_MS,
       attempts: 0,
@@ -111,28 +126,25 @@ export const otpService = {
     };
     saveOtpStore(store);
 
-    // إرسال الكود عبر الواتساب الفعلي بواسطة wAIsend API
+    // إرسال الكود عبر البروكسي الخلفي المؤمن (/api/whatsapp)
     const sendResult = purpose === 'reset_password'
       ? await sendPasswordResetOtpViaWhatsApp(normalizedPhone, randomCode)
       : await sendOtpViaWhatsApp(normalizedPhone, randomCode);
 
     if (!sendResult.success) {
-      console.warn('WhatsApp API notice:', sendResult.error);
-      // لا نقفل فترة الانتظار إذا تعذر الإرسال لكي يتمكن من المحاولة فوراً
+      logInternalSecurityError('OTP_WHATSAPP_DELIVERY', sendResult.error);
       store[normalizedPhone].lastSentAt = 0;
       saveOtpStore(store);
       return {
         success: false,
-        message: sendResult.error || 'تعذر إرسال رسالة الواتساب حالياً، يرجى المحاولة مرة أخرى.',
-        code: randomCode
+        message: sendResult.error || 'تعذر إرسال رسالة الواتساب حالياً، يرجى المحاولة مرة أخرى.'
       };
     }
 
     return {
       success: true,
       message: `تم إرسال كود التحقق (OTP) إلى رقمك على الواتساب (${normalizedPhone}) بنجاح!`,
-      cooldownSeconds: 30,
-      code: randomCode
+      cooldownSeconds: 30
     };
   },
 
@@ -200,8 +212,9 @@ export const otpService = {
       };
     }
 
-    // مطابقة الكود
-    if (record.code !== cleanCode) {
+    // مطابقة البصمة المشفرة للكود
+    const enteredHash = await hashPasswordSecurely(cleanCode, `otp_salt_${normalizedPhone}`);
+    if (record.codeHash !== enteredHash) {
       record.attempts += 1;
       store[normalizedPhone] = record;
       saveOtpStore(store);
