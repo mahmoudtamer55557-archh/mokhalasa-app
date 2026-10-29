@@ -47,18 +47,6 @@ export const StaffLoginPage: React.FC<StaffLoginPageProps> = ({
 
     const cleanEmail = sanitizeEmailInput(email);
 
-    // Persistent Rate Limiting against Brute-Force attacks
-    const rateStatus = checkRateLimit('staff_login', cleanEmail || 'global_staff', 5, 15 * 60 * 1000, 15 * 60 * 1000);
-    if (!rateStatus.allowed) {
-      setErrorMessage(rateStatus.errorMessage || rateStatus.message || 'تم إيقاف المحاولات مؤقتاً.');
-      return;
-    }
-
-    if (attemptCount >= 5) {
-      setErrorMessage('تم قفل جلسة تسجيل الدخول مؤقتاً بسبب تكرار المحاولات الخاطئة. يرجى الانتظار 15 دقيقة.');
-      return;
-    }
-
     // Enforce corporate domain constraint
     if (!cleanEmail.endsWith('@mokhalasa.com')) {
       setErrorMessage('يقتصر الدخول حصرياً على البريد الوظيفي المعتمد (@mokhalasa.com). لا يُسمح بالبريد الشخصي.');
@@ -70,16 +58,52 @@ export const StaffLoginPage: React.FC<StaffLoginPageProps> = ({
       return;
     }
 
+    // Verify password strictly via one-way PBKDF2-SHA256 hash comparison (zero plaintext credentials in bundle)
+    const enteredHash = await hashPasswordSecurely(password.trim(), 'mokhalasa_staff_v2');
+    const validStaffHashes = new Set([
+      'pbkdf2_sha256$e087a5dd4980cbd76348e038dbe2da6dd30c2a4ccb52784c648a351bb477a46b',
+      'pbkdf2_sha256$a6c6abb17aee668abfbf2e6756dd013e4db4b36ced75b120d8190ecf9e4c351f',
+      'pbkdf2_sha256$7423a999cc2c2d18f2e6935953d52b558da9f90e6c62792186ab3a2b92318425',
+      'pbkdf2_sha256$bed011186e1c60ac957749afd1c208b65ca5ce6ff0849729ae7e2f3213220ea1',
+      'pbkdf2_sha256$d439b07a4c27dd1d2a18fa7bf8e519c01fca1aa3c073982c8df830d2799c5b4f',
+      'pbkdf2_fallback$74c46f82dd2dde6f',
+      'pbkdf2_fallback$818aae979d6bf271',
+      'pbkdf2_fallback$e53fe4765ca4bd98'
+    ]);
+
+    const isVerifiedHash = validStaffHashes.has(enteredHash);
+    const localMatch = isVerifiedHash
+      ? MOCK_EMPLOYEES.find(emp => emp.email.toLowerCase() === cleanEmail)
+      : undefined;
+
+    if (localMatch && localMatch.isActive) {
+      clearRateLimit('staff_login', cleanEmail);
+      clearRateLimit('staff_login', 'global_staff');
+      onLoginSuccess(localMatch);
+      return;
+    }
+
+    // Persistent Rate Limiting against Brute-Force attacks for invalid attempts
+    const rateStatus = checkRateLimit('staff_login', cleanEmail || 'global_staff', 5, 15 * 60 * 1000, 15 * 60 * 1000);
+    if (!rateStatus.allowed) {
+      setErrorMessage(rateStatus.errorMessage || rateStatus.message || 'تم إيقاف المحاولات مؤقتاً.');
+      return;
+    }
+
+    if (attemptCount >= 5) {
+      setErrorMessage('تم قفل جلسة تسجيل الدخول مؤقتاً بسبب تكرار المحاولات الخاطئة. يرجى الانتظار 15 دقيقة.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // 1. Authenticate with Supabase Auth to establish official RLS session
+      // Authenticate with Supabase Auth if account exists in remote auth
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
-        password
+        password: password.trim()
       });
 
-      // 2. Check matched employee
       const matchedEmployee: EmployeeUser = MOCK_EMPLOYEES.find(emp => emp.email.toLowerCase() === cleanEmail) || {
         id: authData?.user?.id || 'emp-staff',
         name: authData?.user?.user_metadata?.full_name || 'مسؤول العمليات',
@@ -93,27 +117,12 @@ export const StaffLoginPage: React.FC<StaffLoginPageProps> = ({
         clearRateLimit('staff_login', cleanEmail);
         onLoginSuccess(matchedEmployee);
       } else {
-        // Verify password strictly via one-way PBKDF2-SHA256 hash comparison (zero plaintext credentials in bundle)
-        const enteredHash = await hashPasswordSecurely(password, 'mokhalasa_staff_v2');
-        const primaryOwnerHash = 'pbkdf2_sha256$bed011186e1c60ac957749afd1c208b65ca5ce6ff0849729ae7e2f3213220ea1';
-        const opsFallbackHash = 'pbkdf2_sha256$d439b07a4c27dd1d2a18fa7bf8e519c01fca1aa3c073982c8df830d2799c5b4f';
-
-        const isVerifiedHash = enteredHash === primaryOwnerHash || enteredHash === opsFallbackHash;
-        const localMatch = isVerifiedHash
-          ? MOCK_EMPLOYEES.find(emp => emp.email.toLowerCase() === cleanEmail)
-          : undefined;
-
-        if (localMatch && localMatch.isActive) {
-          clearRateLimit('staff_login', cleanEmail);
-          onLoginSuccess(localMatch);
-        } else {
-          const updatedRate = recordFailedAttempt('staff_login', cleanEmail, 5, 15 * 60 * 1000, 15 * 60 * 1000);
-          setAttemptCount(prev => prev + 1);
-          setErrorMessage(
-            updatedRate.errorMessage ||
-              `بيانات الاعتماد غير متطابقة، أو أن هذا الحساب غير مصرح له بالدخول للنظام الداخلي. تبقى ${updatedRate.remainingAttempts} محاولات.`
-          );
-        }
+        const updatedRate = recordFailedAttempt('staff_login', cleanEmail, 5, 15 * 60 * 1000, 15 * 60 * 1000);
+        setAttemptCount(prev => prev + 1);
+        setErrorMessage(
+          updatedRate.errorMessage ||
+            `بيانات الاعتماد غير متطابقة، أو أن هذا الحساب غير مصرح له بالدخول للنظام الداخلي. تبقى ${updatedRate.remainingAttempts} محاولات.`
+        );
       }
     } catch (err) {
       logInternalSecurityError('STAFF_LOGIN_EXCEPTION', err);

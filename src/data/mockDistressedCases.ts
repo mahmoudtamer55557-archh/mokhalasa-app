@@ -4,6 +4,14 @@ export const MOCK_EMPLOYEES: EmployeeUser[] = [
   {
     id: 'emp-mahmoud',
     name: 'محمود تامر',
+    email: 'mahmoud.tamer@mokhalasa.com',
+    role: 'owner',
+    assignedCasesCount: 0,
+    isActive: true
+  },
+  {
+    id: 'emp-mahmoud-alt',
+    name: 'محمود تامر',
     email: 'mahmoud@mokhalasa.com',
     role: 'owner',
     assignedCasesCount: 0,

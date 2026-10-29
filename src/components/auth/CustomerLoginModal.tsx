@@ -75,19 +75,34 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
   const [unregisteredPhoneToCreate, setUnregisteredPhoneToCreate] = useState<string | null>(null);
   const [matchedAccountName, setMatchedAccountName] = useState<string | null>(null);
 
-  // Register Form State
+  // Register Form State (Guided 2-Step Clean Flow)
+  const [regFormStep, setRegFormStep] = useState<1 | 2>(1);
   const [regFullName, setRegFullName] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regGovernorate, setRegGovernorate] = useState('الجيزة');
   const [regDistrict, setRegDistrict] = useState('الهرم');
   const [regSubArea, setRegSubArea] = useState('مشعل');
   const [regDetailedAddress, setRegDetailedAddress] = useState('');
-  const [regBirthDate, setRegBirthDate] = useState('');
-  const [regConfirmAdult18, setRegConfirmAdult18] = useState(false);
-  const [regDeviceMacId, setRegDeviceMacId] = useState(() => getDeviceSecurityFingerprint());
+  const [regBirthDay, setRegBirthDay] = useState('15');
+  const [regBirthMonth, setRegBirthMonth] = useState('05');
+  const [regBirthYear, setRegBirthYear] = useState('1992');
+  const [regBirthDate, setRegBirthDate] = useState('1992-05-15');
+  const [regConfirmAdult18, setRegConfirmAdult18] = useState(true);
+  const [regDeviceMacId] = useState(() => getDeviceSecurityFingerprint());
   const [regEmail, setRegEmail] = useState(''); // Optional!
   const [regPassword, setRegPassword] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);
+
+  const updateBirthDateParts = (y: string, m: string, d: string) => {
+    setRegBirthYear(y);
+    setRegBirthMonth(m);
+    setRegBirthDay(d);
+    if (y && m && d) {
+      setRegBirthDate(`${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`);
+    } else {
+      setRegBirthDate('');
+    }
+  };
 
   // CAPTCHA States
   const [loginCaptchaVerified, setLoginCaptchaVerified] = useState(false);
@@ -142,6 +157,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
       setSuccessNotice(null);
       setAuthStatus('unauthenticated');
       setLoginView('form');
+      setRegFormStep(1);
       setIsRegisterOtpStep(false);
       setRegisterOtpCode('');
       setForgotOtpCode('');
@@ -632,30 +648,30 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-fadeIn">
+    <div className="fixed inset-0 z-50 bg-slate-950/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 animate-fadeIn">
       <div 
-        className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden relative flex flex-col max-h-[92vh] animate-scaleUp"
+        className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-100 overflow-hidden relative flex flex-col max-h-[92vh] animate-scaleUp"
         dir={isAr ? 'rtl' : 'ltr'}
       >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-brand-navy via-slate-900 to-brand-navy text-white px-5 pt-5 pb-4 relative flex-shrink-0">
+        {/* Premium Calm Header */}
+        <div className="bg-gradient-to-br from-brand-navy via-slate-900 to-brand-navy text-white px-6 pt-5 pb-4 relative flex-shrink-0">
           <button
             onClick={onClose}
-            className="absolute top-4 left-4 text-slate-400 hover:text-white p-1 rounded-full hover:bg-white/10 transition"
+            className="absolute top-4 left-4 text-slate-400 hover:text-white p-1.5 rounded-full hover:bg-white/10 transition"
             aria-label="إغلاق"
           >
             <X className="w-5 h-5" />
           </button>
 
-          <div className="flex items-center gap-2.5">
-            <MokhalasaSvgLogo variant="light" height={28} />
-            <span className="text-3xs font-extrabold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-              بوابة العملاء
+          <div className="flex items-center gap-3">
+            <MokhalasaSvgLogo variant="light" height={30} />
+            <span className="text-2xs font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+              بوابة العملاء الآمنة
             </span>
           </div>
 
-          {/* Tab Switcher: ONLY 2 TABS */}
-          <div className="mt-4 flex bg-slate-800/80 p-1 rounded-xl border border-slate-700/60">
+          {/* Clean Tab Switcher */}
+          <div className="mt-4 flex bg-slate-800/90 p-1 rounded-2xl border border-slate-700/60">
             <button
               type="button"
               onClick={() => { 
@@ -665,13 +681,13 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
                 setSuccessNotice(null);
                 setAuthStatus('unauthenticated');
               }}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 ${
                 activeTab === 'login'
                   ? 'bg-brand-green text-white shadow-sm'
                   : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
             >
-              <User className="w-3.5 h-3.5" />
+              <User className="w-4 h-4" />
               <span>تسجيل الدخول</span>
             </button>
 
@@ -679,29 +695,30 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
               type="button"
               onClick={() => { 
                 setActiveTab('register'); 
+                setRegFormStep(1);
                 setIsRegisterOtpStep(false);
                 setErrorMessage(null); 
                 setSuccessNotice(null);
                 setAuthStatus('unauthenticated');
               }}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 ${
                 activeTab === 'register'
                   ? 'bg-brand-green text-white shadow-sm'
                   : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
             >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>إنشاء حساب</span>
+              <ShieldCheck className="w-4 h-4" />
+              <span>حساب جديد</span>
             </button>
           </div>
         </div>
 
         {/* Scrollable Form Body */}
-        <div className="p-5 overflow-y-auto space-y-4">
+        <div className="p-5 sm:p-6 overflow-y-auto space-y-4">
           
           {/* Loading Alert */}
           {authStatus === 'authenticating' && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-center space-y-1.5 animate-pulse">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 text-center space-y-1.5 animate-pulse">
               <div className="w-6 h-6 border-2 border-brand-green border-t-transparent rounded-full animate-spin mx-auto" />
               <div className="font-extrabold text-xs text-brand-navy">
                 جاري التحقق وتأمين حسابك في مخلصة...
@@ -721,12 +738,12 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
 
           {/* Error Alert */}
           {authStatus === 'error' && errorMessage && (
-            <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs space-y-2 animate-fadeIn">
+            <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs space-y-2 animate-fadeIn">
               <div className="flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
                 <div className="space-y-0.5">
-                  <span className="font-bold block">تنبيه:</span>
-                  <p className="text-2xs leading-relaxed text-rose-800">{errorMessage}</p>
+                  <span className="font-bold block">يرجى الملاحظة:</span>
+                  <p className="text-xs leading-relaxed text-rose-800">{errorMessage}</p>
                 </div>
               </div>
               {unregisteredPhoneToCreate && activeTab === 'login' && (
@@ -735,14 +752,15 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
                   onClick={() => {
                     setRegPhone(unregisteredPhoneToCreate);
                     setActiveTab('register');
+                    setRegFormStep(1);
                     setIsRegisterOtpStep(false);
                     setErrorMessage(null);
                     setAuthStatus('unauthenticated');
                     setUnregisteredPhoneToCreate(null);
                   }}
-                  className="w-full py-2 px-3 rounded-xl bg-brand-navy hover:bg-slate-800 text-white font-extrabold text-2xs transition flex items-center justify-center gap-1.5 shadow-sm"
+                  className="w-full py-2.5 px-3 rounded-xl bg-brand-navy hover:bg-slate-800 text-white font-extrabold text-xs transition flex items-center justify-center gap-1.5 shadow-sm"
                 >
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
                   <span>إنشاء حساب جديد برقم ({unregisteredPhoneToCreate}) الآن</span>
                 </button>
               )}
@@ -762,10 +780,10 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
                       <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
                       <span>تنبيه: حسابك مسجل تحت طلب الحذف</span>
                     </div>
-                    <p className="text-2xs text-slate-700 leading-relaxed">
+                    <p className="text-xs text-slate-700 leading-relaxed">
                       أهلاً بك <strong>{pendingDeletionUser.name}</strong>! لقد تم تسجيل طلب لحذف هذا الحساب، والحساب حالياً في فترة السماح القانونية (30 يوماً).
                     </p>
-                    <p className="text-2xs text-amber-800 font-bold">
+                    <p className="text-xs text-amber-800 font-bold">
                       هل تود التراجع عن طلب الحذف واستعادة حسابك وإعلاناتك الآن؟
                     </p>
                   </div>
@@ -794,10 +812,10 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
 
               {/* SUBVIEW 1: STANDARD LOGIN FORM */}
               {!showRestorePrompt && loginView === 'form' && (
-                <form onSubmit={handleSignIn} className="space-y-3">
-                  <div className="space-y-1">
-                    <label className="font-bold text-xs text-slate-700 block text-right">
-                      رقم الهاتف أو البريد الإلكتروني:
+                <form onSubmit={handleSignIn} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-xs sm:text-sm text-slate-700 block text-right">
+                      رقم الموبايل أو البريد الإلكتروني
                     </label>
                     <div className="relative">
                       <input
@@ -805,17 +823,17 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
                         required
                         value={loginIdentifier}
                         onChange={(e) => setLoginIdentifier(e.target.value)}
-                        placeholder="010XXXXXXXX أو name@example.com"
-                        className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green focus:outline-none text-right pr-9"
+                        placeholder="مثال: 01012345678"
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-sm font-medium focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green focus:outline-none text-right pr-10 transition"
                       />
-                      <Phone className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+                      <Phone className="w-4 h-4 text-slate-400 absolute right-3.5 top-3 pointer-events-none" />
                     </div>
                   </div>
 
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     <div className="flex justify-between items-center">
-                      <label className="font-bold text-xs text-slate-700 block text-right">
-                        كلمة المرور:
+                      <label className="font-bold text-xs sm:text-sm text-slate-700 block text-right">
+                        كلمة المرور
                       </label>
                       <button
                         type="button"
@@ -825,7 +843,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
                           setSuccessNotice(null);
                           setForgotPhone(loginIdentifier.replace(/\D/g, '').length >= 10 ? loginIdentifier : '');
                         }}
-                        className="text-3xs text-brand-green hover:underline font-bold"
+                        className="text-xs text-brand-green hover:underline font-bold"
                       >
                         نسيت كلمة المرور؟
                       </button>
@@ -836,14 +854,14 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
                         required
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green focus:outline-none text-right pr-9"
+                        placeholder="اكتب كلمة المرور"
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-sm font-medium focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green focus:outline-none text-right pr-10 pl-10 transition"
                       />
-                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+                      <Lock className="w-4 h-4 text-slate-400 absolute right-3.5 top-3 pointer-events-none" />
                       <button
                         type="button"
                         onClick={() => setShowLoginPassword(!showLoginPassword)}
-                        className="absolute left-3 top-2 text-slate-400 hover:text-slate-600 p-0.5"
+                        className="absolute left-3 top-2.5 text-slate-400 hover:text-slate-600 p-0.5"
                       >
                         {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -859,15 +877,15 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full py-2.5 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-60"
+                    className="w-full py-3 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-sm shadow-md transition flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-60"
                   >
                     {isSubmitting ? (
                       <>
-                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                         <span>جاري تسجيل الدخول...</span>
                       </>
                     ) : (
-                      <span>تسجيل الدخول</span>
+                      <span>تسجيل الدخول إلى حسابي</span>
                     )}
                   </button>
                 </form>
@@ -875,20 +893,20 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
 
               {/* SUBVIEW 2: FORGOT PASSWORD - STEP 1 (PHONE) */}
               {loginView === 'forgot_phone' && (
-                <form onSubmit={handleRequestForgotOtp} className="space-y-3 animate-fadeIn">
-                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-2xs text-emerald-950 flex items-start gap-2">
+                <form onSubmit={handleRequestForgotOtp} className="space-y-4 animate-fadeIn">
+                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-950 flex items-start gap-2.5">
                     <KeyRound className="w-4 h-4 text-brand-green flex-shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-extrabold block">استعادة كلمة المرور عبر الواتساب:</span>
-                      <p className="text-3xs text-slate-600 leading-relaxed mt-0.5">
-                        أدخل رقم هاتفك المسجل وسنرسل لك كود تحقق (OTP) على الواتساب لتعيين كلمة مرور جديدة فوراً.
+                      <span className="font-extrabold block">استعادة كلمة المرور عبر الواتساب</span>
+                      <p className="text-2xs text-slate-600 leading-relaxed mt-0.5">
+                        اكتب رقم الموبايل المسجل به حسابك، وسنرسل لك كود مكون من 4 أرقام على الواتساب لتغيير كلمة المرور فوراً.
                       </p>
                     </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="font-bold text-xs text-slate-700 block text-right">
-                      رقم الهاتف المسجل (واتساب):
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-xs sm:text-sm text-slate-700 block text-right">
+                      رقم الموبايل المسجل (واتساب):
                     </label>
                     <div className="relative">
                       <input
@@ -898,10 +916,10 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
                         value={forgotPhone}
                         onChange={(e) => setForgotPhone(e.target.value)}
                         placeholder="010XXXXXXXX"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono font-bold focus:ring-2 focus:ring-brand-green focus:outline-none text-right pr-9"
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono font-bold focus:ring-2 focus:ring-brand-green focus:outline-none text-right pr-10"
                         autoFocus
                       />
-                      <Phone className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
+                      <Phone className="w-4 h-4 text-slate-400 absolute right-3.5 top-3 pointer-events-none" />
                     </div>
                   </div>
 
@@ -911,27 +929,27 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
                     compact
                   />
 
-                  <div className="flex gap-2 pt-1">
+                  <div className="flex gap-2.5 pt-1">
                     <button
                       type="button"
                       onClick={() => setLoginView('form')}
-                      className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition"
+                      className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition"
                     >
-                      إلغاء
+                      رجوع
                     </button>
                     <button
                       type="submit"
                       disabled={isSubmitting || !forgotPhone.trim()}
-                      className="flex-1 py-2.5 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-1.5 disabled:opacity-60"
+                      className="flex-1 py-2.5 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-1.5 disabled:opacity-60"
                     >
                       {isSubmitting ? (
                         <>
-                          <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                           <span>جاري إرسال الكود...</span>
                         </>
                       ) : (
                         <>
-                          <MessageSquare className="w-3.5 h-3.5" />
+                          <MessageSquare className="w-4 h-4" />
                           <span>إرسال كود الواتساب</span>
                         </>
                       )}
@@ -942,30 +960,30 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
 
               {/* SUBVIEW 3: FORGOT PASSWORD - STEP 2 (OTP) */}
               {loginView === 'forgot_otp' && (
-                <form onSubmit={handleVerifyForgotOtp} className="space-y-3 animate-fadeIn">
-                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-1">
+                <form onSubmit={handleVerifyForgotOtp} className="space-y-4 animate-fadeIn">
+                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-1">
                     {matchedAccountName && (
-                      <span className="text-2xs text-emerald-950 font-black block">
+                      <span className="text-xs text-emerald-950 font-black block">
                         ✓ الحساب المسجل: {matchedAccountName}
                       </span>
                     )}
-                    <span className="text-3xs text-emerald-800 font-bold block">
-                      وصلك كود تحقق على الواتساب على رقمك:
+                    <span className="text-2xs text-emerald-800 font-bold block">
+                      وصلك كود التحقق على الواتساب على رقمك:
                     </span>
                     <span className="text-sm font-black font-mono text-brand-navy dir-ltr block">
                       {forgotPhone}
                     </span>
                   </div>
 
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <label className="font-bold text-xs text-slate-700">
-                        أدخل كود الـ OTP المكون من 4 أرقام:
+                        اكتب كود الواتساب (4 أرقام):
                       </label>
                       <button
                         type="button"
                         onClick={() => setLoginView('forgot_phone')}
-                        className="text-3xs text-brand-green font-bold hover:underline inline-flex items-center gap-1"
+                        className="text-2xs text-brand-green font-bold hover:underline inline-flex items-center gap-1"
                       >
                         <ArrowRight className="w-3 h-3 rotate-180" />
                         <span>تعديل الرقم</span>
@@ -974,6 +992,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
 
                     <input
                       type="text"
+                      inputMode="numeric"
                       dir="ltr"
                       maxLength={4}
                       value={forgotOtpCode}
@@ -984,7 +1003,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
                     />
                   </div>
 
-                  <div className="flex items-center justify-between text-3xs text-slate-500 font-bold px-1">
+                  <div className="flex items-center justify-between text-2xs text-slate-500 font-bold px-1">
                     <span>صلاحية الكود: 5 دقائق</span>
                     {forgotCountdown > 0 ? (
                       <span className="text-slate-400">إعادة إرسال بعد ({forgotCountdown}ث)</span>
@@ -1003,11 +1022,11 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
                   <button
                     type="submit"
                     disabled={isSubmitting || forgotOtpCode.trim().length !== 4}
-                    className="w-full py-2.5 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60"
+                    className="w-full py-3 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-sm shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60"
                   >
                     {isSubmitting ? (
                       <>
-                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                         <span>جاري التحقق...</span>
                       </>
                     ) : (
@@ -1019,9 +1038,9 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
 
               {/* SUBVIEW 4: FORGOT PASSWORD - STEP 3 (NEW PASSWORD) */}
               {loginView === 'forgot_new_password' && (
-                <form onSubmit={handleSetNewPassword} className="space-y-3 animate-fadeIn">
-                  <div className="space-y-1">
-                    <label className="font-bold text-xs text-slate-700 block text-right">
+                <form onSubmit={handleSetNewPassword} className="space-y-4 animate-fadeIn">
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-xs sm:text-sm text-slate-700 block text-right">
                       كلمة المرور الجديدة:
                     </label>
                     <div className="relative">
@@ -1030,16 +1049,16 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
                         required
                         value={forgotNewPassword}
                         onChange={(e) => setForgotNewPassword(e.target.value)}
-                        placeholder="8 أحرف وأرقام على الأقل"
-                        className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green focus:outline-none text-right pr-9"
+                        placeholder="8 خانات تشمل حرف كبير ورقم ورمز (@ أو #)"
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium focus:ring-2 focus:ring-brand-green focus:outline-none text-right pr-10"
                         autoFocus
                       />
-                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+                      <Lock className="w-4 h-4 text-slate-400 absolute right-3.5 top-3 pointer-events-none" />
                     </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="font-bold text-xs text-slate-700 block text-right">
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-xs sm:text-sm text-slate-700 block text-right">
                       تأكيد كلمة المرور الجديدة:
                     </label>
                     <div className="relative">
@@ -1048,21 +1067,21 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
                         required
                         value={forgotConfirmPassword}
                         onChange={(e) => setForgotConfirmPassword(e.target.value)}
-                        placeholder="أعد إدخال كلمة المرور"
-                        className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green focus:outline-none text-right pr-9"
+                        placeholder="أعد كتابة كلمة المرور الجديدة"
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium focus:ring-2 focus:ring-brand-green focus:outline-none text-right pr-10"
                       />
-                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+                      <Lock className="w-4 h-4 text-slate-400 absolute right-3.5 top-3 pointer-events-none" />
                     </div>
                   </div>
 
                   <button
                     type="submit"
                     disabled={isSubmitting || forgotNewPassword.length < 8}
-                    className="w-full py-2.5 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60"
+                    className="w-full py-3 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-sm shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60"
                   >
                     {isSubmitting ? (
                       <>
-                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                         <span>جاري حفظ كلمة المرور والدخول...</span>
                       </>
                     ) : (
@@ -1075,305 +1094,387 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
           )}
 
           {/* ========================================================= */}
-          {/* TAB 2: REGISTER FLOW (PHONE MANDATORY + WHATSAPP OTP) */}
+          {/* TAB 2: REGISTER FLOW (SMOOTH 2-STEP GUIDED FORM + OTP) */}
           {/* ========================================================= */}
           {activeTab === 'register' && authStatus !== 'authenticated' && (() => {
             const pwdStrength = validateStrongPassword(regPassword, regPhone);
             const availableDistricts = getDistrictsForGovernorate(regGovernorate);
             const availableSubAreas = getSubAreasForDistrict(regGovernorate, regDistrict);
+            const maxAdultYear = new Date().getFullYear() - 18;
+            const birthYears = Array.from({ length: 75 }, (_, i) => String(maxAdultYear - i));
+            const birthMonths = [
+              { val: '01', label: '1 - يناير' },
+              { val: '02', label: '2 - فبراير' },
+              { val: '03', label: '3 - مارس' },
+              { val: '04', label: '4 - أبريل' },
+              { val: '05', label: '5 - مايو' },
+              { val: '06', label: '6 - يونيو' },
+              { val: '07', label: '7 - يوليو' },
+              { val: '08', label: '8 - أغسطس' },
+              { val: '09', label: '9 - سبتمبر' },
+              { val: '10', label: '10 - أكتوبر' },
+              { val: '11', label: '11 - نوفمبر' },
+              { val: '12', label: '12 - ديسمبر' },
+            ];
+            const birthDays = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
+
+            const handleProceedToRegStep2 = () => {
+              setErrorMessage(null);
+              const cleanName = sanitizeInput(regFullName, 120);
+              if (!cleanName || cleanName.length < 3) {
+                setErrorMessage('يرجى كتابة الاسم الثلاثي بالكامل.');
+                setAuthStatus('error');
+                return;
+              }
+              const phoneErr = getPhoneValidationError(regPhone);
+              if (phoneErr) {
+                setErrorMessage(phoneErr);
+                setAuthStatus('error');
+                return;
+              }
+              const ageCheck = validateAdultAge18Plus(regBirthDate);
+              if (!ageCheck.isAdult) {
+                setErrorMessage(ageCheck.error || 'يشترط أن يكون السن 18 عاماً فأكثر.');
+                setAuthStatus('error');
+                return;
+              }
+              setAuthStatus('unauthenticated');
+              setRegFormStep(2);
+            };
+
             return (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {!isRegisterOtpStep ? (
-                  /* STEP 1: FILL INFO */
-                  <form onSubmit={handleInitiateRegistration} className="space-y-2.5">
-                    <div className="space-y-1">
-                      <label className="font-bold text-xs text-slate-700 block text-right">
-                        الاسم الثلاثي بالكامل (كما في بطاقة الرقم القومي) *:
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          required
-                          value={regFullName}
-                          onChange={(e) => setRegFullName(e.target.value)}
-                          placeholder="مثال: أحمد عبد الله محمود"
-                          className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green focus:outline-none text-right pr-9"
-                        />
-                        <User className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {/* MANDATORY PHONE INPUT */}
-                      <div className="space-y-1">
-                        <label className="font-black text-xs text-slate-800 flex items-center justify-between">
-                          <span>رقم الهاتف (واتساب) <span className="text-rose-500">*</span></span>
-                          <span className="text-3xs text-brand-green font-mono">11 رقماً</span>
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="tel"
-                            required
-                            dir="ltr"
-                            value={regPhone}
-                            onChange={(e) => setRegPhone(e.target.value)}
-                            placeholder="010XXXXXXXX"
-                            className="w-full px-3 py-2 rounded-xl border-2 border-brand-green/30 focus:border-brand-green text-xs font-mono font-bold focus:ring-2 focus:ring-brand-green/20 focus:outline-none text-right pr-9"
-                          />
-                          <Phone className="w-4 h-4 text-brand-green absolute right-3 top-2.5 pointer-events-none" />
-                        </div>
-                      </div>
-
-                      {/* MANDATORY 18+ BIRTH DATE */}
-                      <div className="space-y-1">
-                        <label className="font-black text-xs text-slate-800 block text-right">
-                          تاريخ الميلاد (+18 سنة) <span className="text-rose-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="date"
-                            required
-                            max={new Date(new Date().setFullYear(new Date().getFullYear() - 18))
-                              .toISOString()
-                              .split('T')[0]}
-                            value={regBirthDate}
-                            onChange={(e) => setRegBirthDate(e.target.value)}
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-brand-green focus:outline-none pr-9"
-                          />
-                          <Calendar className="w-4 h-4 text-amber-600 absolute right-3 top-2.5 pointer-events-none" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 4-LEVEL CASCADING EGYPTIAN ADDRESS */}
-                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-2xs font-black text-slate-800 flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5 text-brand-green" />
-                          العنوان التفصيلي المتدرج (المحافظة ← المنطقة ← المربع السكني) *
+                  <>
+                    {/* Clean Step Progress Bar (Step 1 of 2 / Step 2 of 2) */}
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3 flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setRegFormStep(1)}
+                        className={`flex-1 flex items-center gap-2 py-1.5 px-2.5 rounded-xl text-xs font-bold transition ${
+                          regFormStep === 1
+                            ? 'bg-white text-brand-navy shadow-xs border border-slate-200/80'
+                            : 'text-emerald-700 hover:bg-white/60'
+                        }`}
+                      >
+                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-2xs font-black ${
+                          regFormStep === 1 ? 'bg-brand-green text-white' : 'bg-emerald-100 text-emerald-700'
+                        }`}>
+                          {regFormStep > 1 ? '✓' : '1'}
                         </span>
-                      </div>
+                        <span>١. البيانات الأساسية</span>
+                      </button>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div>
-                          <label className="block text-3xs font-black text-slate-600 mb-0.5">
-                            1. المحافظة *
-                          </label>
-                          <select
-                            value={regGovernorate}
-                            onChange={(e) => handleGovernorateChange(e.target.value)}
-                            className="w-full px-2 py-1.5 rounded-xl border border-slate-200 text-2xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-brand-green focus:outline-none"
-                          >
-                            {GOVERNORATES_LIST.map((gov) => (
-                              <option key={gov} value={gov}>{gov}</option>
-                            ))}
-                          </select>
-                        </div>
+                      <div className="w-4 h-0.5 bg-slate-200 rounded-full" />
 
-                        <div>
-                          <label className="block text-3xs font-black text-slate-600 mb-0.5">
-                            2. الحي / القسم *
-                          </label>
-                          <select
-                            value={regDistrict}
-                            onChange={(e) => handleDistrictChange(e.target.value)}
-                            className="w-full px-2 py-1.5 rounded-xl border border-slate-200 text-2xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-brand-green focus:outline-none"
-                          >
-                            {availableDistricts.map((dist) => (
-                              <option key={dist} value={dist}>{dist}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-3xs font-black text-slate-600 mb-0.5">
-                            3. المنطقة الفرعية *
-                          </label>
-                          <select
-                            value={regSubArea}
-                            onChange={(e) => setRegSubArea(e.target.value)}
-                            className="w-full px-2 py-1.5 rounded-xl border border-slate-200 text-2xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-brand-green focus:outline-none"
-                          >
-                            {availableSubAreas.map((sub) => (
-                              <option key={sub} value={sub}>{sub}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-3xs font-black text-slate-600 mb-0.5">
-                          4. الشارع / رقم العقار / علامة مميزة *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={regDetailedAddress}
-                          onChange={(e) => setRegDetailedAddress(e.target.value)}
-                          placeholder={`مثال: ${regGovernorate} - ${regDistrict} - ${regSubArea} - شارع...`}
-                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 text-2xs font-bold bg-white focus:ring-2 focus:ring-brand-green focus:outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    {/* DEVICE SECURITY MAC FINGERPRINT */}
-                    <div className="p-2.5 rounded-2xl bg-slate-900 text-white border border-slate-800 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-3xs font-black text-amber-400 flex items-center gap-1">
-                          <Cpu className="w-3.5 h-3.5" />
-                          بصمة الأمان ومعرف الجهاز (Device MAC ID)
+                      <button
+                        type="button"
+                        onClick={handleProceedToRegStep2}
+                        className={`flex-1 flex items-center gap-2 py-1.5 px-2.5 rounded-xl text-xs font-bold transition ${
+                          regFormStep === 2
+                            ? 'bg-white text-brand-navy shadow-xs border border-slate-200/80'
+                            : 'text-slate-400'
+                        }`}
+                      >
+                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-2xs font-black ${
+                          regFormStep === 2 ? 'bg-brand-green text-white' : 'bg-slate-200 text-slate-500'
+                        }`}>
+                          2
                         </span>
-                        <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded-full font-bold">
-                          ربط تلقائي للحماية
-                        </span>
-                      </div>
-                      <input
-                        type="text"
-                        dir="ltr"
-                        value={regDeviceMacId}
-                        onChange={(e) => setRegDeviceMacId(e.target.value)}
-                        className="w-full px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-amber-300 font-mono text-2xs font-bold text-center outline-none"
-                      />
+                        <span>٢. العنوان وكلمة المرور</span>
+                      </button>
                     </div>
 
-                    {/* OPTIONAL EMAIL */}
-                    <div className="space-y-1">
-                      <label className="font-bold text-xs text-slate-700 flex items-center justify-between">
-                        <span>البريد الإلكتروني:</span>
-                        <span className="text-3xs text-slate-400 font-normal">(اختياري)</span>
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="email"
-                          value={regEmail}
-                          onChange={(e) => setRegEmail(e.target.value)}
-                          placeholder="name@example.com (اختياري)"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green focus:outline-none text-right pr-9"
-                        />
-                        <Mail className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
-                      </div>
-                    </div>
+                    {regFormStep === 1 ? (
+                      /* ================= REGISTER STEP 1: BASIC INFO ================= */
+                      <div className="space-y-4 animate-fadeIn">
+                        {/* Full Name */}
+                        <div className="space-y-1.5">
+                          <label className="font-bold text-xs sm:text-sm text-slate-700 block text-right">
+                            الاسم الثلاثي بالكامل <span className="text-rose-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              required
+                              value={regFullName}
+                              onChange={(e) => setRegFullName(e.target.value)}
+                              placeholder="مثال: أحمد عبد الله محمود"
+                              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-sm font-medium focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green focus:outline-none text-right pr-10 transition"
+                            />
+                            <User className="w-4 h-4 text-slate-400 absolute right-3.5 top-3 pointer-events-none" />
+                          </div>
+                        </div>
 
-                    {/* STRONG PASSWORD */}
-                    <div className="space-y-1">
-                      <label className="font-bold text-xs text-slate-700 block text-right">
-                        كلمة المرور القوية (8+ أحرف، كبير، صغير، رقم، رمز خاص) *:
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showRegPassword ? 'text' : 'password'}
-                          required
-                          value={regPassword}
-                          onChange={(e) => setRegPassword(e.target.value)}
-                          placeholder="مثال: Mokhalasa@2026"
-                          className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green focus:outline-none text-right pr-9"
-                        />
-                        <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+                        {/* Phone (WhatsApp) */}
+                        <div className="space-y-1.5">
+                          <label className="font-bold text-xs sm:text-sm text-slate-700 flex items-center justify-between">
+                            <span>رقم الموبايل (واتساب) <span className="text-rose-500">*</span></span>
+                            <span className="text-2xs text-brand-green font-bold">لتأكيد الحساب واستقبال العروض</span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="tel"
+                              inputMode="tel"
+                              required
+                              dir="ltr"
+                              value={regPhone}
+                              onChange={(e) => setRegPhone(e.target.value)}
+                              placeholder="01012345678"
+                              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-sm font-mono font-bold focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green focus:outline-none text-right pr-10 transition"
+                            />
+                            <Phone className="w-4 h-4 text-brand-green absolute right-3.5 top-3 pointer-events-none" />
+                          </div>
+                        </div>
+
+                        {/* Easy 3-Dropdown Birth Date Selector (18+) */}
+                        <div className="space-y-1.5">
+                          <label className="font-bold text-xs sm:text-sm text-slate-700 flex items-center justify-between">
+                            <span className="flex items-center gap-1.5">
+                              <Calendar className="w-4 h-4 text-brand-green" />
+                              <span>تاريخ الميلاد <span className="text-rose-500">*</span></span>
+                            </span>
+                            <span className="text-2xs text-slate-500 font-medium">18 سنة فأكثر</span>
+                          </label>
+                          <div className="grid grid-cols-3 gap-2">
+                            <select
+                              value={regBirthDay}
+                              onChange={(e) => updateBirthDateParts(regBirthYear, regBirthMonth, e.target.value)}
+                              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-xs sm:text-sm font-bold text-slate-800 focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green focus:outline-none"
+                            >
+                              {birthDays.map((d) => (
+                                <option key={d} value={d}>يوم {Number(d)}</option>
+                              ))}
+                            </select>
+
+                            <select
+                              value={regBirthMonth}
+                              onChange={(e) => updateBirthDateParts(regBirthYear, e.target.value, regBirthDay)}
+                              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-xs sm:text-sm font-bold text-slate-800 focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green focus:outline-none"
+                            >
+                              {birthMonths.map((m) => (
+                                <option key={m.val} value={m.val}>{m.label}</option>
+                              ))}
+                            </select>
+
+                            <select
+                              value={regBirthYear}
+                              onChange={(e) => updateBirthDateParts(e.target.value, regBirthMonth, regBirthDay)}
+                              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-xs sm:text-sm font-bold text-slate-800 focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green focus:outline-none"
+                            >
+                              {birthYears.map((y) => (
+                                <option key={y} value={y}>{y}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
                         <button
                           type="button"
-                          onClick={() => setShowRegPassword(!showRegPassword)}
-                          className="absolute left-3 top-2 text-slate-400 hover:text-slate-600 p-0.5"
+                          onClick={handleProceedToRegStep2}
+                          className="w-full py-3 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-sm shadow-md transition flex items-center justify-center gap-2 active:scale-[0.99]"
                         >
-                          {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          <span>التالي: تحديد العنوان وكلمة المرور</span>
+                          <ArrowRight className="w-4 h-4 rotate-180" />
                         </button>
                       </div>
-                    </div>
+                    ) : (
+                      /* ================= REGISTER STEP 2: ADDRESS & PASSWORD ================= */
+                      <form onSubmit={handleInitiateRegistration} className="space-y-4 animate-fadeIn">
+                        {/* Clean Hierarchical Egyptian Address Card */}
+                        <div className="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/90 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-extrabold text-brand-navy flex items-center gap-1.5">
+                              <MapPin className="w-4 h-4 text-brand-green" />
+                              <span>عنوان الإقامة بالتفصيل <span className="text-rose-500">*</span></span>
+                            </span>
+                          </div>
 
-                    {regPassword.length > 0 && (
-                      <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-                        <div className="flex items-center justify-between text-3xs font-black">
-                          <span className="text-slate-600">قوة التشفير (PBKDF2):</span>
-                          <span className={pwdStrength.colorClass.split(' ')[1]}>
-                            {pwdStrength.label} ({pwdStrength.score}%)
-                          </span>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div>
+                              <label className="block text-2xs font-bold text-slate-600 mb-1">
+                                المحافظة
+                              </label>
+                              <select
+                                value={regGovernorate}
+                                onChange={(e) => handleGovernorateChange(e.target.value)}
+                                className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green focus:outline-none"
+                              >
+                                {GOVERNORATES_LIST.map((gov) => (
+                                  <option key={gov} value={gov}>{gov}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-2xs font-bold text-slate-600 mb-1">
+                                الحي / القسم
+                              </label>
+                              <select
+                                value={regDistrict}
+                                onChange={(e) => handleDistrictChange(e.target.value)}
+                                className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green focus:outline-none"
+                              >
+                                {availableDistricts.map((dist) => (
+                                  <option key={dist} value={dist}>{dist}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-2xs font-bold text-slate-600 mb-1">
+                                المنطقة الفرعية
+                              </label>
+                              <select
+                                value={regSubArea}
+                                onChange={(e) => setRegSubArea(e.target.value)}
+                                className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green focus:outline-none"
+                              >
+                                {availableSubAreas.map((sub) => (
+                                  <option key={sub} value={sub}>{sub}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-2xs font-bold text-slate-600 mb-1">
+                              الشارع أو أقرب علامة مميزة <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={regDetailedAddress}
+                              onChange={(e) => setRegDetailedAddress(e.target.value)}
+                              placeholder={`مثال: ${regDistrict} - ${regSubArea} - شارع...`}
+                              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium bg-white focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green focus:outline-none"
+                            />
+                          </div>
                         </div>
-                        <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full transition-all ${pwdStrength.colorClass.split(' ')[0]}`}
-                            style={{ width: `${pwdStrength.score}%` }}
+
+                        {/* Strong Password with 1-Click Helper */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <label className="font-bold text-xs sm:text-sm text-slate-700">
+                              كلمة المرور <span className="text-rose-500">*</span>
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const suggested = `Mokh#${Math.floor(1000 + Math.random() * 9000)}a`;
+                                setRegPassword(suggested);
+                                setShowRegPassword(true);
+                              }}
+                              className="text-2xs font-bold text-brand-green hover:underline"
+                            >
+                              ✨ اقتراح كلمة مرور قوية تلقائياً
+                            </button>
+                          </div>
+                          <div className="relative">
+                            <input
+                              type={showRegPassword ? 'text' : 'password'}
+                              required
+                              value={regPassword}
+                              onChange={(e) => setRegPassword(e.target.value)}
+                              placeholder="8 خانات تشمل حرف كبير ورقم ورمز مثل # أو @"
+                              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-sm font-medium focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green focus:outline-none text-right pr-10 pl-10 transition"
+                            />
+                            <Lock className="w-4 h-4 text-slate-400 absolute right-3.5 top-3 pointer-events-none" />
+                            <button
+                              type="button"
+                              onClick={() => setShowRegPassword(!showRegPassword)}
+                              className="absolute left-3 top-2.5 text-slate-400 hover:text-slate-600 p-0.5"
+                            >
+                              {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+
+                          {regPassword.length > 0 && (
+                            <div className="pt-1 space-y-1">
+                              <div className="flex items-center justify-between text-2xs font-bold">
+                                <span className="text-slate-500">مستوى أمان كلمة المرور:</span>
+                                <span className={pwdStrength.colorClass.split(' ')[1]}>
+                                  {pwdStrength.label}
+                                </span>
+                              </div>
+                              <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full transition-all ${pwdStrength.colorClass.split(' ')[0]}`}
+                                  style={{ width: `${pwdStrength.score}%` }}
+                                />
+                              </div>
+                              {!pwdStrength.isValid && pwdStrength.errors[0] && (
+                                <p className="text-2xs text-amber-700 font-bold">{pwdStrength.errors[0]}</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        <SecurityCaptcha
+                          onVerifyChange={setRegCaptchaVerified}
+                          resetTrigger={captchaResetKey}
+                          compact
+                        />
+
+                        {/* 18+ Legal Confirmation */}
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={regConfirmAdult18}
+                            onChange={(e) => setRegConfirmAdult18(e.target.checked)}
+                            className="w-4 h-4 accent-brand-green rounded"
                           />
+                          <span className="text-2xs text-slate-600 font-bold">
+                            أقر بصحة البيانات وأن عمري 18 عاماً فأكثر وأوافق على شروط المنصة.
+                          </span>
+                        </label>
+
+                        <div className="flex items-center gap-2.5 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setRegFormStep(1)}
+                            className="px-4 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition"
+                          >
+                            رجوع
+                          </button>
+
+                          <button
+                            type="submit"
+                            disabled={isSubmitting || !regPhone.trim()}
+                            className="flex-1 py-3 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-sm shadow-md transition flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-60"
+                          >
+                            {isSubmitting ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                <span>جاري إرسال كود الواتساب...</span>
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 className="w-4 h-4" />
+                                <span>إنشاء الحساب وتأكيد الواتساب</span>
+                              </>
+                            )}
+                          </button>
                         </div>
-                        <div className="grid grid-cols-2 gap-1 text-[10px] font-bold">
-                          <span className={pwdStrength.checks.minLength ? 'text-emerald-700' : 'text-slate-400'}>
-                            {pwdStrength.checks.minLength ? '✓' : '○'} 8 أحرف فأكثر
-                          </span>
-                          <span className={pwdStrength.checks.hasUppercase ? 'text-emerald-700' : 'text-slate-400'}>
-                            {pwdStrength.checks.hasUppercase ? '✓' : '○'} حرف كبير (A-Z)
-                          </span>
-                          <span className={pwdStrength.checks.hasLowercase ? 'text-emerald-700' : 'text-slate-400'}>
-                            {pwdStrength.checks.hasLowercase ? '✓' : '○'} حرف صغير (a-z)
-                          </span>
-                          <span className={pwdStrength.checks.hasNumber ? 'text-emerald-700' : 'text-slate-400'}>
-                            {pwdStrength.checks.hasNumber ? '✓' : '○'} رقم (0-9)
-                          </span>
-                          <span className={pwdStrength.checks.hasSpecial ? 'text-emerald-700' : 'text-slate-400'}>
-                            {pwdStrength.checks.hasSpecial ? '✓' : '○'} رمز خاص (@#$%!)
-                          </span>
-                          <span className={pwdStrength.checks.notContainingPhone ? 'text-emerald-700' : 'text-rose-500'}>
-                            {pwdStrength.checks.notContainingPhone ? '✓' : '✗'} لا تحوي رقم هاتفك
-                          </span>
-                        </div>
-                      </div>
+                      </form>
                     )}
-
-                    {/* 18+ LEGAL CONFIRMATION CHECKBOX */}
-                    <label className="flex items-start gap-2 cursor-pointer select-none pt-0.5">
-                      <input
-                        type="checkbox"
-                        checked={regConfirmAdult18}
-                        onChange={(e) => setRegConfirmAdult18(e.target.checked)}
-                        className="mt-0.5 w-4 h-4 accent-brand-green rounded"
-                      />
-                      <span className="text-3xs text-slate-700 font-black leading-relaxed">
-                        أقر بأن عمري لا يقل عن 18 عاماً كاملة وأتمتع بالأهلية القانونية الكاملة للتعامل المالي والتعاقد عبر منصة مخلصة. *
-                      </span>
-                    </label>
-
-                    <SecurityCaptcha
-                      onVerifyChange={setRegCaptchaVerified}
-                      resetTrigger={captchaResetKey}
-                      compact
-                    />
-
-                    <div className="p-2.5 bg-emerald-50/70 border border-emerald-200/50 rounded-xl text-3xs text-emerald-950 flex items-center gap-2">
-                      <MessageSquare className="w-4 h-4 text-brand-green flex-shrink-0" />
-                      <span>سنرسل لك كود تحقق (OTP) على رقم الواتساب لتفعيل الأكونت فوراً.</span>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={isSubmitting || !regPhone.trim()}
-                      className="w-full py-2.5 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-60"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          <span>جاري إرسال كود الواتساب...</span>
-                        </>
-                      ) : (
-                        <>
-                          <MessageSquare className="w-4 h-4" />
-                          <span>إنشاء الحساب ومتابعة التحقق</span>
-                        </>
-                      )}
-                    </button>
-                  </form>
+                  </>
                 ) : (
-                /* STEP 2: WHATSAPP OTP VERIFICATION SCREEN */
-                <form onSubmit={handleFinalizeRegistration} className="space-y-3 animate-fadeIn">
-                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-1">
-                    <span className="text-3xs text-emerald-800 font-bold block">
-                      جالك كود تحقق (OTP) على الواتساب على رقمك:
+                /* STEP 3: WHATSAPP OTP VERIFICATION SCREEN */
+                <form onSubmit={handleFinalizeRegistration} className="space-y-4 animate-fadeIn">
+                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-1">
+                    <span className="text-xs text-emerald-800 font-bold block">
+                      أرسلنا كود التحقق (OTP) على الواتساب لرقمك:
                     </span>
-                    <span className="text-sm font-black font-mono text-brand-navy dir-ltr block">
+                    <span className="text-base font-black font-mono text-brand-navy dir-ltr block">
                       {regPhone}
                     </span>
-                    <span className="text-3xs text-slate-500 block">
-                      حط الكود المكون من 4 أرقام لتفعيل الأكونت مباشرة
+                    <span className="text-2xs text-slate-500 block">
+                      اكتب الـ 4 أرقام لتفعيل حسابك فوراً
                     </span>
                   </div>
 
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <label className="font-bold text-xs text-slate-700">
                         كود الـ OTP:
@@ -1381,7 +1482,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setIsRegisterOtpStep(false)}
-                        className="text-3xs text-brand-green font-bold hover:underline inline-flex items-center gap-1"
+                        className="text-2xs text-brand-green font-bold hover:underline inline-flex items-center gap-1"
                       >
                         <ArrowRight className="w-3 h-3 rotate-180" />
                         <span>تعديل البيانات أو الرقم</span>
@@ -1390,17 +1491,18 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
 
                     <input
                       type="text"
+                      inputMode="numeric"
                       dir="ltr"
                       maxLength={4}
                       value={registerOtpCode}
                       onChange={(e) => setRegisterOtpCode(e.target.value.replace(/\D/g, ''))}
                       placeholder="••••"
-                      className="w-full py-3 text-center text-2xl font-black font-mono tracking-widest rounded-2xl border-2 border-brand-green/40 focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 focus:outline-none bg-emerald-50/20 text-slate-900"
+                      className="w-full py-3.5 text-center text-2xl font-black font-mono tracking-widest rounded-2xl border-2 border-brand-green/40 focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 focus:outline-none bg-emerald-50/20 text-slate-900"
                       autoFocus
                     />
                   </div>
 
-                  <div className="flex items-center justify-between text-3xs text-slate-500 font-bold px-1">
+                  <div className="flex items-center justify-between text-2xs text-slate-500 font-bold px-1">
                     <span>صلاحية الكود: 5 دقائق</span>
                     {registerCountdown > 0 ? (
                       <span className="text-slate-400">إعادة إرسال بعد ({registerCountdown}ث)</span>
@@ -1419,17 +1521,17 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
                   <button
                     type="submit"
                     disabled={isSubmitting || registerOtpCode.trim().length !== 4}
-                    className="w-full py-2.5 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-60"
+                    className="w-full py-3 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-sm shadow-md transition flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-60"
                   >
                     {isSubmitting ? (
                       <>
-                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>جاري التحقق وتفعيل الأكونت...</span>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>جاري التحقق وتفعيل الحساب...</span>
                       </>
                     ) : (
                       <>
                         <CheckCircle2 className="w-4 h-4" />
-                        <span>حط الكود وفعل الأكونت</span>
+                        <span>تأكيد الكود وتفعيل الحساب</span>
                       </>
                     )}
                   </button>
@@ -1442,7 +1544,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
           {/* Divider */}
           <div className="relative flex items-center justify-center my-2">
             <div className="border-t border-slate-200 w-full" />
-            <span className="bg-white px-2 text-3xs font-bold text-slate-400 absolute">
+            <span className="bg-white px-3 text-2xs font-bold text-slate-400 absolute">
               أو
             </span>
           </div>
@@ -1451,7 +1553,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
           <button
             type="button"
             onClick={handleGoogleSignIn}
-            className="w-full py-2 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs shadow-sm hover:shadow transition flex items-center justify-center gap-2 active:scale-[0.99]"
+            className="w-full py-2.5 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm shadow-2xs hover:shadow-xs transition flex items-center justify-center gap-2.5 active:scale-[0.99]"
           >
             <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -1462,14 +1564,18 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
             <span>المتابعة السريعة بحساب Google</span>
           </button>
 
-          {/* Privacy Note */}
-          <div className="pt-1 text-center">
+          {/* Subtle Security Assurance & Guest Link */}
+          <div className="pt-1 flex items-center justify-between text-2xs text-slate-400">
+            <span className="inline-flex items-center gap-1 text-emerald-700 font-bold">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>اتصال مشفر ومؤمّن بالكامل</span>
+            </span>
             <button
               type="button"
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-700 text-3xs font-bold transition inline-flex items-center gap-1"
+              className="hover:text-slate-700 font-bold transition inline-flex items-center gap-1"
             >
-              <span>المتابعة كزائر دون تسجيل الآن</span>
+              <span>تصفح كزائر</span>
               <ArrowRight className="w-3 h-3 rotate-180" />
             </button>
           </div>

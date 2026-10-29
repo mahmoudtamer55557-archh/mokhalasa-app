@@ -328,24 +328,28 @@ export function App() {
   const [consultationQuestion, setConsultationQuestion] = useState('');
   const [consultationSubmitted, setConsultationSubmitted] = useState(false);
 
-  // Listen to popstate (HTML5 History API) and hash changes for deep linking
+  // Initial deep-link car selection (runs only when URL has ?car= or ?id= and selectedCar is not set yet)
   useEffect(() => {
-    const syncUrlAndCarSelection = () => {
-      const searchParams = new URLSearchParams(window.location.search);
-      const rawHash = window.location.hash.replace(/^#\/?/, '');
-      const hashQueryIdx = rawHash.indexOf('?');
-      const hashParams = hashQueryIdx >= 0 ? new URLSearchParams(rawHash.slice(hashQueryIdx)) : null;
-      const targetCarId = searchParams.get('car') || searchParams.get('id') || hashParams?.get('car') || hashParams?.get('id');
+    if (selectedCar) return;
+    const searchParams = new URLSearchParams(window.location.search);
+    const rawHash = window.location.hash.replace(/^#\/?/, '');
+    const hashQueryIdx = rawHash.indexOf('?');
+    const hashParams = hashQueryIdx >= 0 ? new URLSearchParams(rawHash.slice(hashQueryIdx)) : null;
+    const targetCarId = searchParams.get('car') || searchParams.get('id') || hashParams?.get('car') || hashParams?.get('id');
 
-      if (targetCarId && cars.length > 0) {
-        const matched = cars.find(c => c.id === targetCarId);
-        if (matched) {
-          setSelectedCar(matched);
-          setCurrentView('car-detail');
-          return;
-        }
+    if (targetCarId && cars.length > 0) {
+      const matched = cars.find(c => c.id === targetCarId);
+      if (matched) {
+        setSelectedCar(matched);
+        setCurrentView('car-detail');
       }
+    }
+  }, [cars, selectedCar]);
 
+  // Listen to popstate (HTML5 History API) and hash changes for navigation ONLY (never scrolls on background data updates)
+  useEffect(() => {
+    const handleHistoryOrHashChange = () => {
+      const rawHash = window.location.hash.replace(/^#\/?/, '');
       const clean = (window.location.pathname.replace(/^\//, '') || rawHash.split('?')[0]).trim();
       if (clean === 'login' || clean === 'customer-login') {
         setCustomerAuthTab('login');
@@ -354,19 +358,22 @@ export function App() {
         setCustomerAuthTab('register');
         setCustomerLoginOpen(true);
       }
-      const view = parseViewFromUrl();
-      setCurrentView(view);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      const nextView = parseViewFromUrl();
+      setCurrentView(prevView => {
+        if (prevView !== nextView) {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        return nextView;
+      });
     };
 
-    syncUrlAndCarSelection();
-    window.addEventListener('popstate', syncUrlAndCarSelection);
-    window.addEventListener('hashchange', syncUrlAndCarSelection);
+    window.addEventListener('popstate', handleHistoryOrHashChange);
+    window.addEventListener('hashchange', handleHistoryOrHashChange);
     return () => {
-      window.removeEventListener('popstate', syncUrlAndCarSelection);
-      window.removeEventListener('hashchange', syncUrlAndCarSelection);
+      window.removeEventListener('popstate', handleHistoryOrHashChange);
+      window.removeEventListener('hashchange', handleHistoryOrHashChange);
     };
-  }, [cars]);
+  }, []);
 
   // Sync document title and direction
   useEffect(() => {
