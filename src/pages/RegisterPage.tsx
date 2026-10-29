@@ -1,538 +1,475 @@
 import React, { useState } from 'react';
-import MokhalasaSvgLogo from '../components/brand/MokhalasaSvgLogo';
-import { authService } from '../services/authService';
-import { getPhoneValidationError, normalizeEgyptianPhone } from '../utils/phoneValidator';
-import { 
-  Eye, EyeOff, Mail, Phone, ShieldCheck, 
-  AlertCircle, CheckCircle2, Info
+import {
+  ShieldCheck,
+  User,
+  Mail,
+  Lock,
+  Phone,
+  MapPin,
+  CheckCircle2,
+  AlertCircle,
+  ArrowRight,
+  Calendar,
+  Cpu,
 } from 'lucide-react';
+import { registerUserWithEmail, signInWithOAuthProvider } from '../services/authService';
+import {
+  sanitizeInput,
+  validateStrongPassword,
+  validateAdultAge18Plus,
+  getDeviceSecurityFingerprint,
+  validateOrNormalizeMacAddress,
+  getSafeUserErrorMessage,
+} from '../utils/securityGuard';
+import {
+  GOVERNORATES_LIST,
+  getDistrictsForGovernorate,
+  getSubAreasForDistrict,
+} from '../data/egyptLocationsHierarchy';
+import { SecurityCaptcha } from '../components/security/SecurityCaptcha';
 
 interface RegisterPageProps {
-  onNavigate: (view: string) => void;
-  onOpenLogin: () => void;
-  lang?: 'ar' | 'en';
+  onSuccess: (user: { email: string; fullName: string }) => void;
+  onBackHome: () => void;
 }
 
-interface ValidationErrors {
-  email?: string;
-  phone?: string;
-  password?: string;
-  confirmPassword?: string;
-}
-
-export const RegisterPage: React.FC<RegisterPageProps> = ({
-  onNavigate,
-  onOpenLogin,
-  lang = 'ar'
-}) => {
-  const isAr = lang === 'ar';
-
-  // Form Field States
+export const RegisterPage: React.FC<RegisterPageProps> = ({ onSuccess, onBackHome }) => {
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [confirmAdult18, setConfirmAdult18] = useState(false);
+  const [governorate, setGovernorate] = useState('الجيزة');
+  const [district, setDistrict] = useState('الهرم');
+  const [subArea, setSubArea] = useState('مشعل');
+  const [detailedAddress, setDetailedAddress] = useState('');
+  const [deviceMacId, setDeviceMacId] = useState(() => getDeviceSecurityFingerprint());
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [captchaVerified, setCaptchaVerified] = useState(false);
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [registeredSuccess, setRegisteredSuccess] = useState(false);
 
-  // UI Interactive States
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [errors, setErrors] = useState<ValidationErrors>({});
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const handleGovernorateChange = (newGov: string) => {
+    setGovernorate(newGov);
+    const districts = getDistrictsForGovernorate(newGov);
+    const firstDist = districts[0] || '';
+    setDistrict(firstDist);
+    const subs = getSubAreasForDistrict(newGov, firstDist);
+    setSubArea(subs[0] || '');
+  };
 
-  // Submission States
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<{
-    type: 'info' | 'error' | 'success';
-    title: string;
-    description: string;
-  } | null>(null);
+  const handleDistrictChange = (newDist: string) => {
+    setDistrict(newDist);
+    const subs = getSubAreasForDistrict(governorate, newDist);
+    setSubArea(subs[0] || '');
+  };
 
-  // ---------------------------------------------------------------------------
-  // Validation Logic
-  // ---------------------------------------------------------------------------
-  const validateField = (field: keyof ValidationErrors, val?: string): string | undefined => {
-    switch (field) {
-      case 'email': {
-        const v = (val !== undefined ? val : email).trim();
-        if (!v) return undefined; // Email is optional in Mokhalasa; phone number is primary!
-        // RFC-compliant email regex
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-        if (!emailRegex.test(v)) {
-          return 'يرجى إدخال بريد إلكتروني صحيح (مثال: name@example.com)';
-        }
-        return undefined;
-      }
-
-      case 'phone': {
-        const v = val !== undefined ? val : phone;
-        const err = getPhoneValidationError(v);
-        return err || undefined;
-      }
-
-      case 'password': {
-        const v = val !== undefined ? val : password;
-        if (!v) return 'كلمة المرور مطلوبة';
-        if (v.length < 8) {
-          return 'يجب ألا تقل كلمة المرور عن 8 أحرف وأرقام';
-        }
-        return undefined;
-      }
-
-      case 'confirmPassword': {
-        const v = val !== undefined ? val : confirmPassword;
-        const mainPass = password;
-        if (!v) return 'يرجى تأكيد كلمة المرور';
-        if (v !== mainPass) {
-          return 'كلمتا المرور غير متطابقتين';
-        }
-        return undefined;
-      }
-
-      default:
-        return undefined;
+  const handleOAuthSignIn = async (provider: 'google' | 'apple') => {
+    setError(null);
+    setOauthLoading(provider);
+    try {
+      await signInWithOAuthProvider(provider);
+    } catch (err: any) {
+      setError(getSafeUserErrorMessage(err, `تعذر التسجيل عبر ${provider === 'google' ? 'جوجل' : 'آبل'}`));
+      setOauthLoading(null);
     }
   };
 
-  const validateAll = (): boolean => {
-    const newErrors: ValidationErrors = {
-      email: validateField('email'),
-      phone: validateField('phone'),
-      password: validateField('password'),
-      confirmPassword: validateField('confirmPassword')
-    };
-
-    setErrors(newErrors);
-    setTouched({
-      email: true,
-      phone: true,
-      password: true,
-      confirmPassword: true
-    });
-
-    return !Object.values(newErrors).some(Boolean);
-  };
-
-  const handleBlur = (field: keyof ValidationErrors) => {
-    setTouched(prev => ({ ...prev, [field]: true }));
-    const err = validateField(field);
-    setErrors(prev => ({ ...prev, [field]: err }));
-  };
-
-  // ---------------------------------------------------------------------------
-  // Submit Handler — Form Email/Password via Supabase Auth
-  // ---------------------------------------------------------------------------
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting || isGoogleSubmitting) return;
+    setError(null);
 
-    setStatusMessage(null);
+    const cleanName = sanitizeInput(fullName, 120);
+    const cleanPhone = sanitizeInput(phone, 20).replace(/\D/g, '');
+    const cleanEmail = sanitizeInput(email, 140);
+    const cleanStreet = sanitizeInput(detailedAddress, 240);
 
-    const isValid = validateAll();
-    if (!isValid) return;
+    if (!cleanName || cleanName.length < 3) {
+      setError('يرجى إدخال الاسم الثلاثي بالكامل.');
+      return;
+    }
 
-    setIsSubmitting(true);
+    const phoneRegex = /^01[0125][0-9]{8}$/;
+    if (!phoneRegex.test(cleanPhone)) {
+      setError('يرجى إدخال رقم موبايل مصري صحيح مكون من 11 رقم (يبدأ بـ 010 أو 011 أو 012 أو 015)');
+      return;
+    }
 
+    const ageCheck = validateAdultAge18Plus(birthDate);
+    if (!ageCheck.isAdult) {
+      setError(ageCheck.error || 'يشترط ألا يقل عمر المستخدم عن 18 عاماً كاملة للتسجيل.');
+      return;
+    }
+
+    if (!confirmAdult18) {
+      setError('يرجى الإقرار بأن عمرك 18 عاماً فأكثر وتتمتع بالأهلية القانونية الكاملة.');
+      return;
+    }
+
+    if (!governorate || !district || !subArea || cleanStreet.length < 5) {
+      setError('يرجى تحديد العنوان بالتفصيل (المحافظة ← الحي/المدينة ← المنطقة الفرعية ← الشارع والعقار).');
+      return;
+    }
+
+    const pwdStrength = validateStrongPassword(password, cleanPhone);
+    if (!pwdStrength.isValid) {
+      setError(pwdStrength.errors[0] || 'كلمة المرور ضعيفة، يرجى الالتزام بمعايير كلمة المرور القوية.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('كلمتا المرور غير متطابقتين');
+      return;
+    }
+
+    if (!captchaVerified) {
+      setError('يرجى إتمام التحقق الأمني (CAPTCHA) قبل إنشاء الحساب.');
+      return;
+    }
+
+    setLoading(true);
     try {
-      const cleanPhone = normalizeEgyptianPhone(phone);
-      const effectiveEmail = email.trim() || `${cleanPhone}@customer.mokhalasa.com`;
-      // Call Supabase Auth service
-      const response = await authService.registerWithEmail({
-        email: effectiveEmail,
+      await registerUserWithEmail({
+        email: cleanEmail,
+        password,
+        fullName: cleanName,
         phone: cleanPhone,
-        password
+        governorate,
+        district,
+        subArea,
+        detailedAddress: cleanStreet,
+        birthDate,
+        deviceMacId: validateOrNormalizeMacAddress(deviceMacId),
       });
-
-      if (response.success) {
-        setStatusMessage({
-          type: 'success',
-          title: response.requiresEmailConfirmation ? 'تم إنشاء الحساب بنجاح (تأكيد البريد مطلوب)' : 'تم إنشاء الحساب بنجاح',
-          description: response.message
-        });
-        // Clear sensitive password inputs
-        setPassword('');
-        setConfirmPassword('');
-      } else {
-        setStatusMessage({
-          type: 'error',
-          title: 'تعذر إنشاء الحساب',
-          description: response.message
-        });
-      }
-    } catch {
-      setStatusMessage({
-        type: 'error',
-        title: 'تعذر معالجة الطلب',
-        description: 'حدث خطأ غير متوقع أثناء معالجة الطلب. يرجى المحاولة مرة أخرى.'
-      });
+      setRegisteredSuccess(true);
+      setTimeout(() => {
+        onSuccess({ email: cleanEmail, fullName: cleanName });
+      }, 1500);
+    } catch (err: any) {
+      setCaptchaResetKey((k) => k + 1);
+      setError(getSafeUserErrorMessage(err, 'حدث خطأ أثناء إنشاء الحساب، يرجى المحاولة مرة أخرى.'));
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
-  // ---------------------------------------------------------------------------
-  // Google Registration Handler via Supabase Auth
-  // ---------------------------------------------------------------------------
-  const handleGoogleRegister = async () => {
-    if (isSubmitting || isGoogleSubmitting) return;
-
-    setIsGoogleSubmitting(true);
-    setStatusMessage(null);
-
-    try {
-      const response = await authService.registerWithGoogle();
-      if (response.success) {
-        setStatusMessage({
-          type: 'info',
-          title: 'المصادقة عبر Google',
-          description: response.message
-        });
-      } else {
-        setStatusMessage({
-          type: 'info',
-          title: 'إعدادات Google OAuth في Supabase',
-          description: response.message
-        });
-      }
-    } catch {
-      setStatusMessage({
-        type: 'error',
-        title: 'خطأ في المصادقة',
-        description: 'تعذر الاتصال بمزود Google مؤقتاً.'
-      });
-    } finally {
-      setIsGoogleSubmitting(false);
-    }
-  };
+  const pwdStrength = validateStrongPassword(password, phone);
+  const availableDistricts = getDistrictsForGovernorate(governorate);
+  const availableSubAreas = getSubAreasForDistrict(governorate, district);
 
   return (
-    <div className="min-h-screen bg-brand-bg py-10 px-4 sm:px-6 lg:px-8 flex flex-col justify-center" dir={isAr ? 'rtl' : 'ltr'}>
-      <div className="max-w-md w-full mx-auto space-y-6">
-
-        {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="flex justify-center cursor-pointer" onClick={() => onNavigate('home')}>
-            <MokhalasaSvgLogo variant="dark" height={44} />
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-brand-navy tracking-tight">
-            إنشاء حساب جديد
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
-            انضم إلى منصة «مخلصة» لحفظ سياراتك المفضلة وتتبع إجراءات تسوية التمويل بأمان وموثوقية.
-          </p>
-        </div>
-
-        {/* Main Registration Card */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-card space-y-5 animate-fadeIn">
-
-          {/* Staging & Feedback Alert */}
-          {statusMessage && (
-            <div className={`p-4 rounded-2xl border text-xs space-y-1.5 animate-fadeIn ${
-              statusMessage.type === 'success'
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                : statusMessage.type === 'info'
-                ? 'bg-amber-50/90 border-amber-200 text-amber-900'
-                : 'bg-rose-50 border-rose-200 text-rose-900'
-            }`}>
-              <div className="flex items-center gap-2 font-bold text-xs">
-                {statusMessage.type === 'success' ? (
-                  <CheckCircle2 className="w-4 h-4 text-brand-green flex-shrink-0" />
-                ) : statusMessage.type === 'info' ? (
-                  <Info className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
-                )}
-                <span>{statusMessage.title}</span>
-              </div>
-              <p className="text-2xs leading-relaxed text-slate-700">
-                {statusMessage.description}
+    <div className="min-h-screen bg-slate-950 py-12 px-4 flex items-center justify-center" dir="rtl">
+      <div className="max-w-xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
+        <div className="bg-gradient-to-l from-emerald-900 via-slate-900 to-slate-950 p-7 text-white relative">
+          <button
+            onClick={onBackHome}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-white mb-4 bg-white/10 px-3 py-1.5 rounded-xl"
+          >
+            <ArrowRight className="w-3.5 h-3.5" />
+            <span>العودة للرئيسية</span>
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center shadow-lg">
+              <ShieldCheck className="w-7 h-7 text-slate-950" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black">إنشاء حساب موثق وآمن في مُخلصة</h1>
+              <p className="text-xs text-emerald-300 font-medium mt-0.5">
+                حماية مشفرة PBKDF2 • تحقق السن القانوني (+18) • ربط العنوان وبصمة الجهاز
               </p>
             </div>
-          )}
+          </div>
+        </div>
 
-          {/* Registration Form */}
-          <form onSubmit={handleSubmit} noValidate className="space-y-4">
-
-            {/* 1. البريد الإلكتروني — Email Input (اختياري) */}
-            <div className="space-y-1 text-right">
-              <label 
-                htmlFor="register-email" 
-                className="block text-xs font-bold text-slate-700"
-              >
-                البريد الإلكتروني <span className="text-slate-400 font-normal">(اختياري — رقم الهاتف أساسي)</span>
-              </label>
-              <div className="relative">
-                <input
-                  id="register-email"
-                  name="email"
-                  type="email"
-                  dir="ltr"
-                  autoComplete="email"
-                  disabled={isSubmitting || isGoogleSubmitting}
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    if (touched.email) {
-                      setErrors(prev => ({ ...prev, email: validateField('email', e.target.value) }));
-                    }
-                  }}
-                  onBlur={() => handleBlur('email')}
-                  placeholder="name@example.com"
-                  className={`w-full pr-3.5 pl-10 py-2.5 rounded-xl border text-xs font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 transition text-left ${
-                    touched.email && errors.email
-                      ? 'border-rose-300 bg-rose-50/30 focus:ring-rose-400'
-                      : 'border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-brand-green focus:border-brand-green'
-                  }`}
-                />
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <div className="p-7">
+          {registeredSuccess ? (
+            <div className="text-center py-8 space-y-4">
+              <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-10 h-10" />
               </div>
-              {touched.email && errors.email && (
-                <p className="text-2xs text-rose-600 font-bold flex items-center gap-1 mt-1 animate-fadeIn">
-                  <AlertCircle className="w-3 h-3 flex-shrink-0" />
-                  <span>{errors.email}</span>
-                </p>
-              )}
+              <h2 className="text-xl font-black text-slate-900">تم إنشاء وتأمين حسابك بنجاح!</h2>
+              <p className="text-sm text-slate-600">
+                تم حفظ بياناتك المشفرة وربط بصمة الجهاز بقاعدة البيانات...
+              </p>
             </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-2.5 text-red-700 text-xs font-bold">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{error}</span>
+                </div>
+              )}
 
-            {/* 2. رقم التليفون — Egyptian / International Phone Input */}
-            <div className="space-y-1 text-right">
-              <div className="flex items-center justify-between">
-                <label 
-                  htmlFor="register-phone" 
-                  className="block text-xs font-bold text-slate-700"
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleOAuthSignIn('google')}
+                  disabled={oauthLoading !== null}
+                  className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border border-slate-300 hover:bg-slate-50 font-black text-xs text-slate-800 transition-all shadow-sm"
                 >
-                  رقم التليفون <span className="text-rose-500">*</span>
+                  <span>التسجيل بحساب Google</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOAuthSignIn('apple')}
+                  disabled={oauthLoading !== null}
+                  className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-slate-950 hover:bg-slate-800 font-black text-xs text-white transition-all shadow-sm"
+                >
+                  <span>التسجيل بحساب Apple</span>
+                </button>
+              </div>
+
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-slate-200"></div>
+                <span className="flex-shrink mx-3 text-[11px] font-bold text-slate-400">
+                  أو التسجيل الكامل بالبيانات الموثقة
+                </span>
+                <div className="flex-grow border-t border-slate-200"></div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-slate-700 mb-1.5">
+                  الاسم الثلاثي بالكامل *
                 </label>
-                <span className="text-3xs text-slate-400 font-mono" dir="ltr">+20 / 010...</span>
+                <div className="relative">
+                  <User className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="أحمد محمد علي"
+                    className="w-full pr-10 pl-4 py-3 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none text-sm"
+                  />
+                </div>
               </div>
-              <div className="relative">
-                <input
-                  id="register-phone"
-                  name="phone"
-                  type="tel"
-                  dir="ltr"
-                  autoComplete="tel"
-                  disabled={isSubmitting || isGoogleSubmitting}
-                  value={phone}
-                  onChange={(e) => {
-                    setPhone(e.target.value);
-                    if (touched.phone) {
-                      setErrors(prev => ({ ...prev, phone: validateField('phone', e.target.value) }));
-                    }
-                  }}
-                  onBlur={() => handleBlur('phone')}
-                  placeholder="010XXXXXXXX أو +2010XXXXXXXX"
-                  className={`w-full pr-3.5 pl-10 py-2.5 rounded-xl border text-xs font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 transition text-left ${
-                    touched.phone && errors.phone
-                      ? 'border-rose-300 bg-rose-50/30 focus:ring-rose-400'
-                      : 'border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-brand-green focus:border-brand-green'
-                  }`}
-                />
-                <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-              {touched.phone && errors.phone && (
-                <p className="text-2xs text-rose-600 font-bold flex items-center gap-1 mt-1 animate-fadeIn">
-                  <AlertCircle className="w-3 h-3 flex-shrink-0" />
-                  <span>{errors.phone}</span>
-                </p>
-              )}
-            </div>
 
-            {/* 3. كلمة المرور — Password Input with Show/Hide Toggle */}
-            <div className="space-y-1 text-right">
-              <label 
-                htmlFor="register-password" 
-                className="block text-xs font-bold text-slate-700"
-              >
-                كلمة المرور <span className="text-rose-500">*</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-black text-slate-700 mb-1.5">
+                    البريد الإلكتروني *
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="user@example.com"
+                      className="w-full pr-10 pl-4 py-3 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-slate-700 mb-1.5">
+                    رقم الموبايل المصري *
+                  </label>
+                  <div className="relative">
+                    <Phone className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="tel"
+                      required
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="01012345678"
+                      className="w-full pr-10 pl-4 py-3 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-slate-700 mb-1.5">
+                  تاريخ الميلاد (يشترط ألا يقل السن عن 18 عاماً) *
+                </label>
+                <div className="relative">
+                  <Calendar className="w-4 h-4 text-amber-600 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="date"
+                    required
+                    max={new Date(new Date().setFullYear(new Date().getFullYear() - 18))
+                      .toISOString()
+                      .split('T')[0]}
+                    value={birthDate}
+                    onChange={(e) => setBirthDate(e.target.value)}
+                    className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none text-sm font-bold"
+                  />
+                </div>
+              </div>
+
+              {/* Hierarchical 4-Level Address */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+                <div className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-emerald-600" />
+                  <span>العنوان التفصيلي المتدرج (المحافظة ← الحي/القسم ← المنطقة الفرعية) *</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-600 mb-1">1. المحافظة</label>
+                    <select
+                      value={governorate}
+                      onChange={(e) => handleGovernorateChange(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white"
+                    >
+                      {GOVERNORATES_LIST.map((g) => (
+                        <option key={g} value={g}>
+                          {g}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-600 mb-1">2. الحي / القسم</label>
+                    <select
+                      value={district}
+                      onChange={(e) => handleDistrictChange(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white"
+                    >
+                      {availableDistricts.map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-600 mb-1">3. المنطقة الفرعية</label>
+                    <select
+                      value={subArea}
+                      onChange={(e) => setSubArea(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white"
+                    >
+                      {availableSubAreas.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-black text-slate-600 mb-1">
+                    4. الشارع / رقم العقار / علامة مميزة *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={detailedAddress}
+                    onChange={(e) => setDetailedAddress(e.target.value)}
+                    placeholder={`مثال: ${governorate} - ${district} - ${subArea} - شارع...`}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Device MAC Security Fingerprint */}
+              <div className="bg-slate-900 text-white rounded-2xl p-3 border border-slate-800">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] font-black text-amber-400 flex items-center gap-1.5">
+                    <Cpu className="w-3.5 h-3.5" />
+                    بصمة الجهاز (Device MAC Security ID)
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  dir="ltr"
+                  value={deviceMacId}
+                  onChange={(e) => setDeviceMacId(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-amber-300 font-mono text-xs font-bold text-center"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-black text-slate-700 mb-1.5">
+                    كلمة المرور القوية *
+                  </label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full pr-10 pl-4 py-3 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-slate-700 mb-1.5">
+                    تأكيد كلمة المرور *
+                  </label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="password"
+                      required
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full pr-10 pl-4 py-3 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {password.length > 0 && (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold">
+                  <div className="flex justify-between mb-1">
+                    <span>قوة كلمة المرور:</span>
+                    <span className={pwdStrength.colorClass.split(' ')[1]}>{pwdStrength.label}</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${pwdStrength.colorClass.split(' ')[0]}`}
+                      style={{ width: `${pwdStrength.score}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={confirmAdult18}
+                  onChange={(e) => setConfirmAdult18(e.target.checked)}
+                  className="mt-1 w-4 h-4 accent-emerald-600 rounded"
+                />
+                <span className="text-xs text-slate-700 font-black leading-relaxed">
+                  أقر بأن عمري 18 عاماً فأكثر وأتمتع بالأهلية القانونية الكاملة للتعامل المالي والقانوني على المنصة. *
+                </span>
               </label>
-              <div className="relative">
-                <input
-                  id="register-password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  dir="ltr"
-                  autoComplete="new-password"
-                  disabled={isSubmitting || isGoogleSubmitting}
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    if (touched.password) {
-                      setErrors(prev => ({ ...prev, password: validateField('password', e.target.value) }));
-                    }
-                    if (touched.confirmPassword && confirmPassword) {
-                      setErrors(prev => ({ ...prev, confirmPassword: e.target.value !== confirmPassword ? 'كلمتا المرور غير متطابقتين' : undefined }));
-                    }
-                  }}
-                  onBlur={() => handleBlur('password')}
-                  placeholder="••••••••"
-                  className={`w-full pr-3.5 pl-10 py-2.5 rounded-xl border text-xs font-mono placeholder:text-slate-400 focus:outline-none focus:ring-2 transition text-left ${
-                    touched.password && errors.password
-                      ? 'border-rose-300 bg-rose-50/30 focus:ring-rose-400'
-                      : 'border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-brand-green focus:border-brand-green'
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 focus:outline-none"
-                  aria-label={showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              {touched.password && errors.password ? (
-                <p className="text-2xs text-rose-600 font-bold flex items-center gap-1 mt-1 animate-fadeIn">
-                  <AlertCircle className="w-3 h-3 flex-shrink-0" />
-                  <span>{errors.password}</span>
-                </p>
-              ) : (
-                <p className="text-3xs text-slate-400">8 أحرف وأرقام على الأقل</p>
-              )}
-            </div>
 
-            {/* 4. تأكيد كلمة المرور — Confirm Password Input with Show/Hide Toggle */}
-            <div className="space-y-1 text-right">
-              <label 
-                htmlFor="register-confirm-password" 
-                className="block text-xs font-bold text-slate-700"
-              >
-                تأكيد كلمة المرور <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  id="register-confirm-password"
-                  name="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  dir="ltr"
-                  autoComplete="new-password"
-                  disabled={isSubmitting || isGoogleSubmitting}
-                  value={confirmPassword}
-                  onChange={(e) => {
-                    setConfirmPassword(e.target.value);
-                    if (touched.confirmPassword) {
-                      setErrors(prev => ({ ...prev, confirmPassword: validateField('confirmPassword', e.target.value) }));
-                    }
-                  }}
-                  onBlur={() => handleBlur('confirmPassword')}
-                  placeholder="••••••••"
-                  className={`w-full pr-3.5 pl-10 py-2.5 rounded-xl border text-xs font-mono placeholder:text-slate-400 focus:outline-none focus:ring-2 transition text-left ${
-                    touched.confirmPassword && errors.confirmPassword
-                      ? 'border-rose-300 bg-rose-50/30 focus:ring-rose-400'
-                      : 'border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-brand-green focus:border-brand-green'
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 focus:outline-none"
-                  aria-label={showConfirmPassword ? 'إخفاء تأكيد كلمة المرور' : 'إظهار تأكيد كلمة المرور'}
-                >
-                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              {touched.confirmPassword && errors.confirmPassword && (
-                <p className="text-2xs text-rose-600 font-bold flex items-center gap-1 mt-1 animate-fadeIn">
-                  <AlertCircle className="w-3 h-3 flex-shrink-0" />
-                  <span>{errors.confirmPassword}</span>
-                </p>
-              )}
-            </div>
+              <SecurityCaptcha
+                onVerifyChange={setCaptchaVerified}
+                resetTrigger={captchaResetKey}
+                compact
+              />
 
-            {/* Primary Submit Button: إنشاء حساب */}
-            <div className="pt-2">
               <button
                 type="submit"
-                disabled={isSubmitting || isGoogleSubmitting}
-                className="w-full py-3.5 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-black text-sm shadow-md shadow-brand-green/20 transition flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={loading}
+                className="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-400 text-white font-black text-base shadow-lg shadow-emerald-600/25 transition-all"
               >
-                {isSubmitting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>جاري التحقق من البيانات...</span>
-                  </>
-                ) : (
-                  <span>إنشاء حساب</span>
-                )}
+                {loading ? 'جاري التسجيل والتشفير...' : 'إنشاء الحساب الموثق الآن'}
               </button>
-            </div>
-          </form>
-
-          {/* Separator: أو */}
-          <div className="relative flex items-center justify-center my-5">
-            <div className="border-t border-slate-200 w-full" />
-            <span className="bg-white px-3 text-xs font-bold text-slate-400 absolute">
-              أو
-            </span>
-          </div>
-
-          {/* Secondary Button: التسجيل باستخدام Google */}
-          <div>
-            <button
-              type="button"
-              onClick={handleGoogleRegister}
-              disabled={isSubmitting || isGoogleSubmitting}
-              className="w-full py-3 px-4 rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs shadow-sm hover:shadow transition flex items-center justify-center gap-2.5 active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {isGoogleSubmitting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-slate-700 border-t-transparent rounded-full animate-spin" />
-                  <span>جاري الاتصال بـ Google...</span>
-                </>
-              ) : (
-                <>
-                  {/* Official Google Multi-color 'G' SVG */}
-                  <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                    />
-                  </svg>
-                  <span>التسجيل باستخدام Google</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Bottom Prompt: عندك حساب بالفعل؟ تسجيل الدخول */}
-          <div className="pt-2 text-center text-xs text-slate-500 border-t border-slate-100">
-            <span>عندك حساب بالفعل؟</span>{' '}
-            <button
-              type="button"
-              onClick={onOpenLogin}
-              className="text-brand-green hover:text-emerald-700 font-extrabold hover:underline transition"
-            >
-              تسجيل الدخول
-            </button>
-          </div>
-
+            </form>
+          )}
         </div>
-
-        {/* Security & Privacy Badges */}
-        <div className="flex items-center justify-center gap-4 text-3xs text-slate-400 text-center">
-          <div className="flex items-center gap-1">
-            <ShieldCheck className="w-3.5 h-3.5 text-brand-green" />
-            <span>اتصال مشفر وآمن (256-bit SSL)</span>
-          </div>
-          <span>•</span>
-          <div>حماية البيانات طبقاً لقانون 151 لسنة 2020</div>
-        </div>
-
       </div>
     </div>
   );
 };
-
-export default RegisterPage;
