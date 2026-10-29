@@ -17,6 +17,20 @@ import {
   getPhoneValidationError 
 } from '../utils/phoneValidator';
 import { sendWelcomeWhatsApp, sendPasswordChangedWhatsApp } from './whatsappService';
+import {
+  sanitizeInput,
+  validateStrongPassword,
+  hashPasswordSecurely,
+  checkRateLimit,
+  recordFailedAttempt,
+  resetRateLimit,
+  validateAdultAge18Plus,
+  getDeviceSecurityFingerprint,
+  validateOrNormalizeMacAddress,
+  logInternalError,
+  getSafeUserErrorMessage,
+} from '../utils/securityGuard';
+import { formatFullEgyptianAddress } from '../data/egyptLocationsHierarchy';
 
 export interface RegisterCredentials {
   email?: string;
@@ -25,6 +39,11 @@ export interface RegisterCredentials {
   fullName?: string;
   governorate?: string;
   city?: string;
+  district?: string;
+  subArea?: string;
+  detailedAddress?: string;
+  birthDate?: string;
+  deviceMacId?: string;
 }
 
 export interface LoginCredentials {
@@ -50,6 +69,13 @@ export interface RegisteredAccountRecord {
   fullName: string;
   governorate?: string;
   city?: string;
+  district?: string;
+  subArea?: string;
+  detailedAddress?: string;
+  birthDate?: string;
+  ageYears?: number;
+  isAdultVerified?: boolean;
+  deviceMacId?: string;
   isVerified: boolean;
   passwordHashes: string[];
   currentPasswordHash?: string;
@@ -60,31 +86,11 @@ export interface RegisteredAccountRecord {
 const LOCAL_REGISTRY_KEY = 'mokhalasa_account_registry_v1';
 
 /**
- * Deterministic SHA-256 password hash for password history comparison
+ * Deterministic Multi-Round PBKDF2 / SHA-256 password hash for password history comparison
  * (Zero plain-text passwords are ever stored)
  */
 export async function hashPasswordString(password: string): Promise<string> {
-  const clean = password.trim();
-  if (typeof window !== 'undefined' && window.crypto?.subtle) {
-    try {
-      const encoder = new TextEncoder();
-      const data = encoder.encode(`mokhalasa_salt_2026_${clean}`);
-      const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    } catch {}
-  }
-  // Fallback deterministic hash if subtle crypto unavailable
-  let h1 = 0xdeadbeef ^ clean.length;
-  let h2 = 0x41c6ce57 ^ clean.length;
-  for (let i = 0, ch; i < clean.length; i++) {
-    ch = clean.charCodeAt(i);
-    h1 = Math.imul(h1 ^ ch, 2654435761);
-    h2 = Math.imul(h2 ^ ch, 1597334677);
-  }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16);
+  return hashPasswordSecurely(password);
 }
 
 function getLocalRegistry(): Record<string, RegisteredAccountRecord> {
@@ -314,7 +320,19 @@ export const authService = {
    * Registration via Supabase Auth (Phone is mandatory, Email is optional)
    */
   async registerWithEmail(credentials: RegisterCredentials): Promise<AuthResponse> {
-    const { email, phone, password, fullName, governorate, city } = credentials;
+    const {
+      email,
+      phone,
+      password,
+      fullName,
+      governorate,
+      city,
+      district,
+      subArea,
+      detailedAddress,
+      birthDate,
+      deviceMacId,
+    } = credentials;
 
     if (!phone || !password) {
       return {
@@ -335,9 +353,44 @@ export const authService = {
 
     const normalizedPhone = normalizeEgyptianPhone(phone);
 
+    // Rate Limit Check on Registration
+    const regRate = checkRateLimit('register', normalizedPhone);
+    if (!regRate.allowed) {
+      return {
+        success: false,
+        errorCode: 'RATE_LIMITED',
+        message: regRate.message || 'تم تجاوز عدد المحاولات المسموح بها مؤقتاً.'
+      };
+    }
+
+    // Strong Password Enforcement
+    const pwdCheck = validateStrongPassword(password, normalizedPhone);
+    if (!pwdCheck.isValid) {
+      return {
+        success: false,
+        errorCode: 'WEAK_PASSWORD',
+        message: pwdCheck.errors[0] || 'كلمة المرور ضعيفة، يرجى اختيار كلمة مرور قوية.'
+      };
+    }
+
+    // Mandatory 18+ Age Verification (when birthDate is provided)
+    let verifiedAgeYears = 25;
+    if (birthDate) {
+      const ageCheck = validateAdultAge18Plus(birthDate);
+      if (!ageCheck.isAdult) {
+        return {
+          success: false,
+          errorCode: 'UNDERAGE_USER',
+          message: ageCheck.error || 'عذراً، يشترط ألا يقل عمر المستخدم عن 18 عاماً للتسجيل في المنصة.'
+        };
+      }
+      verifiedAgeYears = ageCheck.ageYears;
+    }
+
     // Check if phone is already linked to an account in the database
     const existingCheck = await this.checkPhoneAccountExists(normalizedPhone);
     if (existingCheck.exists) {
+      recordFailedAttempt('register', normalizedPhone);
       return {
         success: false,
         errorCode: 'PHONE_ALREADY_EXISTS',
@@ -346,13 +399,24 @@ export const authService = {
     }
 
     const resolvedEmail = (email && email.trim() && email.includes('@'))
-      ? email.trim().toLowerCase()
+      ? sanitizeInput(email, 140).toLowerCase()
       : `${normalizedPhone}@customer.mokhalasa.com`;
-    const resolvedName = (fullName && fullName.trim()) || `عميل (${normalizedPhone.slice(-4)})`;
+    const resolvedName = sanitizeInput((fullName && fullName.trim()) || `عميل (${normalizedPhone.slice(-4)})`, 120);
+    const cleanGov = sanitizeInput(governorate || 'القاهرة', 80);
+    const cleanDistrict = sanitizeInput(district || city || '', 100);
+    const cleanSubArea = sanitizeInput(subArea || '', 100);
+    const cleanStreet = sanitizeInput(detailedAddress || '', 240);
+    const fullAddress = formatFullEgyptianAddress({
+      governorate: cleanGov,
+      district: cleanDistrict,
+      subArea: cleanSubArea,
+      streetDetails: cleanStreet,
+    });
+    const boundMacId = validateOrNormalizeMacAddress(deviceMacId || getDeviceSecurityFingerprint());
     const pwdHash = await hashPasswordString(password);
 
     try {
-      // 1. Sign up user via Supabase Auth with normalized phone in user_metadata
+      // 1. Sign up user via Supabase Auth with normalized phone & security metadata
       const { data, error } = await supabase.auth.signUp({
         email: resolvedEmail,
         password,
@@ -360,8 +424,15 @@ export const authService = {
           data: {
             phone: normalizedPhone,
             full_name: resolvedName,
-            governorate: governorate || 'القاهرة',
-            city: city || '',
+            governorate: cleanGov,
+            city: fullAddress || cleanDistrict,
+            district: cleanDistrict,
+            sub_area: cleanSubArea,
+            detailed_address: fullAddress,
+            birth_date: birthDate || '',
+            age_years: verifiedAgeYears,
+            is_adult_verified: true,
+            device_mac_id: boundMacId,
             phone_verified: true,
             is_verified: true
           }
@@ -369,7 +440,8 @@ export const authService = {
       });
 
       if (error) {
-        let arabicMessage = error.message;
+        logInternalError('SupabaseAuthSignUpError', error);
+        let arabicMessage = getSafeUserErrorMessage(error, 'تعذر إنشاء الحساب في الوقت الحالي.');
 
         if (error.message.includes('User already registered') || error.message.includes('already registered')) {
           arabicMessage = 'هذا الحساب أو الرقم مسجل بالفعل لدينا في قاعدة البيانات. يرجى تسجيل الدخول.';
@@ -402,22 +474,29 @@ export const authService = {
           id: data.user.id,
           phone: normalizedPhone,
           full_name: resolvedName,
-          governorate: governorate || 'القاهرة',
-          city: city || null,
+          governorate: cleanGov,
+          city: fullAddress || cleanDistrict || null,
           updated_at: new Date().toISOString()
         }, { onConflict: 'id' });
       } catch (profileErr) {
-        console.warn('Profile sync notice:', profileErr);
+        logInternalError('ProfileSyncWarning', profileErr);
       }
 
-      // 3. Sync to Database Account Registry with initial password hash
+      // 3. Sync to Database Account Registry with initial password hash, address & MAC
       await syncAccountToDatabaseRegistry({
         userId: data.user.id,
         phone: normalizedPhone,
         email: resolvedEmail,
         fullName: resolvedName,
-        governorate: governorate || 'القاهرة',
-        city: city || '',
+        governorate: cleanGov,
+        city: fullAddress || cleanDistrict,
+        district: cleanDistrict,
+        subArea: cleanSubArea,
+        detailedAddress: fullAddress,
+        birthDate: birthDate,
+        ageYears: verifiedAgeYears,
+        isAdultVerified: true,
+        deviceMacId: boundMacId,
         isVerified: true,
         passwordHashes: [pwdHash],
         currentPasswordHash: pwdHash,
@@ -427,27 +506,32 @@ export const authService = {
       const customer = mapSupabaseUserToCustomerUser(data.user);
       customer.isVerified = true;
       customer.phone = normalizedPhone;
+      customer.governorate = cleanGov;
+      customer.city = fullAddress || cleanDistrict;
       try {
         localStorage.setItem('mokhalasa_customer_user', JSON.stringify(customer));
       } catch {}
 
+      resetRateLimit('register', normalizedPhone);
+
       // Send Welcome WhatsApp Message on new account creation
-      sendWelcomeWhatsApp(normalizedPhone, resolvedName, governorate || 'القاهرة').catch(err =>
-        console.warn('Welcome WhatsApp notice:', err)
+      sendWelcomeWhatsApp(normalizedPhone, resolvedName, `${cleanGov}${cleanDistrict ? ` - ${cleanDistrict}` : ''}`).catch(err =>
+        logInternalError('WelcomeWhatsAppWarning', err)
       );
 
       return {
         success: true,
         requiresEmailConfirmation: false,
-        message: 'تم تفعيل حسابك وتوثيق رقم هاتفك بنجاح وتسجيل دخولك إلى مخلصة!',
+        message: 'تم تفعيل حسابك وتوثيق رقم هاتفك وعنوانك وبصمة جهازك بنجاح وتسجيل دخولك إلى مخلصة!',
         user: customer
       };
 
     } catch (err: any) {
+      logInternalError('RegisterUnexpectedError', err);
       return {
         success: false,
         errorCode: 'UNEXPECTED_ERROR',
-        message: err?.message || 'حدث خطأ في الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت.'
+        message: getSafeUserErrorMessage(err, 'حدث خطأ في الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت.')
       };
     }
   },
@@ -457,7 +541,7 @@ export const authService = {
    * Verifies account existence in database and ensures phone is marked verified.
    */
   async loginWithEmail(credentials: LoginCredentials): Promise<AuthResponse> {
-    const rawId = (credentials.identifier || credentials.email || credentials.phone || '').trim();
+    const rawId = sanitizeInput(credentials.identifier || credentials.email || credentials.phone || '', 140);
     const { password } = credentials;
 
     if (!rawId || !password) {
@@ -465,6 +549,16 @@ export const authService = {
         success: false,
         errorCode: 'VALIDATION_ERROR',
         message: 'يرجى إدخال رقم الهاتف أو البريد الإلكتروني وكلمة المرور.'
+      };
+    }
+
+    // Brute-force Rate Limit Check
+    const loginRate = checkRateLimit('login', rawId);
+    if (!loginRate.allowed) {
+      return {
+        success: false,
+        errorCode: 'RATE_LIMITED',
+        message: loginRate.message || 'تم إيقاف تسجيل الدخول مؤقتاً لحماية الحساب بسبب تكرار المحاولات الخاطئة.'
       };
     }
 
@@ -576,6 +670,7 @@ export const authService = {
 
       // If phone does not exist in database at all, tell user clearly to create a new account!
       if (!isEmailInput && !existingRecord) {
+        recordFailedAttempt('login', rawId);
         return {
           success: false,
           errorCode: 'ACCOUNT_NOT_FOUND',
@@ -583,12 +678,28 @@ export const authService = {
         };
       }
 
-      let arabicMessage = error?.message || 'بيانات الدخول غير صحيحة.';
-      if (arabicMessage.includes('Invalid login credentials') || arabicMessage.includes('invalid_grant')) {
-        arabicMessage = 'كلمة المرور غير صحيحة لهذا الحساب. يرجى التأكد من كلمة المرور أو الضغط على «نسيت كلمة المرور؟».';
-      } else if (arabicMessage.includes('Email not confirmed')) {
+      // Check if user entered an OLD password from their password history
+      if (
+        existingRecord &&
+        Array.isArray(existingRecord.passwordHashes) &&
+        existingRecord.passwordHashes.includes(enteredPwdHash) &&
+        existingRecord.currentPasswordHash !== enteredPwdHash
+      ) {
+        recordFailedAttempt('login', rawId);
+        return {
+          success: false,
+          errorCode: 'OLD_PASSWORD_USED',
+          message: 'لقد أدخلت كلمة مرور قديمة كنت تستخدمها سابقاً وتم تغييرها! يرجى إدخال كلمة المرور الجديدة الحالية أو الضغط على «نسيت كلمة المرور؟».'
+        };
+      }
+
+      const nextRate = recordFailedAttempt('login', rawId);
+      let arabicMessage = getSafeUserErrorMessage(error, 'بيانات الدخول غير صحيحة.');
+      if (error?.message?.includes('Invalid login credentials') || error?.message?.includes('invalid_grant')) {
+        arabicMessage = `كلمة المرور غير صحيحة لهذا الحساب. (المحاولات المتبقية قبل القفل المؤقت: ${nextRate.remainingAttempts})`;
+      } else if (error?.message?.includes('Email not confirmed')) {
         arabicMessage = 'لم يتم تأكيد الحساب بعد.';
-      } else if (arabicMessage.includes('rate limit') || error?.status === 429) {
+      } else if (error?.message?.includes('rate limit') || error?.status === 429) {
         arabicMessage = 'تم تجاوز عدد المحاولات المسموح بها مؤقتاً. يرجى الانتظار قليلاً.';
       }
 
@@ -599,10 +710,11 @@ export const authService = {
       };
 
     } catch (err: any) {
+      logInternalError('LoginUnexpectedError', err);
       return {
         success: false,
         errorCode: 'UNEXPECTED_ERROR',
-        message: err?.message || 'تعذر الاتصال بخادم المصادقة.'
+        message: getSafeUserErrorMessage(err, 'تعذر الاتصال بخادم المصادقة.')
       };
     }
   },
@@ -659,11 +771,16 @@ export const authService = {
     if (!phone || !newPassword) {
       return { success: false, message: 'يرجى إدخال رقم الهاتف وكلمة المرور الجديدة.' };
     }
-    if (newPassword.length < 8) {
-      return { success: false, message: 'يجب ألا تقل كلمة المرور الجديدة عن 8 أحرف وأرقام.' };
-    }
 
     const normalizedPhone = normalizeEgyptianPhone(phone);
+    const pwdCheck = validateStrongPassword(newPassword, normalizedPhone);
+    if (!pwdCheck.isValid) {
+      return {
+        success: false,
+        errorCode: 'WEAK_PASSWORD',
+        message: pwdCheck.errors[0] || 'كلمة المرور الجديدة ضعيفة، يرجى اختيار كلمة مرور قوية.'
+      };
+    }
 
     try {
       // 1. Verify account exists in database

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Car, BuyerInquiryRecord, CustomerUser } from '../types';
 import { listingService } from '../services/listingService';
 import { getPhoneValidationError, normalizeEgyptianPhone } from '../utils/phoneValidator';
+import { SecurityCaptcha } from '../components/security/SecurityCaptcha';
+import { sanitizeInput, checkRateLimit, recordFailedAttempt } from '../utils/securityGuard';
 import { 
   ArrowRight, ShieldCheck, Heart, Share2, MapPin, Gauge, 
   Banknote, FileCheck, CheckCircle2, 
@@ -47,6 +49,7 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
   const [preferredContactTime, setPreferredContactTime] = useState('مساءً (من 5 إلى 9 مساءً)');
   const [buyerNotes, setBuyerNotes] = useState('');
   const [acceptedDirectDepositRule, setAcceptedDirectDepositRule] = useState(false);
+  const [inquiryCaptchaVerified, setInquiryCaptchaVerified] = useState(false);
   const [inquirySubmitted, setInquirySubmitted] = useState(false);
 
   const formatEGP = (num: number) => {
@@ -64,19 +67,30 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
       return;
     }
 
+    if (!inquiryCaptchaVerified) {
+      alert(isAr ? 'يرجى إتمام التحقق الأمني (كتابة رمز CAPTCHA) قبل إرسال عرض الشراء.' : 'Please complete the CAPTCHA verification.');
+      return;
+    }
+
     if (!customerUser) {
       alert(isAr ? 'تقديم عروض الشراء والتفاوض يتطلب تسجيل الدخول بحساب معتمد.' : 'Submitting an offer requires an authenticated account.');
       if (onOpenLogin) onOpenLogin();
       return;
     }
 
-    const rawPhone = buyerPhone.trim() || customerUser.phone || '';
+    const rawPhone = sanitizeInput(buyerPhone, 25) || customerUser.phone || '';
     const phoneErr = getPhoneValidationError(rawPhone);
     if (phoneErr) {
       alert(phoneErr);
       return;
     }
     const cleanBuyerPhone = normalizeEgyptianPhone(rawPhone);
+    const offerRate = checkRateLimit('offer', cleanBuyerPhone);
+    if (!offerRate.allowed) {
+      alert(offerRate.message || 'تم تجاوز عدد العروض المسموح بها مؤقتاً.');
+      return;
+    }
+    recordFailedAttempt('offer', cleanBuyerPhone);
 
     setIsSubmittingOffer(true);
     const finalOfferedPrice = offerMode === 'accept_asking' ? car.askingPrice : Number(offeredPrice) || car.askingPrice;
@@ -880,6 +894,11 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
                     </span>
                   </label>
                 </div>
+
+                <SecurityCaptcha
+                  onVerifyChange={setInquiryCaptchaVerified}
+                  compact
+                />
 
                 <div className="pt-2">
                   <button

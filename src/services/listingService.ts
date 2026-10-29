@@ -9,6 +9,13 @@
 import { supabase } from './supabaseClient';
 import { Car, PurchaseOffer, InAppNotification, ListingCallLog } from '../types';
 import {
+  sanitizeInput,
+  sanitizePayload,
+  assertResourceOwnership,
+  logInternalError,
+  getSafeUserErrorMessage,
+} from '../utils/securityGuard';
+import {
   sendWhatsAppMessage,
   sendListingSubmittedWhatsApp,
   sendListingUpdatedWhatsApp,
@@ -170,6 +177,7 @@ export const listingService = {
     submission: NewListingSubmission
   ): Promise<{ success: boolean; listingId?: string; message: string; error?: string }> {
     try {
+      submission = sanitizePayload(submission as Record<string, any>) as NewListingSubmission;
       const { data: sessionData } = await supabase.auth.getSession();
       const authUser = sessionData.session?.user;
 
@@ -285,11 +293,11 @@ export const listingService = {
         const error = insertRes.error;
 
         if (error || !data) {
-          console.error('Supabase listing insert error:', error);
+          logInternalError('SupabaseListingInsertError', error);
           return {
             success: false,
-            message: `تعذر حفظ الإعلان في قاعدة البيانات: ${error?.message || 'خطأ غير معروف'}`,
-            error: error?.code || error?.message
+            message: getSafeUserErrorMessage(error, 'تعذر حفظ الإعلان في قاعدة البيانات حالياً. تم تسجيل المشكلة داخلياً.'),
+            error: 'DB_INSERT_ERROR'
           };
         }
 
@@ -444,14 +452,16 @@ export const listingService = {
 
   /**
    * Fetch listings belonging to the authenticated customer
+   * Strictly enforces Anti-IDOR so no customer can ever fetch another customer's private listings or documents.
    */
   async getCustomerListings(
     userId: string
   ): Promise<{ success: boolean; listings: DatabaseCarListing[]; error?: string }> {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session || sessionData.session.user.id !== userId) {
-        return { success: false, listings: [], error: 'غير مصرح.' };
+      const currentAuthId = sessionData.session?.user?.id;
+      if (!currentAuthId || !assertResourceOwnership(currentAuthId, userId, false)) {
+        return { success: false, listings: [], error: 'غير مصرح لك بالوصول إلى بيانات عميل آخر.' };
       }
 
       const { data, error } = await supabase
@@ -569,7 +579,7 @@ export const listingService = {
       const { data: sessionData } = await supabase.auth.getSession();
       const authUser = sessionData.session?.user;
 
-      // 1. Fetch current listing to get metadata for admin notification
+      // 1. Fetch current listing to get metadata for admin notification & Anti-IDOR check
       let listingInfo: any = null;
       try {
         const { data: fetched } = await supabase
@@ -579,6 +589,13 @@ export const listingService = {
           .maybeSingle();
         listingInfo = fetched;
       } catch {}
+
+      if (listingInfo?.user_id && authUser?.id && !assertResourceOwnership(authUser.id, listingInfo.user_id, false)) {
+        return {
+          success: false,
+          message: 'غير مصرح لك بسحب أو تعديل إعلان يخص عميلاً آخر.'
+        };
+      }
 
       // 2. Update status to 'withdrawn' in car_listings (Preserves the row for platform data!)
       const now = new Date().toISOString();
