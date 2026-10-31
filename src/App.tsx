@@ -386,8 +386,8 @@ export function App() {
 
   const handleNavigate = (view: string) => {
     setCurrentView(view);
-    const targetPath = view === 'home' ? '/' : `/${view}`;
-    if (window.location.pathname !== targetPath) {
+    const targetPath = view === 'home' ? '/' : `/#/${view}`;
+    if (window.location.hash !== `#/${view}` && (view !== 'home' || window.location.pathname !== '/')) {
       window.history.pushState({ view }, '', targetPath);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -396,10 +396,8 @@ export function App() {
   const handleSelectCar = (car: Car) => {
     setSelectedCar(car);
     setCurrentView('car-detail');
-    const targetPath = `/car-detail?id=${car.id}`;
-    if (window.location.pathname !== '/car-detail') {
-      window.history.pushState({ view: 'car-detail', carId: car.id }, '', targetPath);
-    }
+    const targetPath = `/#/car-detail?id=${car.id}`;
+    window.history.pushState({ view: 'car-detail', carId: car.id }, '', targetPath);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
