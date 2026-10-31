@@ -4,16 +4,9 @@
  * =====================================================================
  * Runs exclusively in serverless Node.js runtime (Vercel / Backend).
  * NEVER exposes GEMINI_API_KEY to browser clients or git repos.
- * 
- * Supports:
- * 1. generate_car_description — strict factual Egyptian Arabic car ad drafter
- * 2. customer_support — grounded platform AI assistant
- * 3. admin_summary — executive anonymized pipeline summarizer
  */
 
-declare const process: any;
-
-export default async function handler(req: any, res: any) {
+export default async function handler(req, res) {
   // Enforce POST method
   if (req.method !== 'POST') {
     return res.status(405).json({
@@ -109,7 +102,7 @@ export default async function handler(req: any, res: any) {
 
       userPrompt = `سؤال العميل: "${userQuestion || ''}"`;
       if (chatHistory && Array.isArray(chatHistory) && chatHistory.length > 0) {
-        userPrompt = `سياق المحادثة السابقة:\n${chatHistory.map((m: any) => `${m.role === 'user' ? 'العميل' : 'مساعد مخلصة'}: ${m.text}`).join('\n')}\n\nسؤال العميل الجديد: "${userQuestion}"`;
+        userPrompt = `سياق المحادثة السابقة:\n${chatHistory.map(m => `${m.role === 'user' ? 'العميل' : 'مساعد مخلصة'}: ${m.text}`).join('\n')}\n\nسؤال العميل الجديد: "${userQuestion}"`;
       }
 
     } else if (task === 'admin_summary') {
@@ -144,8 +137,8 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // Call Google Gemini API (gemini-1.5-flash with gemini-2.0-flash / gemini-1.5-pro fallback)
-    const callGeminiModel = async (modelName: string) => {
+    // Call Google Gemini API (gemini-2.5-flash-lite with fallback)
+    const callGeminiModel = async (modelName) => {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -166,7 +159,6 @@ export default async function handler(req: any, res: any) {
       return response;
     };
 
-    // Supported models optimized for low latency and high quality
     const candidateModels = [
       'gemini-2.5-flash-lite',
       'gemini-flash-lite-latest',
@@ -174,28 +166,26 @@ export default async function handler(req: any, res: any) {
       'gemini-flash-latest'
     ];
 
-    let geminiRes: any = null;
+    let geminiRes = null;
     let lastErrBody = '';
     let lastStatus = 200;
 
     for (const model of candidateModels) {
       try {
         const res = await callGeminiModel(model);
-        if (res.ok) {
+        if (res && res.ok) {
           geminiRes = res;
           break;
-        } else {
+        } else if (res) {
           lastErrBody = await res.text();
           lastStatus = res.status;
         }
-      } catch (e: any) {
+      } catch (e) {
         lastErrBody = e?.message || 'Network error';
       }
     }
 
-    if (!geminiRes.ok) {
-      lastErrBody = await geminiRes.text();
-      lastStatus = geminiRes.status;
+    if (!geminiRes || !geminiRes.ok) {
       console.error('Gemini API Error:', lastStatus, lastErrBody);
 
       let friendlyMsg = 'حدث خطأ أثناء التواصل مع خادم الذكاء الاصطناعي.';
@@ -231,7 +221,7 @@ export default async function handler(req: any, res: any) {
       result: candidateText.trim()
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Serverless Gemini Handler Exception:', error);
     return res.status(500).json({
       success: false,
