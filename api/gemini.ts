@@ -11,6 +11,8 @@
  * 3. admin_summary — executive anonymized pipeline summarizer
  */
 
+declare const process: any;
+
 export default async function handler(req: any, res: any) {
   // Enforce POST method
   if (req.method !== 'POST') {
