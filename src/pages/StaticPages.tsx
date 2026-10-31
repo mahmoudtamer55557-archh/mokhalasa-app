@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { sendConsultationReceivedWhatsApp } from '../services/whatsappService';
-import { normalizeEgyptianPhone } from '../utils/phoneValidator';
+import { normalizeEgyptianPhone, getPhoneValidationError } from '../utils/phoneValidator';
 
 interface StaticPagesProps {
   type: 'how-it-works' | 'faq' | 'terms' | 'privacy' | 'contact';
@@ -288,9 +288,9 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
               <h1 className="text-2xl sm:text-3xl font-black text-brand-navy">
                 {isAr ? 'تواصل معنا — نحن هنا لمساعدتك' : 'Contact Us — We Are Here to Assist You'}
               </h1>
-              <p className="text-xs sm:text-sm text-slate-500 max-w-lg mx-auto">
+              <p className="text-xs sm:text-sm text-slate-500 max-w-lg mx-auto leading-relaxed">
                 {isAr
-                  ? 'سواء كنت بائعاً ترغب في معرفة إجراءات التسوية البنكية، أو مشترياً ترغب في معاينة سيارة معتمدة، فريقنا المتخصص جاهز للرد على كافة استفساراتك.'
+                  ? 'سواء كنت بائعاً ترغب في معرفة إجراءات التسوية البنكية وفك حظر البيع، أو مشترياً ترغب في معاينة سيارة معتمدة، فريقنا المتخصص جاهز للرد على استفسارك فوراً.'
                   : 'Whether you are a seller seeking bank settlement clearance or a buyer looking for vetted cars, our banking advisors are ready to help.'}
               </p>
             </div>
@@ -298,61 +298,86 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
               {/* Contact Channels */}
               <div className="space-y-4">
-                <h3 className="font-extrabold text-sm text-brand-navy pb-2 border-b border-slate-100">
-                  {isAr ? 'قنوات التواصل المباشرة' : 'Direct Contact Channels'}
+                <h3 className="font-extrabold text-sm text-brand-navy pb-2 border-b border-slate-100 flex items-center justify-between">
+                  <span>{isAr ? 'قنوات التواصل المباشرة' : 'Direct Contact Channels'}</span>
+                  <span className="text-3xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                    {isAr ? 'الرد الفوري متاح' : 'Fast Response'}
+                  </span>
                 </h3>
 
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 text-xs">
-                  <div className="flex items-center gap-3">
+                <div className="p-5 rounded-3xl bg-slate-50 border border-slate-200/80 space-y-3.5 text-xs">
+                  {/* WhatsApp Direct Action Button */}
+                  <a
+                    href="https://wa.me/201018898144?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D9%81%D8%B1%D9%8A%D9%82%20%D9%85%D8%AE%D9%84%D8%B5%D8%A9%D8%8C%20%D9%84%D8%AF%D9%8A%20%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1%20%D8%AD%D9%88%D9%84%20%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%20%D8%A7%D9%84%D9%85%D9%86%D8%B5%D8%A9"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white transition shadow-sm group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                        <MessageSquare className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="text-right">
+                        <div className="font-black text-xs sm:text-sm">
+                          {isAr ? 'محادثة واتساب فورية' : 'Live WhatsApp Chat'}
+                        </div>
+                        <div dir="ltr" className="font-mono text-3xs text-emerald-100 font-bold">
+                          +20 10 1889 8144
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-3xs font-extrabold px-2.5 py-1 rounded-xl bg-white text-emerald-800 group-hover:scale-105 transition">
+                      {isAr ? 'ابدأ المحادثة' : 'Chat Now'}
+                    </span>
+                  </a>
+
+                  {/* Phone Call Hotline */}
+                  <a
+                    href="tel:01018898144"
+                    className="flex items-center gap-3 p-3 rounded-2xl bg-white border border-slate-200 hover:border-brand-green transition"
+                  >
                     <div className="w-9 h-9 rounded-xl bg-brand-navy text-white flex items-center justify-center flex-shrink-0">
                       <PhoneCall className="w-4 h-4 text-brand-green" />
                     </div>
                     <div>
-                      <div className="font-bold text-brand-navy">{isAr ? 'الخط الساخن ومكتب الدعم:' : 'Support Hotline:'}</div>
-                      <div dir="ltr" className="font-mono text-slate-600 font-bold">01008836962</div>
+                      <div className="font-bold text-brand-navy">{isAr ? 'الخط الساخن المباشر:' : 'Direct Hotline:'}</div>
+                      <div dir="ltr" className="font-mono text-slate-700 font-extrabold text-xs">01018898144</div>
                     </div>
-                  </div>
+                  </a>
 
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center flex-shrink-0">
-                      <MessageSquare className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-brand-navy">{isAr ? 'خدمة العملاء والواتساب:' : 'WhatsApp Support:'}</div>
-                      <div dir="ltr" className="font-mono text-slate-600">+20 10 0883 6962</div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center flex-shrink-0">
+                  {/* Official Email */}
+                  <div className="flex items-center gap-3 p-3 rounded-2xl bg-white border border-slate-200">
+                    <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center flex-shrink-0">
                       <Mail className="w-4 h-4 text-brand-navy" />
                     </div>
                     <div>
                       <div className="font-bold text-brand-navy">{isAr ? 'البريد الإلكتروني للعمليات:' : 'Official Email:'}</div>
-                      <div className="text-slate-600 font-mono">support@mokhalasa.com</div>
+                      <div className="text-slate-600 font-mono text-xs">support@mokhalasa.com</div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center flex-shrink-0">
+                  {/* Headquarters */}
+                  <div className="flex items-center gap-3 p-3 rounded-2xl bg-white border border-slate-200">
+                    <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center flex-shrink-0">
                       <MapPin className="w-4 h-4 text-amber-600" />
                     </div>
                     <div>
                       <div className="font-bold text-brand-navy">{isAr ? 'المقر الرئيسي:' : 'Headquarters:'}</div>
-                      <div className="text-slate-600">
+                      <div className="text-slate-600 text-xs">
                         {isAr ? 'التجمع الخامس، شارع التسعين الشمالي، القاهرة، مصر' : 'North 90th St, New Cairo, Egypt'}
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center flex-shrink-0">
+                  {/* Hours */}
+                  <div className="flex items-center gap-3 p-3 rounded-2xl bg-white border border-slate-200">
+                    <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center flex-shrink-0">
                       <Clock className="w-4 h-4 text-brand-navy" />
                     </div>
                     <div>
                       <div className="font-bold text-brand-navy">{isAr ? 'مواعيد العمل:' : 'Working Hours:'}</div>
-                      <div className="text-slate-600">
-                        {isAr ? 'السبت إلى الخميس: 9:00 ص – 9:00 م (مكتب التوثيق البنكي)' : 'Saturday to Thursday: 9:00 AM – 9:00 PM'}
+                      <div className="text-slate-600 text-xs">
+                        {isAr ? 'السبت إلى الخميس: 9:00 ص – 9:00 م (تنسيق مواعيد الفحص والبنوك)' : 'Saturday to Thursday: 9:00 AM – 9:00 PM'}
                       </div>
                     </div>
                   </div>
@@ -360,9 +385,9 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
 
                 <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-2xs text-emerald-900 flex items-start gap-2">
                   <ShieldCheck className="w-4 h-4 text-brand-green flex-shrink-0 mt-0.5" />
-                  <span>
+                  <span className="leading-relaxed">
                     {isAr
-                      ? 'جميع الاستفسارات تخضع للسرية التامة وفقاً لقانون حماية البيانات الشخصية رقم 151 لسنة 2020.'
+                      ? 'جميع الاستفسارات تخضع للسرية التامة وفقاً لقانون حماية البيانات الشخصية رقم 151 لسنة 2020. لا نشارك بياناتك مع أي طرف ثالث دون موافقتك.'
                       : 'All inquiries are strictly confidential in accordance with Data Protection Law 151/2020.'}
                   </span>
                 </div>
@@ -371,33 +396,39 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
               {/* Quick Inquiry Form */}
               <div className="space-y-4">
                 <h3 className="font-extrabold text-sm text-brand-navy pb-2 border-b border-slate-100">
-                  {isAr ? 'إرسال استفسار مباشر' : 'Send Direct Message'}
+                  {isAr ? 'إرسال استفسار مباشر إلى الفريق' : 'Send Direct Message to Team'}
                 </h3>
 
                 {contactSubmitted ? (
-                  <div className="p-8 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-3">
+                  <div className="p-8 rounded-3xl bg-emerald-50 border border-emerald-200 text-center space-y-3.5 animate-fadeIn">
                     <CheckCircle2 className="w-12 h-12 text-brand-green mx-auto" />
-                    <h4 className="font-black text-brand-navy text-sm">
-                      {isAr ? 'تم استلام رسالتك بنجاح!' : 'Your message has been sent successfully!'}
+                    <h4 className="font-black text-brand-navy text-base">
+                      {isAr ? 'تم استلام استفسارك بنجاح!' : 'Your message has been sent successfully!'}
                     </h4>
-                    <p className="text-xs text-slate-600">
+                    <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
                       {isAr
-                        ? 'سيقوم مسؤول خدمة العملاء بالتواصل معك هاتفياً أو عبر الواتساب في أقرب وقت.'
+                        ? 'سيقوم أحد مستشاري مخلصة بالتواصل معك هاتفياً أو عبر الواتساب في أقرب وقت لتوضيح كافة التفاصيل.'
                         : 'A customer support representative will reach out to you via phone or WhatsApp shortly.'}
                     </p>
                     <button
                       onClick={() => setContactSubmitted(false)}
-                      className="px-4 py-2 rounded-xl bg-brand-green text-white font-bold text-xs"
+                      className="px-5 py-2.5 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-black text-xs shadow-sm transition"
                     >
-                      {isAr ? 'إرسال رسالة أخرى' : 'Send Another Message'}
+                      {isAr ? 'إرسال استفسار آخر' : 'Send Another Message'}
                     </button>
                   </div>
                 ) : (
                   <form
                     onSubmit={async (e) => {
                       e.preventDefault();
-                      setContactSubmitted(true);
                       const cleanPhone = normalizeEgyptianPhone(contactPhone);
+                      const phoneError = getPhoneValidationError(contactPhone);
+                      if (phoneError) {
+                        alert(phoneError);
+                        return;
+                      }
+
+                      setContactSubmitted(true);
                       try {
                         await supabase.from('admin_notifications').insert({
                           type: 'general',
@@ -414,11 +445,11 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
                         ).catch(() => {});
                       }
                     }}
-                    className="space-y-3 text-xs"
+                    className="p-5 rounded-3xl bg-white border border-slate-200 space-y-3.5 text-xs shadow-sm"
                   >
                     <div>
                       <label className="font-bold text-slate-700 block mb-1">
-                        {isAr ? 'الاسم بالكامل:' : 'Full Name:'}
+                        {isAr ? 'الاسم بالكامل:' : 'Full Name:'} <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -431,8 +462,9 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
                     </div>
 
                     <div>
-                      <label className="font-bold text-slate-700 block mb-1">
-                        {isAr ? 'رقم الهاتف (واتساب):' : 'Phone Number (WhatsApp):'}
+                      <label className="font-bold text-slate-700 flex items-center justify-between mb-1">
+                        <span>{isAr ? 'رقم الهاتف (واتساب):' : 'Phone Number (WhatsApp):'} <span className="text-rose-500">*</span></span>
+                        <span className="text-3xs text-slate-400 font-mono">11 رقماً</span>
                       </label>
                       <input
                         type="tel"
@@ -441,13 +473,13 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
                         value={contactPhone}
                         onChange={(e) => setContactPhone(e.target.value)}
                         placeholder="010XXXXXXXX"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-medium text-right focus:ring-2 focus:ring-brand-green focus:outline-none"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-mono font-bold text-right focus:ring-2 focus:ring-brand-green focus:outline-none"
                       />
                     </div>
 
                     <div>
                       <label className="font-bold text-slate-700 block mb-1">
-                        {isAr ? 'استفسارك أو تفاصيل حالتك:' : 'Your Inquiry or Case Details:'}
+                        {isAr ? 'استفسارك أو تفاصيل حالتك:' : 'Your Inquiry or Case Details:'} <span className="text-rose-500">*</span>
                       </label>
                       <textarea
                         rows={4}
@@ -455,13 +487,13 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
                         value={contactMsg}
                         onChange={(e) => setContactMsg(e.target.value)}
                         placeholder={isAr ? "اكتب استفسارك هنا حول البنك الدائن، فك الحظر، عمولة السداد المعجل، أو السيارات المتاحة..." : "Write your questions regarding creditor bank, payoff quotes, direct installment or cash cars..."}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-medium focus:ring-2 focus:ring-brand-green focus:outline-none resize-none"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-medium focus:ring-2 focus:ring-brand-green focus:outline-none resize-none leading-relaxed"
                       />
                     </div>
 
                     <button
                       type="submit"
-                      className="w-full py-3 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-1.5"
+                      className="w-full py-3.5 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-black text-xs shadow-md transition flex items-center justify-center gap-2 active:scale-95"
                     >
                       <Send className="w-4 h-4" />
                       <span>{isAr ? 'إرسال الاستفسار الآن' : 'Submit Inquiry Now'}</span>

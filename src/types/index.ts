@@ -197,6 +197,8 @@ export interface Car {
   licenseValidityMonths: number;
   trafficDepartment: string;
   sellerType: 'مالك أول' | 'مالك ثانٍ' | 'توكيل';
+  sellerUserId?: string;
+  sellerPhone?: string;
   status: ListingStatus;
   documentsVerified?: boolean;
   is_hidden?: boolean;

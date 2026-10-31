@@ -60,8 +60,21 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
   const buyerSaving = car.estimatedMarketValue - car.askingPrice;
   const commission = Math.round(car.askingPrice * 0.015);
 
+  // Check if current user is the owner/seller of this car
+  const isCarOwner = Boolean(
+    customerUser && (
+      (car.sellerUserId && car.sellerUserId === customerUser.id) ||
+      (car.sellerPhone && normalizeEgyptianPhone(car.sellerPhone) === normalizeEgyptianPhone(customerUser.phone || '')) ||
+      ((car as any).contactPhone && normalizeEgyptianPhone((car as any).contactPhone) === normalizeEgyptianPhone(customerUser.phone || ''))
+    )
+  );
+
   const handleInquirySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isCarOwner) {
+      alert(isAr ? 'عفواً، لا يمكنك تقديم عرض شراء على سيارتك الخاصة المعروضة بحسابك!' : 'You cannot submit an offer on your own vehicle listing.');
+      return;
+    }
     if (!acceptedDirectDepositRule) {
       alert(isAr ? 'يرجى تأكيد الموافقة على بروتوكول الإيداع البنكي المباشر للمتابعة.' : 'Please confirm agreement to direct bank deposit protocol.');
       return;
@@ -586,33 +599,51 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
 
               {/* Primary Call to Action Buttons (TWO DISTINCT OFFER OPTIONS - PHASE 8 & 9) */}
               <div className="space-y-2.5 pt-2">
-                {/* 1. Accept Asking Price Button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOfferMode('accept_asking');
-                    setOfferedPrice(car.askingPrice);
-                    setShowInquiryModal(true);
-                  }}
-                  className="w-full py-3.5 px-4 rounded-2xl bg-brand-green hover:bg-emerald-600 text-white font-black text-xs shadow-md transition flex items-center justify-center gap-2 active:scale-95"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>شراء بالسعر المطلوب ({formatEGP(car.askingPrice)})</span>
-                </button>
+                {isCarOwner ? (
+                  <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-start gap-3 animate-fadeIn">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-right space-y-1">
+                      <p className="font-black text-xs sm:text-sm text-amber-900">
+                        {isAr ? 'أنت صاحب هذا الإعلان' : 'You are the Owner of this Listing'}
+                      </p>
+                      <p className="text-2xs text-amber-800 leading-relaxed">
+                        {isAr
+                          ? 'وفقاً لقواعد المنصة، لا يمكنك تقديم عروض شراء على سيارتك الخاصة. يمكنك متابعة عروض المشترين وقبولها أو رفضها عبر حسابك الشخصي أو إشعارات الواتساب.'
+                          : 'As the listing owner, you cannot place offers on your own vehicle. Manage incoming buyer offers via your dashboard or WhatsApp.'}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* 1. Accept Asking Price Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOfferMode('accept_asking');
+                        setOfferedPrice(car.askingPrice);
+                        setShowInquiryModal(true);
+                      }}
+                      className="w-full py-3.5 px-4 rounded-2xl bg-brand-green hover:bg-emerald-600 text-white font-black text-xs shadow-md transition flex items-center justify-center gap-2 active:scale-95"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>شراء بالسعر المطلوب ({formatEGP(car.askingPrice)})</span>
+                    </button>
 
-                {/* 2. Propose Negotiated Offer Button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOfferMode('propose_price');
-                    setOfferedPrice(Math.round(car.askingPrice * 0.95));
-                    setShowInquiryModal(true);
-                  }}
-                  className="w-full py-3 px-4 rounded-xl bg-white border border-slate-300 hover:border-brand-green hover:bg-slate-50 text-brand-navy font-bold text-xs shadow-sm transition flex items-center justify-center gap-2"
-                >
-                  <Tag className="w-3.5 h-3.5 text-brand-green" />
-                  <span>تقديم عرض سعر مقترح للتفاوض</span>
-                </button>
+                    {/* 2. Propose Negotiated Offer Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOfferMode('propose_price');
+                        setOfferedPrice(Math.round(car.askingPrice * 0.95));
+                        setShowInquiryModal(true);
+                      }}
+                      className="w-full py-3 px-4 rounded-xl bg-white border border-slate-300 hover:border-brand-green hover:bg-slate-50 text-brand-navy font-bold text-xs shadow-sm transition flex items-center justify-center gap-2"
+                    >
+                      <Tag className="w-3.5 h-3.5 text-brand-green" />
+                      <span>تقديم عرض سعر مقترح للتفاوض</span>
+                    </button>
+                  </>
+                )}
 
                 {/* Direct WhatsApp Action */}
                 <a

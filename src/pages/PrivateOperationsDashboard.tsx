@@ -1107,33 +1107,83 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
       {/* Main Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         
+        {/* Operations Quick KPI Command Center */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          <div 
+            onClick={() => setActiveTab('moderation')}
+            className={`p-4 rounded-2xl border transition cursor-pointer ${
+              activeTab === 'moderation' 
+                ? 'bg-slate-900 border-brand-green/60 shadow-lg ring-1 ring-brand-green/30' 
+                : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
+            }`}
+          >
+            <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+              <span>إعلانات بانتظار الاعتماد</span>
+              <ShieldCheck className="w-4 h-4 text-amber-400" />
+            </div>
+            <div className="text-2xl font-black text-amber-400">
+              {dbListings.filter(l => l.status === 'pending_review').length}
+            </div>
+            <span className="text-[10px] text-slate-500">إجمالي الإعلانات: {dbListings.length}</span>
+          </div>
+
+          <div 
+            onClick={() => setActiveTab('purchase_offers')}
+            className={`p-4 rounded-2xl border transition cursor-pointer ${
+              activeTab === 'purchase_offers' 
+                ? 'bg-slate-900 border-brand-green/60 shadow-lg ring-1 ring-brand-green/30' 
+                : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
+            }`}
+          >
+            <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+              <span>عروض شراء جديدة</span>
+              <Tag className="w-4 h-4 text-emerald-400" />
+            </div>
+            <div className="text-2xl font-black text-emerald-400">
+              {purchaseOffers.filter(o => o.status === 'new').length}
+            </div>
+            <span className="text-[10px] text-slate-500">إجمالي العروض: {purchaseOffers.length}</span>
+          </div>
+
+          <div 
+            onClick={() => setActiveTab('edits_review')}
+            className={`p-4 rounded-2xl border transition cursor-pointer ${
+              activeTab === 'edits_review' 
+                ? 'bg-slate-900 border-brand-green/60 shadow-lg ring-1 ring-brand-green/30' 
+                : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
+            }`}
+          >
+            <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+              <span>طلبات تعديل معلقة</span>
+              <Edit3 className="w-4 h-4 text-cyan-400" />
+            </div>
+            <div className="text-2xl font-black text-cyan-400">
+              {pendingEditRevisions.length}
+            </div>
+            <span className="text-[10px] text-slate-500">تعديلات بانتظار المراجعة</span>
+          </div>
+
+          <div 
+            onClick={() => { setActiveTab('customers'); fetchCustomers(); }}
+            className={`p-4 rounded-2xl border transition cursor-pointer ${
+              activeTab === 'customers' 
+                ? 'bg-slate-900 border-brand-green/60 shadow-lg ring-1 ring-brand-green/30' 
+                : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
+            }`}
+          >
+            <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+              <span>سجل العملاء</span>
+              <User className="w-4 h-4 text-purple-400" />
+            </div>
+            <div className="text-2xl font-black text-purple-400">
+              {customersList.length}
+            </div>
+            <span className="text-[10px] text-slate-500">حسابات مسجلة</span>
+          </div>
+        </div>
+        
         {/* Navigation Tabs */}
         <div className="flex flex-wrap bg-slate-950 p-1.5 rounded-2xl border border-slate-800 gap-1 text-xs font-bold">
-          <button
-            onClick={() => setActiveTab('cases')}
-            className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 ${
-              activeTab === 'cases' ? 'bg-brand-green text-slate-950 font-black shadow-md' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <LayoutDashboard className="w-4 h-4" />
-            <span>ملفات التخارج النشطة ({authorizedCases.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('edits_review')}
-            className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 ${
-              activeTab === 'edits_review' ? 'bg-brand-green text-slate-950 font-black shadow-md' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Edit3 className="w-4 h-4" />
-            <span>طلبات تعديل الإعلانات</span>
-            {pendingEditRevisions.length > 0 && (
-              <span className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black flex items-center justify-center">
-                {pendingEditRevisions.length}
-              </span>
-            )}
-          </button>
-
           <button
             onClick={() => setActiveTab('moderation')}
             className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 ${
@@ -1165,6 +1215,21 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
           </button>
 
           <button
+            onClick={() => setActiveTab('edits_review')}
+            className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 ${
+              activeTab === 'edits_review' ? 'bg-brand-green text-slate-950 font-black shadow-md' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Edit3 className="w-4 h-4" />
+            <span>طلبات تعديل الإعلانات</span>
+            {pendingEditRevisions.length > 0 && (
+              <span className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black flex items-center justify-center">
+                {pendingEditRevisions.length}
+              </span>
+            )}
+          </button>
+
+          <button
             onClick={() => {
               setActiveTab('customers');
               fetchCustomers();
@@ -1182,6 +1247,16 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
             )}
           </button>
 
+          <button
+            onClick={() => setActiveTab('cases')}
+            className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 ${
+              activeTab === 'cases' ? 'bg-brand-green text-slate-950 font-black shadow-md' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <LayoutDashboard className="w-4 h-4" />
+            <span>ملفات التخارج النشطة ({authorizedCases.length})</span>
+          </button>
+
           {isOwner && (
             <button
               onClick={() => setActiveTab('audit_logs')}
@@ -1190,7 +1265,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
               }`}
             >
               <FileText className="w-4 h-4" />
-              <span>سجلات التدقيق والأمان (Audit Logs)</span>
+              <span>سجلات التدقيق والأمان</span>
             </button>
           )}
 
@@ -1203,7 +1278,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                 }`}
               >
                 <UserCheck className="w-4 h-4" />
-                <span>إدارة الفريق وتوزيع الحالات</span>
+                <span>إدارة الفريق</span>
               </button>
 
               <button
@@ -1213,7 +1288,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                 }`}
               >
                 <Scale className="w-4 h-4" />
-                <span>الرقابة والامتثال المصرفي (Zero-Custody)</span>
+                <span>الرقابة والامتثال المصرفي</span>
               </button>
             </>
           )}

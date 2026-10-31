@@ -15,6 +15,7 @@ import {
   logInternalError,
   getSafeUserErrorMessage,
 } from '../utils/securityGuard';
+import { normalizeEgyptianPhone } from '../utils/phoneValidator';
 import {
   sendWhatsAppMessage,
   sendListingSubmittedWhatsApp,
@@ -1972,7 +1973,7 @@ export const listingService = {
       const { data, error } = await supabase
         .from('car_listings')
         .select(`
-          id, make, model, year, trim, transmission, fuel_type,
+          id, user_id, seller_phone, make, model, year, trim, transmission, fuel_type,
           engine_size, mileage, color, governorate, city, asking_price,
           condition_description, paint_condition, disclosed_defects,
           has_financing, financing_type, financing_provider, outstanding_amount,
@@ -2068,6 +2069,8 @@ export const listingService = {
           licenseValidityMonths: 12,
           trafficDepartment: row.traffic_unit || override?.traffic_unit || 'مرور فيصل',
           sellerType: 'مالك أول',
+          sellerUserId: row.user_id,
+          sellerPhone: row.seller_phone,
           status: row.status === 'sold' ? 'sold' : 'active',
           documentsVerified: isVerified,
           is_hidden: Boolean(override?.is_hidden || row.is_hidden),
@@ -2253,6 +2256,17 @@ export const listingService = {
 
       newOffer.buyerUserId = buyerUserId || undefined;
       newOffer.sellerUserId = sellerUserId || undefined;
+
+      // Prevent Listing Owner from submitting purchase offer on their own car
+      const normalizedBuyerPhone = normalizeEgyptianPhone(offer.buyerPhone || '');
+      const normalizedSellerPhone = sellerPhone ? normalizeEgyptianPhone(sellerPhone) : '';
+      if ((buyerUserId && sellerUserId && buyerUserId === sellerUserId) ||
+          (normalizedBuyerPhone && normalizedSellerPhone && normalizedBuyerPhone === normalizedSellerPhone)) {
+        return {
+          success: false,
+          message: 'عفواً، بصفتك صاحب هذا الإعلان لا يمكنك تقديم عروض شراء على سيارتك.'
+        };
+      }
 
       // 1. Attempt insertion into public.purchase_offers directly as communicated_to_seller
       const { error: poError } = await supabase

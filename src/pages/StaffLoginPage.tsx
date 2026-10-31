@@ -61,6 +61,11 @@ export const StaffLoginPage: React.FC<StaffLoginPageProps> = ({
     // Verify password strictly via one-way PBKDF2-SHA256 hash comparison (zero plaintext credentials in bundle)
     const enteredHash = await hashPasswordSecurely(password.trim(), 'mokhalasa_staff_v2');
     const validStaffHashes = new Set([
+      'pbkdf2_sha256$30014dd7dac26dfe542ec7a12edb58325730b0465299d12833b24b0e870c3ee3', // MahmoudTamer@2026
+      'pbkdf2_fallback$a481fad7681533f1',
+      'pbkdf2_sha256$f4bcce02eaa13ce253ef979de6282edaeadc635ad1f095d6aade9972e0e961ac', // Mahmoud@2026
+      'pbkdf2_fallback$b29099b2e63e2621',
+      'pbkdf2_sha256$5f4c2be1923d908b7bbf9bbf5b4dfc0f8bf8739d4017b134fb216d57ec65b773', // Mokhalasa@2026
       'pbkdf2_sha256$e087a5dd4980cbd76348e038dbe2da6dd30c2a4ccb52784c648a351bb477a46b',
       'pbkdf2_sha256$a6c6abb17aee668abfbf2e6756dd013e4db4b36ced75b120d8190ecf9e4c351f',
       'pbkdf2_sha256$7423a999cc2c2d18f2e6935953d52b558da9f90e6c62792186ab3a2b92318425',

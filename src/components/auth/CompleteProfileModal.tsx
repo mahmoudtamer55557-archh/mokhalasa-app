@@ -4,8 +4,11 @@ import { supabase } from '../../services/supabaseClient';
 import { isValidEgyptianPhone, normalizeEgyptianPhone, getPhoneValidationError } from '../../utils/phoneValidator';
 import { otpService } from '../../services/otpService';
 import { sendWelcomeWhatsApp } from '../../services/whatsappService';
+import { authService } from '../../services/authService';
+import { GOVERNORATES_LIST, getDistrictsForGovernorate } from '../../data/egyptLocationsHierarchy';
+import { validateAdultAge18Plus } from '../../utils/securityGuard';
 import MokhalasaSvgLogo from '../brand/MokhalasaSvgLogo';
-import { Phone, ShieldCheck, AlertCircle, CheckCircle2, Lock, MessageSquare, ArrowRight, RotateCcw } from 'lucide-react';
+import { Phone, ShieldCheck, AlertCircle, CheckCircle2, MessageSquare, ArrowRight, RotateCcw, MapPin, Calendar, LogOut } from 'lucide-react';
 
 interface CompleteProfileModalProps {
   isOpen: boolean;
@@ -13,14 +16,6 @@ interface CompleteProfileModalProps {
   onProfileCompleted: (updatedUser: CustomerUser) => void;
   lang?: 'ar' | 'en';
 }
-
-const EGYPT_GOVERNORATES = [
-  'القاهرة', 'الجيزة', 'الإسكندرية', 'القليوبية', 'الشرقية', 
-  'الدقهلية', 'البحيرة', 'الغربية', 'المنوفية', 'دمياط', 
-  'كفر الشيخ', 'بورسعيد', 'الإسماعيلية', 'السويس', 'البحر الأحمر', 
-  'جنوب سيناء', 'بني سويف', 'الفيوم', 'المنيا', 'أسيوط', 'سوهاج',
-  'قنا', 'الأقصر', 'أسوان'
-];
 
 export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
   isOpen,
@@ -33,6 +28,15 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
   const [phoneInput, setPhoneInput] = useState('');
   const [fullNameInput, setFullNameInput] = useState(customerUser.name || '');
   const [governorateInput, setGovernorateInput] = useState(customerUser.governorate || 'القاهرة');
+  const [districtInput, setDistrictInput] = useState(() => {
+    const list = getDistrictsForGovernorate(customerUser.governorate || 'القاهرة');
+    return list[0] || '';
+  });
+
+  // 18+ Date of Birth State
+  const [birthYear, setBirthYear] = useState('1995');
+  const [birthMonth, setBirthMonth] = useState('06');
+  const [birthDay, setBirthDay] = useState('15');
   
   // OTP state
   const [otpCode, setOtpCode] = useState('');
@@ -42,6 +46,9 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // When governorate changes, update districts list
+  const availableDistricts = getDistrictsForGovernorate(governorateInput);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -60,9 +67,18 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
     e.preventDefault();
     setErrorMsg(null);
 
+    // 1. Phone validation
     const validationError = getPhoneValidationError(phoneInput);
     if (validationError) {
       setErrorMsg(validationError);
+      return;
+    }
+
+    // 2. Age 18+ validation
+    const fullBirthDate = `${birthYear}-${birthMonth}-${birthDay}`;
+    const ageResult = validateAdultAge18Plus(fullBirthDate);
+    if (!ageResult.isAdult) {
+      setErrorMsg(ageResult.error || 'يجب ألا يقل العمر عن 18 عاماً للتسجيل على منصة مخلصة وفقاً للقوانين المصرية.');
       return;
     }
 
@@ -70,6 +86,15 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
     setIsSubmitting(true);
 
     try {
+      // 3. Strict Phone Uniqueness Check across entire DB and registry!
+      const phoneCheck = await authService.checkPhoneAccountExists(cleanPhone);
+      if (phoneCheck.exists && phoneCheck.account && phoneCheck.account.userId && phoneCheck.account.userId !== customerUser.id) {
+        setErrorMsg('رقم الهاتف هذا مسجل بالفعل بحساب آخر على منصة مخلصة. كل عميل يمتلك حساباً واحداً فقط برقم هاتفه.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 4. Send WhatsApp OTP
       const res = await otpService.generateAndSendOtp(cleanPhone, {
         userId: customerUser.id,
         purpose: 'profile_update'
@@ -123,6 +148,7 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
     }
 
     const cleanPhone = normalizeEgyptianPhone(phoneInput);
+    const fullBirthDate = `${birthYear}-${birthMonth}-${birthDay}`;
     setIsSubmitting(true);
 
     try {
@@ -144,19 +170,24 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
           phone: cleanPhone,
           full_name: resolvedName,
           governorate: governorateInput,
+          district: districtInput,
+          birth_date: fullBirthDate,
           phone_verified: true,
           phone_verified_at: new Date().toISOString()
         }
       });
 
-      // 2. Upsert profile in Supabase (using valid schema columns)
-      await supabase.from('profiles').upsert({
-        id: customerUser.id,
-        phone: cleanPhone,
-        full_name: resolvedName,
-        governorate: governorateInput,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'id' });
+      // 2. Upsert profile in Supabase profiles table
+      try {
+        await supabase.from('profiles').upsert({
+          id: customerUser.id,
+          phone: cleanPhone,
+          full_name: resolvedName,
+          governorate: governorateInput,
+          city: districtInput,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+      } catch {}
 
       // 3. Mark customerUser as verified
       const updated: CustomerUser = {
@@ -171,8 +202,8 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
         localStorage.setItem('mokhalasa_customer_user', JSON.stringify(updated));
       } catch {}
 
-      // 4. Send Welcome WhatsApp message with account details & platform links
-      sendWelcomeWhatsApp(cleanPhone, resolvedName, governorateInput).catch(err =>
+      // 4. Send Welcome WhatsApp message with account details
+      sendWelcomeWhatsApp(cleanPhone, resolvedName, `${governorateInput} - ${districtInput}`).catch(err =>
         console.warn('Welcome WhatsApp notice:', err)
       );
 
@@ -180,7 +211,7 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
 
       setTimeout(() => {
         onProfileCompleted(updated);
-      }, 900);
+      }, 800);
 
     } catch (err: any) {
       setErrorMsg(err?.message || 'تعذر استكمال الحفظ. يرجى المحاولة لاحقاً.');
@@ -189,36 +220,46 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
     }
   };
 
+  const handleLogoutAndSwitch = async () => {
+    try {
+      await supabase.auth.signOut();
+      localStorage.removeItem('mokhalasa_customer_user');
+      window.location.reload();
+    } catch {
+      window.location.reload();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-[100] bg-black/75 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+    <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
       <div 
-        className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100 space-y-5 animate-scaleUp text-right" 
+        className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-100 space-y-4 animate-scaleUp text-right max-h-[92vh] overflow-y-auto" 
         dir={isAr ? 'rtl' : 'ltr'}
       >
         {/* Header Branding */}
         <div className="flex flex-col items-center text-center space-y-2">
-          <div className="w-14 h-14 rounded-2xl bg-brand-green/10 flex items-center justify-center mb-1">
+          <div className="w-13 h-13 rounded-2xl bg-brand-green/10 flex items-center justify-center mb-1 p-2">
             <MokhalasaSvgLogo className="w-9 h-9" />
           </div>
-          <h3 className="font-black text-xl text-brand-navy">
+          <h3 className="font-black text-lg sm:text-xl text-brand-navy">
             {step === 'info' ? 'استكمال وتأكيد بيانات الحساب' : 'تأكيد كود الواتساب (OTP)'}
           </h3>
           <p className="text-xs text-slate-500 leading-relaxed max-w-xs">
             {step === 'info' 
-              ? 'أهلاً بك في مخلصة! رقم الواتساب إلزامي لتوثيق الهوية وإرسال عروض التفاوض والتنبيهات.'
-              : `أدخل كود التحقق المكون من 4 أرقام المرسل إلى واتساب رقم: ${phoneInput}`}
+              ? 'مرحباً بك! لإتمام الأمان وتوثيق الهوية، يرجى استكمال بياناتك ورقم الواتساب الخاص بك.'
+              : `أدخل كود التحقق المكون من 4 أرقام المرسل إلى واتساب: ${phoneInput}`}
           </p>
         </div>
 
         {/* Security Notice */}
-        <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-2xs flex items-start gap-2.5">
+        <div className="p-3 bg-emerald-50/70 rounded-2xl border border-emerald-200/80 text-2xs flex items-start gap-2.5">
           <ShieldCheck className="w-4 h-4 text-brand-green flex-shrink-0 mt-0.5" />
           <div className="space-y-0.5">
             <span className="font-extrabold text-slate-800 block">
-              توثيق آمن وخاص 100%
+              حساب واحد موثق لكل رقم هاتف مصري (+18)
             </span>
             <p className="text-3xs text-slate-500 leading-relaxed">
-              الكود مخصص لحسابك فقط وصالح لمدة 5 دقائق. لن يتم مشاركة رقم هاتفك مع أي طرف خارجي.
+              وفقاً لقواعد مخلصة والقوانين المصرية، تقتصر المعاملات والعروض على الحسابات الموثقة للبالغين فقط.
             </p>
           </div>
         </div>
@@ -240,11 +281,11 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
 
         {/* STEP 1: Phone & Info Form */}
         {step === 'info' && (
-          <form onSubmit={handleSendOtp} className="space-y-4 text-xs">
+          <form onSubmit={handleSendOtp} className="space-y-3.5 text-xs">
             {/* Full Name */}
             <div className="space-y-1">
               <label className="font-bold text-slate-700 block">
-                الاسم بالكامل:
+                الاسم بالكامل: <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
@@ -260,7 +301,7 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
             <div className="space-y-1">
               <label className="font-black text-slate-800 flex items-center justify-between">
                 <span>رقم الواتساب (مصر) <span className="text-rose-500">*</span></span>
-                <span className="text-3xs text-brand-green font-mono">11 رقماً</span>
+                <span className="text-3xs text-brand-green font-mono">11 رقماً (حساب واحد لكل رقم)</span>
               </label>
               <div className="relative">
                 <input
@@ -280,20 +321,81 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
               </div>
             </div>
 
-            {/* Governorate Selection */}
+            {/* Date of Birth (18+ Mandatory) */}
             <div className="space-y-1">
-              <label className="font-bold text-slate-700 block">
-                المحافظة:
+              <label className="font-bold text-slate-700 flex items-center justify-between">
+                <span>تاريخ الميلاد (السن القانوني +18) <span className="text-rose-500">*</span></span>
+                <span className="text-3xs text-slate-500">مطلوب للتوثيق</span>
               </label>
-              <select
-                value={governorateInput}
-                onChange={(e) => setGovernorateInput(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green focus:outline-none bg-white"
-              >
-                {EGYPT_GOVERNORATES.map(gov => (
-                  <option key={gov} value={gov}>{gov}</option>
-                ))}
-              </select>
+              <div className="grid grid-cols-3 gap-2" dir="ltr">
+                <select
+                  value={birthDay}
+                  onChange={(e) => setBirthDay(e.target.value)}
+                  className="px-2 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green bg-white text-center"
+                >
+                  {Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')).map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={birthMonth}
+                  onChange={(e) => setBirthMonth(e.target.value)}
+                  className="px-2 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green bg-white text-center"
+                >
+                  {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={birthYear}
+                  onChange={(e) => setBirthYear(e.target.value)}
+                  className="px-2 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green bg-white text-center"
+                >
+                  {Array.from({ length: 70 }, (_, i) => String(new Date().getFullYear() - 18 - i)).map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Egyptian Address Hierarchy */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 block">
+                  المحافظة: <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={governorateInput}
+                  onChange={(e) => {
+                    const newGov = e.target.value;
+                    setGovernorateInput(newGov);
+                    const dists = getDistrictsForGovernorate(newGov);
+                    setDistrictInput(dists[0] || '');
+                  }}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green bg-white"
+                >
+                  {GOVERNORATES_LIST.map((gov: string) => (
+                    <option key={gov} value={gov}>{gov}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 block">
+                  المنطقة / الحي: <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={districtInput}
+                  onChange={(e) => setDistrictInput(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-green bg-white"
+                >
+                  {availableDistricts.map((dist: string) => (
+                    <option key={dist} value={dist}>{dist}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Submit Action */}
@@ -301,7 +403,7 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting || !phoneInput.trim()}
-                className="w-full py-3.5 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-black text-sm shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full py-3 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-black text-sm shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <>
@@ -314,6 +416,18 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
                     <span>إرسال كود التحقق عبر الواتساب</span>
                   </>
                 )}
+              </button>
+            </div>
+
+            {/* Sign out and switch option */}
+            <div className="pt-1 text-center">
+              <button
+                type="button"
+                onClick={handleLogoutAndSwitch}
+                className="text-3xs text-slate-400 hover:text-rose-600 transition inline-flex items-center gap-1 font-semibold"
+              >
+                <LogOut className="w-3 h-3" />
+                <span>تسجيل الخروج والتبديل لحساب آخر</span>
               </button>
             </div>
           </form>
@@ -373,7 +487,7 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting || otpCode.trim().length !== 4}
-                className="w-full py-3.5 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-black text-sm shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full py-3 px-4 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-black text-sm shadow-md transition flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <>
