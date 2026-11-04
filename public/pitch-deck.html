@@ -252,32 +252,64 @@
     }
 
     @media print {
-      body {
-        background: #fff !important;
-        color: #111 !important;
+      @page {
+        size: A4 landscape;
+        margin: 10mm;
       }
-      header, footer, .controls {
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      body {
+        background: #071324 !important;
+        color: #F8FAFC !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      header, footer, .controls, .top-actions {
         display: none !important;
+      }
+      .presentation-container {
+        padding: 0 !important;
+        display: block !important;
       }
       .slide {
         display: block !important;
+        page-break-after: always;
         break-after: page;
-        border: 1px solid #ddd !important;
-        background: #fff !important;
-        color: #111 !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        background: #0B223E !important;
+        color: #F8FAFC !important;
         box-shadow: none !important;
         max-width: 100% !important;
-        margin-bottom: 2rem;
+        min-height: 180mm !important;
+        box-sizing: border-box !important;
+        margin: 0 0 20mm 0 !important;
+        padding: 25mm 20mm !important;
+        border-radius: 16px !important;
       }
-      .slide-title, .card-title {
-        color: #071E33 !important;
+      .slide-title {
+        color: #FFFFFF !important;
       }
-      .slide-subtitle, .card-desc {
-        color: #475569 !important;
+      .slide-subtitle {
+        color: #94A3B8 !important;
+      }
+      .card-title {
+        color: #FFFFFF !important;
+      }
+      .card-desc {
+        color: #CBD5E1 !important;
       }
       .feature-card {
-        background: #f8fafc !important;
-        border-color: #cbd5e1 !important;
+        background: rgba(255, 255, 255, 0.05) !important;
+        border-color: rgba(255, 255, 255, 0.12) !important;
+      }
+      .metric-badge {
+        background: rgba(16, 185, 129, 0.12) !important;
+        border-color: rgba(16, 185, 129, 0.4) !important;
+      }
+      .metric-num {
+        color: #10B981 !important;
       }
     }
     @media (max-width: 768px) {
@@ -310,7 +342,14 @@
 
     <!-- Slide 1: Cover -->
     <div class="slide active" id="slide-1">
-      <div class="slide-tag">عرض حاضنة الأعمال • 2026</div>
+      <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 1.5rem;">
+        <div style="width: 60px; height: 60px; background: #0B2D4A; border: 3px solid #10B981; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 2.2rem; color: #fff; box-shadow: 0 0 25px rgba(16,185,129,0.4);">م</div>
+        <div>
+          <div style="font-size: 1.6rem; font-weight: 900; color: #FFFFFF;">مُخَلّصة • MOKHALASA</div>
+          <div style="font-size: 0.95rem; color: #10B981; font-weight: 700;">منصة التكنولوجيا المالية والقانونية للسيارات في مصر</div>
+        </div>
+      </div>
+      <div class="slide-tag">عرض حاضنة الأعمال الجامعية • 2026</div>
       <h1 class="slide-title">منصة مُخَلّصة (Mokhalasa)</h1>
       <p class="slide-subtitle">
         أول منصة ذكية لتسوية وفك حظر سيارات المديونيات البنكية والتقسيط المباشر الموثق في مصر.
@@ -338,6 +377,13 @@
 
     <!-- Slide 2: The Problem -->
     <div class="slide" id="slide-2">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1rem; color: #FFFFFF;">
+          <span style="display: inline-flex; width: 26px; height: 26px; background: #0B2D4A; border: 1.5px solid #10B981; border-radius: 6px; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 900; color: #fff;">م</span>
+          <span>مُخَلّصة | Mokhalasa</span>
+        </div>
+        <div style="font-size: 0.85rem; color: #10B981; font-weight: 700;">mokalasa.online</div>
+      </div>
       <div class="slide-tag">المشكلة والتحدي في السوق المصري</div>
       <h2 class="slide-title">أزمة سيارات المديونيات وحظر البيع</h2>
       <p class="slide-subtitle">
@@ -365,6 +411,13 @@
 
     <!-- Slide 3: The Solution -->
     <div class="slide" id="slide-3">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1rem; color: #FFFFFF;">
+          <span style="display: inline-flex; width: 26px; height: 26px; background: #0B2D4A; border: 1.5px solid #10B981; border-radius: 6px; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 900; color: #fff;">م</span>
+          <span>مُخَلّصة | Mokhalasa</span>
+        </div>
+        <div style="font-size: 0.85rem; color: #10B981; font-weight: 700;">mokalasa.online</div>
+      </div>
       <div class="slide-tag">الحل والابتكار</div>
       <h2 class="slide-title">منصة مخلصة: وسيط تقني وقانوني موثوق</h2>
       <p class="slide-subtitle">
@@ -397,6 +450,13 @@
 
     <!-- Slide 4: Market Size -->
     <div class="slide" id="slide-4">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1rem; color: #FFFFFF;">
+          <span style="display: inline-flex; width: 26px; height: 26px; background: #0B2D4A; border: 1.5px solid #10B981; border-radius: 6px; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 900; color: #fff;">م</span>
+          <span>مُخَلّصة | Mokhalasa</span>
+        </div>
+        <div style="font-size: 0.85rem; color: #10B981; font-weight: 700;">mokalasa.online</div>
+      </div>
       <div class="slide-tag">الفرصة وحجم السوق المصري</div>
       <h2 class="slide-title">سوق ضخم وغير مخدوم رقمياً</h2>
       <p class="slide-subtitle">
@@ -430,6 +490,13 @@
 
     <!-- Slide 5: Business Model -->
     <div class="slide" id="slide-5">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1rem; color: #FFFFFF;">
+          <span style="display: inline-flex; width: 26px; height: 26px; background: #0B2D4A; border: 1.5px solid #10B981; border-radius: 6px; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 900; color: #fff;">م</span>
+          <span>مُخَلّصة | Mokhalasa</span>
+        </div>
+        <div style="font-size: 0.85rem; color: #10B981; font-weight: 700;">mokalasa.online</div>
+      </div>
       <div class="slide-tag">نموذج العمل ومصادر الدخل</div>
       <h2 class="slide-title">كيف تحقق المنصة أرباحها؟ (Revenue Streams)</h2>
       <p class="slide-subtitle">
@@ -462,6 +529,13 @@
 
     <!-- Slide 6: Legal Framework -->
     <div class="slide" id="slide-6">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1rem; color: #FFFFFF;">
+          <span style="display: inline-flex; width: 26px; height: 26px; background: #0B2D4A; border: 1.5px solid #10B981; border-radius: 6px; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 900; color: #fff;">م</span>
+          <span>مُخَلّصة | Mokhalasa</span>
+        </div>
+        <div style="font-size: 0.85rem; color: #10B981; font-weight: 700;">mokalasa.online</div>
+      </div>
       <div class="slide-tag">الشكل القانوني والأمان</div>
       <h2 class="slide-title">الإطار المؤسسي والقانوني للشركة</h2>
       <p class="slide-subtitle">
@@ -489,6 +563,13 @@
 
     <!-- Slide 7: Traction -->
     <div class="slide" id="slide-7">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1rem; color: #FFFFFF;">
+          <span style="display: inline-flex; width: 26px; height: 26px; background: #0B2D4A; border: 1.5px solid #10B981; border-radius: 6px; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 900; color: #fff;">م</span>
+          <span>مُخَلّصة | Mokhalasa</span>
+        </div>
+        <div style="font-size: 0.85rem; color: #10B981; font-weight: 700;">mokalasa.online</div>
+      </div>
       <div class="slide-tag">ما تم إنجازه (Traction)</div>
       <h2 class="slide-title">المنصة جاهزة وشغالة لايف بالفعل!</h2>
       <p class="slide-subtitle">
@@ -521,6 +602,13 @@
 
     <!-- Slide 8: The Ask -->
     <div class="slide" id="slide-8">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1rem; color: #FFFFFF;">
+          <span style="display: inline-flex; width: 26px; height: 26px; background: #0B2D4A; border: 1.5px solid #10B981; border-radius: 6px; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 900; color: #fff;">م</span>
+          <span>مُخَلّصة | Mokhalasa</span>
+        </div>
+        <div style="font-size: 0.85rem; color: #10B981; font-weight: 700;">mokalasa.online</div>
+      </div>
       <div class="slide-tag">طلبنا من الحاضنة (The Ask)</div>
       <h2 class="slide-title">لماذا نحتاج دعم حاضنة الأعمال؟</h2>
       <p class="slide-subtitle">
