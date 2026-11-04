@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>عرض تقديمي | منصة مخلصة - حاضنة الأعمال</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0B2D4A;
+      --primary-dark: #071E33;
+      --accent: #10B981;
+      --accent-gold: #F59E0B;
+      --bg: #0A192F;
+      --card-bg: rgba(17, 34, 64, 0.85);
+      --text: #F8FAFC;
+      --text-muted: #94A3B8;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Cairo', 'Tajawal', sans-serif;
+      background: radial-gradient(circle at 50% 20%, #132E52 0%, #071324 100%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow-x: hidden;
+    }
+    header {
+      padding: 1.25rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      background: rgba(11, 45, 74, 0.4);
+      backdrop-filter: blur(10px);
+    }
+    .logo-badge {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      font-size: 1.25rem;
+      color: #fff;
+    }
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--primary);
+      border: 2px solid var(--accent);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 900;
+      font-size: 1.3rem;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+    }
+    .top-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .btn {
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.05);
+      color: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn:hover {
+      background: rgba(255,255,255,0.15);
+      border-color: var(--accent);
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #071324;
+      border: none;
+    }
+    .btn-primary:hover {
+      background: #059669;
+      color: #fff;
+    }
+    
+    .presentation-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      position: relative;
+    }
+    .slide {
+      display: none;
+      width: 100%;
+      max-width: 980px;
+      background: var(--card-bg);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      padding: 3rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(16px);
+      animation: fadeIn 0.4s ease-out;
+      position: relative;
+    }
+    .slide.active {
+      display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px) scale(0.99); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    
+    .slide-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 14px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 999px;
+      color: var(--accent);
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+    }
+    .slide-title {
+      font-size: 2.25rem;
+      font-weight: 900;
+      color: #FFFFFF;
+      margin-bottom: 1.25rem;
+      line-height: 1.3;
+    }
+    .slide-subtitle {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+      line-height: 1.7;
+    }
+    
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+      margin-top: 1.5rem;
+    }
+    .feature-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 1.5rem;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .feature-card:hover {
+      border-color: rgba(16, 185, 129, 0.4);
+      transform: translateY(-3px);
+    }
+    .card-icon {
+      font-size: 2rem;
+      margin-bottom: 0.75rem;
+      display: block;
+    }
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.5rem;
+    }
+    .card-desc {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+    
+    .metric-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(11, 45, 74, 0.3) 100%);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 1.5rem;
+      border-radius: 18px;
+      text-align: center;
+    }
+    .metric-num {
+      font-size: 2.25rem;
+      font-weight: 900;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+    .metric-label {
+      font-size: 0.95rem;
+      color: #CBD5E1;
+      font-weight: 600;
+    }
+
+    /* Controls */
+    footer {
+      padding: 1.25rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      background: rgba(11, 45, 74, 0.4);
+      backdrop-filter: blur(10px);
+    }
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .dots {
+      display: flex;
+      gap: 8px;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .dot.active {
+      background: var(--accent);
+      width: 26px;
+      border-radius: 999px;
+    }
+
+    @media print {
+      body {
+        background: #fff !important;
+        color: #111 !important;
+      }
+      header, footer, .controls {
+        display: none !important;
+      }
+      .slide {
+        display: block !important;
+        break-after: page;
+        border: 1px solid #ddd !important;
+        background: #fff !important;
+        color: #111 !important;
+        box-shadow: none !important;
+        max-width: 100% !important;
+        margin-bottom: 2rem;
+      }
+      .slide-title, .card-title {
+        color: #071E33 !important;
+      }
+      .slide-subtitle, .card-desc {
+        color: #475569 !important;
+      }
+      .feature-card {
+        background: #f8fafc !important;
+        border-color: #cbd5e1 !important;
+      }
+    }
+    @media (max-width: 768px) {
+      .grid-2, .grid-3 {
+        grid-template-columns: 1fr;
+      }
+      .slide {
+        padding: 1.5rem;
+      }
+      .slide-title {
+        font-size: 1.6rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo-badge">
+      <div class="logo-icon">م</div>
+      <div>مخلصة | Mokhalasa</div>
+    </div>
+    <div class="top-actions">
+      <a href="https://mokalasa.online" target="_blank" class="btn">🌐 زيارة المنصة الحية</a>
+      <button onclick="window.print()" class="btn">🖨️ طباعة / حفظ PDF</button>
+    </div>
+  </header>
+
+  <main class="presentation-container">
+
+    <!-- Slide 1: Cover -->
+    <div class="slide active" id="slide-1">
+      <div class="slide-tag">عرض حاضنة الأعمال • 2026</div>
+      <h1 class="slide-title">منصة مُخَلّصة (Mokhalasa)</h1>
+      <p class="slide-subtitle">
+        أول منصة ذكية لتسوية وفك حظر سيارات المديونيات البنكية والتقسيط المباشر الموثق في مصر.
+      </p>
+
+      <div class="grid-3">
+        <div class="metric-badge">
+          <div class="metric-num">100%</div>
+          <div class="metric-label">تسوية بنكية وقانونية آمنة</div>
+        </div>
+        <div class="metric-badge">
+          <div class="metric-num">بدون بنك</div>
+          <div class="metric-label">تقسيط مباشر بعقود رسمية</div>
+        </div>
+        <div class="metric-badge">
+          <div class="metric-num">لايف الآن</div>
+          <div class="metric-label">mokalasa.online</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 2rem; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 12px; font-size: 0.95rem; color: #94A3B8;">
+        💡 <strong>المؤسس وفريق العمل:</strong> محمود تامر وشركاؤه • ريادة أعمال وابتكار رقمي بالجامعة
+      </div>
+    </div>
+
+    <!-- Slide 2: The Problem -->
+    <div class="slide" id="slide-2">
+      <div class="slide-tag">المشكلة والتحدي في السوق المصري</div>
+      <h2 class="slide-title">أزمة سيارات المديونيات وحظر البيع</h2>
+      <p class="slide-subtitle">
+        السوق المصري يواجه 3 مشاكل ضخمة تجعل بيع وشراء السيارات المقسطة كابوساً للمواطنين:
+      </p>
+
+      <div class="grid-3">
+        <div class="feature-card">
+          <span class="card-icon">⚠️</span>
+          <h3 class="card-title">تعثر أصحاب السيارات</h3>
+          <p class="card-desc">ارتفاع الفائدة وأقساط البنوك جعل الآلاف عاجزين عن السداد، ومعرضين للمساءلة القانونية ومصادرة السيارة دون حل مرن لبيعها.</p>
+        </div>
+        <div class="feature-card">
+          <span class="card-icon">⚖️</span>
+          <h3 class="card-title">الخوف من المشاكل الجنائية</h3>
+          <p class="card-desc">المشترون يخشون شراء سيارات حظر البيع عرفياً بسبب قضايا خيانة الأمانة وحظر المرور وضياع حقوقهم المالية بالكامل.</p>
+        </div>
+        <div class="feature-card">
+          <span class="card-icon">🏦</span>
+          <h3 class="card-title">صعوبة شروط البنوك</h3>
+          <p class="card-desc">البنوك تطلب إثبات دخل معقد وشروط تعجيزية لشراء السيارات المستعملة بالتقسيط، مما يحرم شريحة الشباب والمهن الحرة.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 3: The Solution -->
+    <div class="slide" id="slide-3">
+      <div class="slide-tag">الحل والابتكار</div>
+      <h2 class="slide-title">منصة مخلصة: وسيط تقني وقانوني موثوق</h2>
+      <p class="slide-subtitle">
+        نظام رقمي متكامل يربط المالك المتعثر بالمشتري الجاد مع إشراف بنكي وقانوني كامل يضمن حقوق الطرفين.
+      </p>
+
+      <div class="grid-2">
+        <div class="feature-card">
+          <span class="card-icon">📜</span>
+          <h3 class="card-title">فك حظر وتسوية المديونية</h3>
+          <p class="card-desc">سداد مباشر للبنك أو شركة التمويل واستخراج مخالصة رسمية ورفع الحظر من المرور قبل نقل الملكية، بدون أي ثغرة قانونية.</p>
+        </div>
+        <div class="feature-card">
+          <span class="card-icon">🤝</span>
+          <h3 class="card-title">تقسيط مباشر بدون بنوك</h3>
+          <p class="card-desc">نظام تقسيط مباشر مرن بين البائع والمشتري بضمانات تجارية وعقود موثقة وشيكات بنكية مقبولة قانونياً.</p>
+        </div>
+        <div class="feature-card">
+          <span class="card-icon">🔍</span>
+          <h3 class="card-title">فحص فني وقانوني معتمد</h3>
+          <p class="card-desc">تقرير حالة شامل للمحرك والهيكل، مع استعلام أمني ومروري دقيق للتأكد من خلو السيارة من أي أحكام أو مخالفات.</p>
+        </div>
+        <div class="feature-card">
+          <span class="card-icon">🛡️</span>
+          <h3 class="card-title">نظام الضمان المالي المتبادل (Escrow)</h3>
+          <p class="card-desc">حجز مبلغ جدية الشراء ومستحقات التسوية حتى استلام المخالصة ونقل الملكية بنجاح، مما يمنع النصب بنسبة 100%.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 4: Market Size -->
+    <div class="slide" id="slide-4">
+      <div class="slide-tag">الفرصة وحجم السوق المصري</div>
+      <h2 class="slide-title">سوق ضخم وغير مخدوم رقمياً</h2>
+      <p class="slide-subtitle">
+        أكثر من 6.5 مليون سيارة مرخصة في مصر، مع زيادة هائلة في الطلب على السيارات المستعملة والحلول البديلة.
+      </p>
+
+      <div class="grid-3">
+        <div class="metric-badge">
+          <div class="metric-num">350K+</div>
+          <div class="metric-label">سيارة مقسطة بنكياً سنوياً في مصر</div>
+        </div>
+        <div class="metric-badge">
+          <div class="metric-num">40%+</div>
+          <div class="metric-label">نسبة الإقبال على شراء المستعمل بالتقسيط</div>
+        </div>
+        <div class="metric-badge">
+          <div class="metric-num">0 منافس</div>
+          <div class="metric-label">لا توجد منصة مخصصة لحظر البيع والتسوية المباشرة</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 2rem;" class="feature-card">
+        <h3 class="card-title">🎯 الشريحة المستهدفة (Target Audience):</h3>
+        <p class="card-desc">
+          • أصحاب السيارات الراغبين في التخلص من القسط الشهري واسترجاع جزء من أموالهم فوراً.<br>
+          • الراغبون في شراء سيارات حديثة بأسعار أقل من السوق مع ضمان خلوها من أي حظر بنكي.<br>
+          • الشباب وأصحاب العمل الحر الذين يبحثون عن تقسيط مباشر بدون قيود مفردات المرتب.
+        </p>
+      </div>
+    </div>
+
+    <!-- Slide 5: Business Model -->
+    <div class="slide" id="slide-5">
+      <div class="slide-tag">نموذج العمل ومصادر الدخل</div>
+      <h2 class="slide-title">كيف تحقق المنصة أرباحها؟ (Revenue Streams)</h2>
+      <p class="slide-subtitle">
+        نموذج إيرادات متعدد ومتوازن يضمن ربحية مستدامة من كل عملية بيع أو تسوية:
+      </p>
+
+      <div class="grid-2">
+        <div class="feature-card">
+          <span class="card-icon">💰</span>
+          <h3 class="card-title">1. عمولة الوساطة والتسوية</h3>
+          <p class="card-desc">نسبة من 1.5% إلى 2.5% من قيمة تسوية المديونية أو سعر بيع السيارة، تخصم عند إتمام نقل الملكية وتسليم المخالصة.</p>
+        </div>
+        <div class="feature-card">
+          <span class="card-icon">📑</span>
+          <h3 class="card-title">2. رسوم الفحص الفني والقانوني</h3>
+          <p class="card-desc">رسوم تقرير الحالة الفنية والاستعلام المروري والجنائي الشامل بالتعاون مع مراكز فحص معتمدة.</p>
+        </div>
+        <div class="feature-card">
+          <span class="card-icon">💳</span>
+          <h3 class="card-title">3. إدارة عقود التقسيط المباشر</h3>
+          <p class="card-desc">رسوم إدارية لتحصيل ومتابعة الشيكات والأقساط الشهرية بين الطرفين وتوثيق العقود في الشهر العقاري.</p>
+        </div>
+        <div class="feature-card">
+          <span class="card-icon">⭐</span>
+          <h3 class="card-title">4. الإعلانات المميزة والخدمات الإضافية</h3>
+          <p class="card-desc">باقات تثبيت الإعلانات في صدارة المنصة للمعارض، والربط مع شركات التأمين وخدمات الصيانة.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 6: Legal Framework -->
+    <div class="slide" id="slide-6">
+      <div class="slide-tag">الشكل القانوني والأمان</div>
+      <h2 class="slide-title">الإطار المؤسسي والقانوني للشركة</h2>
+      <p class="slide-subtitle">
+        المنصة تعمل كوسيط تقني وإداري خاضع لأحكام القانون المصري وقانون حماية المستهلك:
+      </p>
+
+      <div class="grid-3">
+        <div class="feature-card">
+          <span class="card-icon">🏢</span>
+          <h3 class="card-title">الكيان القانوني</h3>
+          <p class="card-desc">شركة مساهمة أو ذات مسؤولية محدودة (LLC) تحت تأسيس الهيئة العامة للاستثمار (GAFI) بنشاط وساطة رقمية وإدارة منصات إلكترونية.</p>
+        </div>
+        <div class="feature-card">
+          <span class="card-icon">⚖️</span>
+          <h3 class="card-title">عقود رسمية موثقة</h3>
+          <p class="card-desc">كل تعامل يتم عبر عقود وساطة مدنية واتفاقيات سداد مديونية رسمية، دون الدخول في أي معاملات محظورة بنكياً أو مرغمة جنائياً.</p>
+        </div>
+        <div class="feature-card">
+          <span class="card-icon">🔒</span>
+          <h3 class="card-title">إثبات هوية رقمي</h3>
+          <p class="card-desc">تحقق من الرقم القومي ورقم التليفون، ومنع التعامل لمن هم أقل من 18 عاماً لضمان الأهلية القانونية الكاملة للعقود.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 7: Traction -->
+    <div class="slide" id="slide-7">
+      <div class="slide-tag">ما تم إنجازه (Traction)</div>
+      <h2 class="slide-title">المنصة جاهزة وشغالة لايف بالفعل!</h2>
+      <p class="slide-subtitle">
+        لم نأتِ بفكرة على ورق فقط؛ بل قمنا ببناء وإطلاق المنصة التقنية بالكامل:
+      </p>
+
+      <div class="grid-2">
+        <div class="feature-card">
+          <span class="card-icon">🚀</span>
+          <h3 class="card-title">الموقع شغال ومفهرس على جوجل</h3>
+          <p class="card-desc">دومين رسمي <strong>mokalasa.online</strong> مع خريطة sitemap ومطابقة أمنية وحماية من هجمات الويب وسرعة استجابة فائقة.</p>
+        </div>
+        <div class="feature-card">
+          <span class="card-icon">🎛️</span>
+          <h3 class="card-title">منظومة رقمية شاملة</h3>
+          <p class="card-desc">معالج بيع ذكي (Sell Wizard)، حاسبة أقساط دقيقة، معرض سيارات فلترة متطورة، ولوحة تحكم للإدارة والرقابة.</p>
+        </div>
+        <div class="feature-card">
+          <span class="card-icon">⚡</span>
+          <h3 class="card-title">بنية تحتية تتحمل 1,000+ مستخدم</h3>
+          <p class="card-desc">سيرفرات سحابية عالمية (Vercel Edge & Supabase Cloud) مع أمان عالي لقواعد البيانات وتشفير كامل للبيانات.</p>
+        </div>
+        <div class="feature-card">
+          <span class="card-icon">📊</span>
+          <h3 class="card-title">نظام فلترة وجدية الإعلانات</h3>
+          <p class="card-desc">لا إعلانات وهمية، مراجعة بشرية وتقنية قبل ظهور أي سيارة لضمان المصداقية التامة.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 8: The Ask -->
+    <div class="slide" id="slide-8">
+      <div class="slide-tag">طلبنا من الحاضنة (The Ask)</div>
+      <h2 class="slide-title">لماذا نحتاج دعم حاضنة الأعمال؟</h2>
+      <p class="slide-subtitle">
+        نمتلك التكنولوجيا والنموذج القابل للتوسع، ونحتاج لحاضنة الأعمال لتسريع النمو في المحاور التالية:
+      </p>
+
+      <div class="grid-3">
+        <div class="feature-card">
+          <span class="card-icon">🤝</span>
+          <h3 class="card-title">1. التشبيك مع البنوك والجهات التمويلية</h3>
+          <p class="card-desc">فتح قنوات تواصل رسمية مع إدارات التسوية والتحصيل بالبنوك وشركات التمويل الاستهلاكي لتسريع إجراءات المخالصات.</p>
+        </div>
+        <div class="feature-card">
+          <span class="card-icon">⚖️</span>
+          <h3 class="card-title">2. الإرشاد القانوني والمالي</h3>
+          <p class="card-desc">استكمال التراخيص النهائية وتدقيق العقود بالشراكة مع مستشارين قانونيين متخصصين في التجارة الإلكترونية.</p>
+        </div>
+        <div class="feature-card">
+          <span class="card-icon">📣</span>
+          <h3 class="card-title">3. الدعم التسويقي والتوجيه (Mentorship)</h3>
+          <p class="card-desc">مساعدة الفريق في بناء استراتيجية الاستحواذ على العملاء (Customer Acquisition) وإعداد جولات الاستثمار القادمة.</p>
+        </div>
+      </div>
+
+      <div style="margin-top: 2rem; text-align: center; padding: 1.25rem; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 16px;">
+        🌟 <strong>هدفنا:</strong> تحويل أزمة مديونيات السيارات في مصر إلى سوق منظم وشفاف، وبناء أكبر منصة وساطة سيارات موثوقة في المنطقة.
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    <div class="controls">
+      <button class="btn" id="prevBtn" onclick="prevSlide()">السابق ➔</button>
+      <button class="btn btn-primary" id="nextBtn" onclick="nextSlide()">⬅ التالي</button>
+    </div>
+
+    <div class="dots" id="dotsContainer">
+      <div class="dot active" onclick="goToSlide(1)"></div>
+      <div class="dot" onclick="goToSlide(2)"></div>
+      <div class="dot" onclick="goToSlide(3)"></div>
+      <div class="dot" onclick="goToSlide(4)"></div>
+      <div class="dot" onclick="goToSlide(5)"></div>
+      <div class="dot" onclick="goToSlide(6)"></div>
+      <div class="dot" onclick="goToSlide(7)"></div>
+      <div class="dot" onclick="goToSlide(8)"></div>
+    </div>
+
+    <div style="font-size: 0.85rem; color: #94A3B8;">
+      الشريحة <span id="currentNum">1</span> من 8
+    </div>
+  </footer>
+
+  <script>
+    let current = 1;
+    const total = 8;
+
+    function showSlide(n) {
+      document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.dot').forEach(d => d.classList.remove('active'));
+
+      const targetSlide = document.getElementById('slide-' + n);
+      if (targetSlide) targetSlide.classList.add('active');
+
+      const targetDot = document.querySelectorAll('.dot')[n - 1];
+      if (targetDot) targetDot.classList.add('active');
+
+      document.getElementById('currentNum').innerText = n;
+      current = n;
+    }
+
+    function nextSlide() {
+      if (current < total) showSlide(current + 1);
+    }
+
+    function prevSlide() {
+      if (current > 1) showSlide(current - 1);
+    }
+
+    function goToSlide(n) {
+      showSlide(n);
+    }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft' || e.key === 'PageDown' || e.key === ' ') {
+        nextSlide();
+      } else if (e.key === 'ArrowRight' || e.key === 'PageUp') {
+        prevSlide();
+      }
+    });
+  </script>
+</body>
+</html>
