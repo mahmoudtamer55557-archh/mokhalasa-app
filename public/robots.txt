@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://mokhalasa.com/sitemap.xml
+Sitemap: https://mokalasa.online/sitemap.xml
