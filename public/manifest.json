@@ -1,12 +1,24 @@
 {
   "short_name": "مخلصة",
   "name": "مخلصة - Mokhalasa | سوق وتخارج السيارات في مصر",
-  "description": "منصة متكاملة لبيع وشراء السيارات ونقل ملكية السيارات الممولة في مصر بكل شفافية وثقة.",
+  "description": "منصة متكاملة لبيع وشراء السيارات ونقل ملكية السيارات الممولة وحظر البيع في مصر بكل شفافية وثقة.",
   "icons": [
+    {
+      "src": "/favicon-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    },
     {
       "src": "/favicon.svg",
       "type": "image/svg+xml",
-      "sizes": "192x192 512x512"
+      "sizes": "any"
     }
   ],
   "start_url": "/",

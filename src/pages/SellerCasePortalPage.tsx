@@ -1616,8 +1616,10 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                               {c.vehicle.images && c.vehicle.images[0] ? (
                                 <img
                                   src={c.vehicle.images[0]}
-                                  alt={c.vehicle.make}
+                                  alt={`سيارة ${c.vehicle.make} - ملف تسوية مخلصة`}
                                   className="w-full h-full object-cover"
+                                  loading="lazy"
+                                  decoding="async"
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">

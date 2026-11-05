@@ -15,6 +15,7 @@ import { listingService } from './services/listingService';
 import { sendConsultationReceivedWhatsApp } from './services/whatsappService';
 import { isValidEgyptianPhone, normalizeEgyptianPhone } from './utils/phoneValidator';
 import { sanitizeInput } from './utils/securityGuard';
+import { applyPageSeo } from './utils/seoHelper';
 import { MessageSquare, CheckCircle2, X, AlertTriangle, ChevronLeft } from 'lucide-react';
 
 // Route-based Code Splitting (Lazy-loaded secondary & heavy admin/wizard modules for ultra-fast initial load)
@@ -375,14 +376,12 @@ export function App() {
     };
   }, []);
 
-  // Sync document title and direction
+  // Sync document title, direction, and dynamic SEO meta tags (title, description, keywords, canonical, OG, Twitter)
   useEffect(() => {
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = lang;
-    document.title = lang === 'ar' 
-      ? 'مخلصة | منصة تسوية سيارات حظر البيع والمديونيات والتقسيط المباشر'
-      : 'Mokhalasa | Car Loan Settlement, Sale Bans & Direct Installments';
-  }, [lang]);
+    applyPageSeo(currentView, selectedCar, lang);
+  }, [currentView, selectedCar, lang]);
 
   const handleNavigate = (view: string) => {
     setCurrentView(view);

@@ -233,8 +233,10 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
             <div className="relative aspect-[16/10] rounded-3xl overflow-hidden bg-slate-900 border border-brand-border shadow-card group">
               <img
                 src={car.images[activeImageIndex] || car.images[0]}
-                alt={`${car.make} ${car.model}`}
+                alt={`سيارة ${car.make} ${car.model} موديل ${car.year} - تسوية حظر بيع وفحص فني مخلصة`}
                 className="w-full h-full object-cover transition-all duration-300"
+                loading="eager"
+                decoding="async"
               />
 
               {/* Prev / Next controls */}
@@ -285,7 +287,7 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
                       activeImageIndex === idx ? 'border-brand-green shadow-md scale-95' : 'border-transparent opacity-70 hover:opacity-100'
                     }`}
                   >
-                    <img src={img} alt="thumbnail" className="w-full h-full object-cover" />
+                    <img src={img} alt={`معاينة تفاصيل سيارة ${car.make} ${car.model} صورة ${idx + 1}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>

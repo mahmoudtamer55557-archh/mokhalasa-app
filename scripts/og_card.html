@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 1200px;
+      height: 630px;
+      font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+      background: radial-gradient(circle at 75% 25%, #132E52 0%, #071324 100%);
+      color: #F8FAFC;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 60px 80px;
+      overflow: hidden;
+      position: relative;
+    }
+    .grid-pattern {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      z-index: 1;
+    }
+    .content {
+      position: relative;
+      z-index: 2;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+    .logo-box {
+      width: 80px;
+      height: 80px;
+      background: #0B2D4A;
+      border: 3px solid #10B981;
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      font-weight: 900;
+      color: #FFFFFF;
+      box-shadow: 0 0 35px rgba(16, 185, 129, 0.4);
+    }
+    .brand-title {
+      font-size: 2.5rem;
+      font-weight: 900;
+      color: #FFFFFF;
+      letter-spacing: -0.5px;
+    }
+    .brand-sub {
+      font-size: 1.15rem;
+      color: #10B981;
+      font-weight: 700;
+    }
+    .main-title {
+      margin-top: 40px;
+      font-size: 3rem;
+      font-weight: 900;
+      line-height: 1.25;
+      color: #FFFFFF;
+      max-width: 950px;
+    }
+    .main-desc {
+      margin-top: 16px;
+      font-size: 1.4rem;
+      color: #94A3B8;
+      font-weight: 600;
+      line-height: 1.5;
+      max-width: 900px;
+    }
+    .badges {
+      display: flex;
+      gap: 18px;
+      margin-top: 35px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 22px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1.5px solid rgba(16, 185, 129, 0.35);
+      border-radius: 999px;
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #34D399;
+    }
+    .footer {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      padding-top: 20px;
+    }
+    .domain {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: #10B981;
+      letter-spacing: 0.5px;
+    }
+    .slogan {
+      font-size: 1.1rem;
+      color: #64748B;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-pattern"></div>
+  <div class="content">
+    <div class="header">
+      <div class="logo-box">م</div>
+      <div>
+        <div class="brand-title">مُخَلّصة | Mokhalasa</div>
+        <div class="brand-sub">سوق وتخارج سيارات المديونيات في مصر</div>
+      </div>
+    </div>
+    <div class="main-title">
+      تسوية سيارات حظر البيع والتقسيط المباشر بدون بنوك
+    </div>
+    <div class="main-desc">
+      الحل القانوني والمالي المعتمد لسداد مديونيات البنوك، فك حظر المرور، ونقل الملكية بعقود رسمية موثقة.
+    </div>
+    <div class="badges">
+      <div class="badge">🛡️ تسوية بنكية معتمدة</div>
+      <div class="badge">🤝 تقسيط مباشر بدون بنوك</div>
+      <div class="badge">🔍 فحص فني واستعلام جنائي</div>
+    </div>
+  </div>
+  <div class="footer">
+    <div class="domain">🌐 https://mokalasa.online</div>
+    <div class="slogan">عقود موثقة • مخالصات رسمية • حماية 100%</div>
+  </div>
+</body>
+</html>

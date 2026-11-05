@@ -54,9 +54,10 @@ export const CarCard: React.FC<CarCardProps> = ({
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
         <img
           src={car.images[0]}
-          alt={`${car.make} ${car.model} ${car.year}`}
+          alt={isAr ? `سيارة ${car.make} ${car.model} ${car.year} - تسوية حظر بيع وتقسيط مباشر مصر` : `${car.make} ${car.model} ${car.year} - Car Debt Settlement & Direct Installment Egypt`}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           loading="lazy"
+          decoding="async"
         />
 
         {/* Favorite Button */}
