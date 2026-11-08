@@ -1,6 +1,7 @@
 User-agent: *
 Allow: /
 
+# Google Search & Gemini AI
 User-agent: Googlebot
 Allow: /
 
@@ -10,13 +11,27 @@ Allow: /
 User-agent: Google-Extended
 Allow: /
 
+# Microsoft Bing & ChatGPT Search (OAI uses Bing index)
+User-agent: Bingbot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
 User-agent: GPTBot
 Allow: /
 
+# Perplexity AI & Claude
 User-agent: PerplexityBot
 Allow: /
 
 User-agent: ClaudeBot
+Allow: /
+
+User-agent: Applebot
 Allow: /
 
 Sitemap: https://mokalasa.online/sitemap.xml
