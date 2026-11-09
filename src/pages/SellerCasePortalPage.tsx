@@ -1187,7 +1187,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                   </div>
 
                   <a
-                    href={`https://wa.me/201018898144?text=${encodeURIComponent(`مرحباً أستاذ ${activeCase.assignedEmployeeName}، بخصوص طلب سيارتي كود (${activeCase.caseReference}) في منصة مخلصة.`)}`}
+                    href={`https://wa.me/201008836962?text=${encodeURIComponent(`مرحباً أستاذ ${activeCase.assignedEmployeeName}، بخصوص طلب سيارتي كود (${activeCase.caseReference}) في منصة مخلصة.`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full py-2.5 px-3 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition"
@@ -1510,7 +1510,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                 </button>
 
                 <a
-                  href={`https://wa.me/201018898144?text=${encodeURIComponent(`أرغب في إرسال المستندات الرسمية لإعلاني كود (${activeCase.caseReference}) عبر واتساب مباشرة.`)}`}
+                  href={`https://wa.me/201008836962?text=${encodeURIComponent(`أرغب في إرسال المستندات الرسمية لإعلاني كود (${activeCase.caseReference}) عبر واتساب مباشرة.`)}`}
                   target="_blank"
                   rel="noreferrer"
                   className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition flex items-center gap-2"
@@ -2345,7 +2345,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                 <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between">
                   <span className="text-2xs text-emerald-900 font-bold">تفضل الإرسال المباشر عبر واتساب؟</span>
                   <a
-                    href={`https://wa.me/201018898144?text=${encodeURIComponent(`أرغب في إرسال صور الأوراق والمستندات لحالتي (${activeCase.caseReference}) عبر واتساب مباشرة.`)}`}
+                    href={`https://wa.me/201008836962?text=${encodeURIComponent(`أرغب في إرسال صور الأوراق والمستندات لحالتي (${activeCase.caseReference}) عبر واتساب مباشرة.`)}`}
                     target="_blank"
                     rel="noreferrer"
                     className="text-3xs font-black text-emerald-800 underline hover:text-emerald-950"

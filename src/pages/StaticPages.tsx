@@ -308,7 +308,7 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
                 <div className="p-5 rounded-3xl bg-slate-50 border border-slate-200/80 space-y-3.5 text-xs">
                   {/* WhatsApp Direct Action Button */}
                   <a
-                    href="https://wa.me/201018898144?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D9%81%D8%B1%D9%8A%D9%82%20%D9%85%D8%AE%D9%84%D8%B5%D8%A9%D8%8C%20%D9%84%D8%AF%D9%8A%20%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1%20%D8%AD%D9%88%D9%84%20%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%20%D8%A7%D9%84%D9%85%D9%86%D8%B5%D8%A9"
+                    href="https://wa.me/201008836962?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D9%81%D8%B1%D9%8A%D9%82%20%D9%85%D8%AE%D9%84%D8%B5%D8%A9%D8%8C%20%D9%84%D8%AF%D9%8A%20%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1%20%D8%AD%D9%88%D9%84%20%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%20%D8%A7%D9%84%D9%85%D9%86%D8%B5%D8%A9"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-between p-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white transition shadow-sm group"
@@ -322,7 +322,7 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
                           {isAr ? 'محادثة واتساب فورية' : 'Live WhatsApp Chat'}
                         </div>
                         <div dir="ltr" className="font-mono text-3xs text-emerald-100 font-bold">
-                          +20 10 1889 8144
+                          +20 10 0883 6962
                         </div>
                       </div>
                     </div>
@@ -333,7 +333,7 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
 
                   {/* Phone Call Hotline */}
                   <a
-                    href="tel:01018898144"
+                    href="tel:01008836962"
                     className="flex items-center gap-3 p-3 rounded-2xl bg-white border border-slate-200 hover:border-brand-green transition"
                   >
                     <div className="w-9 h-9 rounded-xl bg-brand-navy text-white flex items-center justify-center flex-shrink-0">
@@ -341,7 +341,7 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
                     </div>
                     <div>
                       <div className="font-bold text-brand-navy">{isAr ? 'الخط الساخن المباشر:' : 'Direct Hotline:'}</div>
-                      <div dir="ltr" className="font-mono text-slate-700 font-extrabold text-xs">01018898144</div>
+                      <div dir="ltr" className="font-mono text-slate-700 font-extrabold text-xs">01008836962</div>
                     </div>
                   </a>
 

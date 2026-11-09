@@ -649,7 +649,7 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
 
                 {/* Direct WhatsApp Action */}
                 <a
-                  href={`https://wa.me/201018898144?text=${whatsappInquiryMessage}`}
+                  href={`https://wa.me/201008836962?text=${whatsappInquiryMessage}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-2xs transition flex items-center justify-center gap-2"

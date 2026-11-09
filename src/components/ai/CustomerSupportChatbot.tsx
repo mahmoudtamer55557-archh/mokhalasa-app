@@ -66,7 +66,7 @@ export const CustomerSupportChatbot: React.FC<CustomerSupportChatbotProps> = ({
         ...prev,
         {
           role: 'assistant',
-          text: res.message || 'نعتذر لحضرتك جداً، يمكنك التواصل المباشر مع مستشاري مخلصة لحل استفسارك فوراً عبر [واتساب المستشارين](https://wa.me/201018898144).'
+          text: res.message || 'نعتذر لحضرتك جداً، يمكنك التواصل المباشر مع مستشاري مخلصة لحل استفسارك فوراً عبر [واتساب المستشارين](https://wa.me/201008836962).'
         }
       ]);
     }
@@ -250,7 +250,7 @@ export const CustomerSupportChatbot: React.FC<CustomerSupportChatbotProps> = ({
               <span>مشكلة أو شكوى عاجلة؟</span>
             </span>
             <a
-              href="https://wa.me/201018898144?text=مرحباً%20إدارة%20مخلصة،%20لدي%20شكوى%20أو%20استفسار%20عاجل%20أرجو%20المتابعة."
+              href="https://wa.me/201008836962?text=مرحباً%20إدارة%20مخلصة،%20لدي%20شكوى%20أو%20استفسار%20عاجل%20أرجو%20المتابعة."
               target="_blank"
               rel="noreferrer"
               className="text-emerald-800 hover:text-emerald-950 font-black underline flex items-center gap-1"

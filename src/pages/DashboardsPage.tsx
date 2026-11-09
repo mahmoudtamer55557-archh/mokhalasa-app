@@ -469,7 +469,7 @@ export const DashboardsPage: React.FC<DashboardsPageProps> = ({
 
                   <div className="space-y-2 pt-1 text-xs">
                     <a
-                      href={`https://wa.me/201018898144?text=${encodeURIComponent(`مرحباً أستاذ ${currentOwnerCase.assignedEmployeeName}، بخصوص ملف سيارتي كود (${currentOwnerCase.caseReference}).`)}`}
+                      href={`https://wa.me/201008836962?text=${encodeURIComponent(`مرحباً أستاذ ${currentOwnerCase.assignedEmployeeName}، بخصوص ملف سيارتي كود (${currentOwnerCase.caseReference}).`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full py-2.5 px-3 rounded-xl bg-brand-green hover:bg-brand-green-hover text-white font-bold flex items-center justify-center gap-2 shadow-sm transition"

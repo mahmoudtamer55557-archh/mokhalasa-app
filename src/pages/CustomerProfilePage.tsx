@@ -1421,7 +1421,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
                           </button>
 
                           <a
-                            href={`https://wa.me/201018898144?text=${encodeURIComponent(`مرحباً إدارة مخلصة، أرغب في إرسال المستندات الرسمية لإعلاني كود: ${item.id.slice(0, 8)} (${item.make} ${item.model} ${item.year})`)}`}
+                            href={`https://wa.me/201008836962?text=${encodeURIComponent(`مرحباً إدارة مخلصة، أرغب في إرسال المستندات الرسمية لإعلاني كود: ${item.id.slice(0, 8)} (${item.make} ${item.model} ${item.year})`)}`}
                             target="_blank"
                             rel="noreferrer"
                             className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-2xs transition flex items-center gap-1.5"
@@ -2437,7 +2437,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
               <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between">
                 <span className="text-2xs text-emerald-900 font-bold">تفضل الإرسال المباشر عبر واتساب؟</span>
                 <a
-                  href={`https://wa.me/201018898144?text=${encodeURIComponent(`أرغب في إرسال صور الأوراق والمستندات لإعلاني: ${docsModalListing.make} ${docsModalListing.model} (كود: ${docsModalListing.id.slice(0, 8)})`)}`}
+                  href={`https://wa.me/201008836962?text=${encodeURIComponent(`أرغب في إرسال صور الأوراق والمستندات لإعلاني: ${docsModalListing.make} ${docsModalListing.model} (كود: ${docsModalListing.id.slice(0, 8)})`)}`}
                   target="_blank"
                   rel="noreferrer"
                   className="text-3xs font-black text-emerald-800 underline hover:text-emerald-950"
