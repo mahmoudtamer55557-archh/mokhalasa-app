@@ -132,18 +132,21 @@ export function App() {
 
         const code = urlParams.get('code') || hashParams.get('code');
         if (code) {
-          const { data, error: exchangeErr } = await supabase.auth.exchangeCodeForSession(code);
-          if (exchangeErr) {
-            console.error('Error exchanging OAuth code:', exchangeErr);
-          } else if (data?.session?.user) {
-            const mapped = mapSupabaseUserToCustomerUser(data.session.user);
-            setCustomerUser(mapped);
-            try {
-              localStorage.setItem('mokhalasa_customer_user', JSON.stringify(mapped));
-            } catch {}
-            window.history.replaceState(null, '', window.location.pathname + '#/profile');
-            setCurrentView('profile');
-            return;
+          try {
+            const { data } = await supabase.auth.exchangeCodeForSession(code);
+            const user = data?.session?.user || (await supabase.auth.getSession()).data.session?.user;
+            if (user) {
+              const mapped = mapSupabaseUserToCustomerUser(user);
+              setCustomerUser(mapped);
+              try {
+                localStorage.setItem('mokhalasa_customer_user', JSON.stringify(mapped));
+              } catch {}
+              window.history.replaceState(null, '', window.location.pathname + '#/profile');
+              setCurrentView('profile');
+              return;
+            }
+          } catch (exchangeErr) {
+            console.warn('OAuth code processing notice:', exchangeErr);
           }
         }
       } catch (err) {

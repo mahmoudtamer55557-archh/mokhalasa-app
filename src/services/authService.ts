@@ -875,7 +875,7 @@ export const authService = {
   async registerWithGoogle(): Promise<AuthResponse> {
     try {
       const redirectUrl = window.location.origin;
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: redirectUrl,
@@ -900,16 +900,21 @@ export const authService = {
         };
       }
 
+      // Explicitly redirect user to Google OAuth consent page
+      if (data?.url) {
+        window.location.assign(data.url);
+      }
+
       return {
         success: true,
         message: 'جاري تحويلك إلى Google للمصادقة الآمنة...'
       };
 
-    } catch {
+    } catch (err: any) {
       return {
         success: false,
         errorCode: 'UNEXPECTED_ERROR',
-        message: 'خدمة تسجيل الدخول بـ Google غير مفعلة حالياً في مشروع Supabase. يتطلب ذلك إضافة Google Client ID و Client Secret في لوحة تحكم Supabase.'
+        message: err?.message || 'خدمة تسجيل الدخول بـ Google غير متاحة حالياً، يرجى المحاولة لاحقاً.'
       };
     }
   },
