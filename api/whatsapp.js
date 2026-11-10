@@ -99,8 +99,8 @@ export default async function handler(req, res) {
     const sessionName =
       process.env.WHATSAPP_SESSION_NAME ||
       process.env.VITE_WHATSAPP_SESSION_NAME ||
-      sanitizeServerText(bodySessionName || 'test', 40) ||
-      'test';
+      sanitizeServerText(bodySessionName || '', 40) ||
+      'mahmoud';
 
     let digits = String(rawRecipient).replace(/\D/g, '');
     if (digits.startsWith('00')) {
@@ -137,8 +137,8 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           sessionName,
           session: sessionName,
-          to: digits,
-          phone: digits,
+          phone: e164Plus,
+          to: e164Plus,
           recipient: e164Plus,
           number: digits,
           chatId: `${digits}@c.us`,

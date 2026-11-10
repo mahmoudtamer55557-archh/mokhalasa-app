@@ -10,7 +10,7 @@
 
 import { logInternalSecurityError } from '../utils/securityGuard';
 
-const PLATFORM_URL = 'https://mokhalasa-app.vercel.app';
+const PLATFORM_URL = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://mokalasa.online';
 
 /**
  * تنظيف أي مفاتيح قديمة كانت مخزنة في المتصفح وإرجاع حالة مؤمنة تدار من السيرفر
