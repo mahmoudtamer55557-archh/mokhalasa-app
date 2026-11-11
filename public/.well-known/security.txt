@@ -1,0 +1,7 @@
+Contact: mailto:security@mokalasa.online
+Contact: tel:+201008836962
+Expires: 2027-11-10T00:00:00.000Z
+Preferred-Languages: ar, en
+Canonical: https://mokalasa.online/.well-known/security.txt
+Policy: https://mokalasa.online/privacy
+Hiring: https://mokalasa.online/contact

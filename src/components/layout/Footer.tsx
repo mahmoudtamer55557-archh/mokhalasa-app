@@ -1,7 +1,7 @@
 import React from 'react';
 import MokhalasaSvgLogo from '../brand/MokhalasaSvgLogo';
 import { translations } from '../../utils/translations';
-import { ShieldCheck, PhoneCall, Mail, MapPin, AlertTriangle, Lock, FileText } from 'lucide-react';
+import { ShieldCheck, PhoneCall, Mail, MapPin, AlertTriangle, Lock, FileText, CheckCircle2 } from 'lucide-react';
 
 interface FooterProps {
   onNavigate: (view: string) => void;
@@ -131,7 +131,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang = 'ar' }) => {
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-brand-green flex-shrink-0" />
-                <span>support@mokhalasa.com</span>
+                <span>support@mokalasa.online</span>
               </div>
               <div className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 text-brand-green flex-shrink-0 mt-0.5" />
@@ -169,11 +169,18 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang = 'ar' }) => {
             <div>
               {t.footer.rightsReserved} {CURRENT_YEAR} — {isAr ? 'متوافق مع قانون البنك المركزي المصري 194 لسنة 2020 وقانون 151 لسنة 2020.' : 'Compliant with CBE Law 194/2020 & Data Protection Law 151/2020.'}
             </div>
-            <div className="flex items-center gap-4 text-3xs">
-              <span className="text-brand-green font-bold">
-                {isAr ? 'نسبة العمولة: 1.5% من إجمالي سعر البيع فقط' : 'Fee: 1.5% of gross sale price only'}
+            <div className="flex flex-wrap items-center gap-3 text-3xs">
+              <span className="text-brand-green font-bold bg-brand-green/10 px-2 py-0.5 rounded-full border border-brand-green/30">
+                {isAr ? 'عمولة التسوية: 1.5% فقط' : 'Fee: 1.5% only'}
               </span>
-              <span>{isAr ? 'خادم مشفر وآمن' : 'Encrypted & Secure'}</span>
+              <span className="inline-flex items-center gap-1 text-slate-300 bg-slate-800/80 px-2 py-0.5 rounded-full border border-slate-700">
+                <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                <span>{isAr ? 'تشفير معتمد SSL 256-Bit' : 'SSL 256-Bit Secured'}</span>
+              </span>
+              <span className="inline-flex items-center gap-1 text-slate-300 bg-slate-800/80 px-2 py-0.5 rounded-full border border-slate-700">
+                <CheckCircle2 className="w-3 h-3 text-brand-green" />
+                <span>{isAr ? 'سداد مباشر بالبنك (Zero-Custody)' : 'Zero-Custody Direct Deposit'}</span>
+              </span>
             </div>
           </div>
         </div>
