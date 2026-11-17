@@ -182,16 +182,27 @@ export const listingService = {
       const { data: sessionData } = await supabase.auth.getSession();
       const authUser = sessionData.session?.user;
 
-      if (!authUser) {
-        return {
-          success: false,
-          message: 'يجب تسجيل الدخول أولاً لتتمكن من إضافة إعلان سيارتك.',
-          error: 'UNAUTHENTICATED'
-        };
+      // Resolve user id from session or local customer user or phone-derived guest ID
+      let resolvedUserId = authUser?.id;
+      if (!resolvedUserId && typeof window !== 'undefined') {
+        try {
+          const raw = localStorage.getItem('mokhalasa_customer_user');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed?.id) resolvedUserId = parsed.id;
+          }
+        } catch {}
+      }
+
+      if (!resolvedUserId) {
+        const cleanPhone = (submission.seller_phone || '01000000000').replace(/\D/g, '');
+        resolvedUserId = typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `00000000-0000-4000-8000-${cleanPhone.slice(-12).padStart(12, '0')}`;
       }
 
       // Generate submission idempotency signature (user + make + model + year + price)
-      const idempotencySignature = `${authUser.id}_${submission.make}_${submission.model}_${submission.year}_${submission.asking_price}`;
+      const idempotencySignature = `${resolvedUserId}_${submission.make}_${submission.model}_${submission.year}_${submission.asking_price}`;
 
       // 1. In-flight mutex check: prevent concurrent double-clicks from running in parallel
       if (inFlightSubmissions.has(idempotencySignature)) {
@@ -207,18 +218,24 @@ export const listingService = {
       try {
         // 2. Database-level deduplication: Check if an identical listing was already submitted by this user in the last 60 seconds
         const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
-        const { data: recentExisting } = await supabase
+        let query = supabase
           .from('car_listings')
           .select('id, created_at')
-          .eq('user_id', authUser.id)
           .eq('make', submission.make)
           .eq('model', submission.model)
           .eq('year', submission.year)
           .eq('asking_price', submission.asking_price)
           .gte('created_at', oneMinuteAgo)
           .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .limit(1);
+
+        if (submission.seller_phone) {
+          query = query.eq('seller_phone', submission.seller_phone);
+        } else if (resolvedUserId) {
+          query = query.eq('user_id', resolvedUserId);
+        }
+
+        const { data: recentExisting } = await query.maybeSingle();
 
         if (recentExisting?.id) {
           return {
@@ -233,7 +250,7 @@ export const listingService = {
 
         // Prepare row matching public.car_listings
         const row = {
-          user_id: authUser.id,
+          user_id: resolvedUserId,
           case_reference: caseReference,
           make: submission.make,
           model: submission.model,
@@ -256,8 +273,8 @@ export const listingService = {
           outstanding_amount: submission.outstanding_amount || 0,
           monthly_installment: submission.monthly_installment || 0,
           remaining_months: submission.remaining_months || 0,
-          seller_name: submission.seller_name || authUser.user_metadata?.full_name || 'مالك السيارة',
-          seller_phone: submission.seller_phone || authUser.user_metadata?.phone || '',
+          seller_name: submission.seller_name || authUser?.user_metadata?.full_name || 'مالك السيارة',
+          seller_phone: submission.seller_phone || authUser?.user_metadata?.phone || '',
           status: 'pending_review' as ListingModerationStatus
         };
 
@@ -320,7 +337,7 @@ export const listingService = {
         if (submission.images && submission.images.length > 0) {
           const imageRows = submission.images.map((url, idx) => ({
             listing_id: listingId,
-            user_id: authUser.id,
+            user_id: resolvedUserId,
             image_url: url,
             display_order: idx
           }));
@@ -329,14 +346,18 @@ export const listingService = {
         }
 
         // Send in-app notification to the seller
-        await this.sendCustomerNotification({
-          userId: authUser.id,
-          type: 'listing_published',
-          title: 'تم إرسال إعلان سيارتك بنجاح',
-          message: `تم تسجيل سيارتك ${submission.make} ${submission.model} ${submission.year} بنجاح برقم ملف (${caseReference}). الإعلان قيد مراجعة واعتماد الإدارة وسيتواصل معك مستشار مخلصة.`,
-          linkView: 'profile',
-          relatedId: listingId
-        }, true);
+        if (resolvedUserId) {
+          try {
+            await this.sendCustomerNotification({
+              userId: resolvedUserId,
+              type: 'listing_published',
+              title: 'تم إرسال إعلان سيارتك بنجاح',
+              message: `تم تسجيل سيارتك ${submission.make} ${submission.model} ${submission.year} بنجاح برقم ملف (${caseReference}). الإعلان قيد مراجعة واعتماد الإدارة وسيتواصل معك مستشار مخلصة.`,
+              linkView: 'profile',
+              relatedId: listingId
+            }, true);
+          } catch {}
+        }
 
         // Send dedicated WhatsApp confirmation to seller phone with full details & links
         const saleTrackAr =
@@ -361,7 +382,7 @@ export const listingService = {
         // Insert audit log
         try {
           await supabase.from('audit_logs').insert({
-            actor_id: authUser.id,
+            actor_id: resolvedUserId,
             event_type: 'LISTING_SUBMITTED',
             record_id: listingId,
             details: {
@@ -403,8 +424,19 @@ export const listingService = {
       const { data: sessionData } = await supabase.auth.getSession();
       const authUser = sessionData.session?.user;
 
-      if (!authUser) {
-        return { success: false, error: 'غير مصرح: يجب تسجيل الدخول لرفع الصور.' };
+      let folderId = authUser?.id;
+      if (!folderId && typeof window !== 'undefined') {
+        try {
+          const raw = localStorage.getItem('mokhalasa_customer_user');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed?.id) folderId = parsed.id;
+          }
+        } catch {}
+      }
+
+      if (!folderId) {
+        folderId = 'guest';
       }
 
       const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
@@ -418,16 +450,16 @@ export const listingService = {
       }
 
       const ext = file.name.split('.').pop() || 'jpg';
-      const path = `${authUser.id}/${Date.now()}-${Math.floor(Math.random() * 1000)}.${ext}`;
+      const path = `${folderId}/${Date.now()}-${Math.floor(Math.random() * 1000)}.${ext}`;
 
-      let bucketName = 'car-images';
+      let bucketName = 'listing-images';
       let uploadResult = await supabase.storage
         .from(bucketName)
         .upload(path, file, { cacheControl: '3600', upsert: false });
 
       if (uploadResult.error) {
-        // Fallback to listing-images bucket
-        bucketName = 'listing-images';
+        // Fallback to car-images bucket
+        bucketName = 'car-images';
         uploadResult = await supabase.storage
           .from(bucketName)
           .upload(path, file, { cacheControl: '3600', upsert: false });

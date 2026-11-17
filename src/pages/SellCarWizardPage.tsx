@@ -867,21 +867,36 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
       documents: []
     };
 
-    // Require user login so the listing is permanently saved in user's profile
-    if (!customerUser) {
-      setValidationError('يرجى تسجيل الدخول أو إنشاء حسابك أولاً لحفظ الإعلان في حسابك ومتابعة حالته.');
+    // Check phone number validation
+    const effectivePhone = sellerPhone.trim() || customerUser?.phone || '';
+    const phoneErr = getPhoneValidationError(effectivePhone);
+    if (phoneErr) {
+      reportMissingField('sellerPhone', 'field-sellerPhone', `رقم الهاتف مطلوب لاعتماد الإعلان: ${phoneErr}`, 6);
       setIsSubmitting(false);
-      setShowAuthModal(true);
       return;
     }
 
-    const effectivePhone = sellerPhone.trim() || customerUser.phone || '';
-    const phoneErr = getPhoneValidationError(effectivePhone);
-    if (phoneErr) {
-      setValidationError(`رقم الهاتف مطلوب لاعتماد الإعلان: ${phoneErr}`);
-      setIsSubmitting(false);
-      if (onRequirePhoneCompletion) onRequirePhoneCompletion();
-      return;
+    // Ensure customer account session exists, auto-generating a guest account if unauthenticated
+    let activeCustomer = customerUser;
+    if (!activeCustomer) {
+      const cleanPhone = effectivePhone;
+      const guestId = typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `00000000-0000-4000-8000-${cleanPhone.slice(-12).padStart(12, '0')}`;
+      activeCustomer = {
+        id: guestId,
+        name: sellerName.trim() || 'عميل مخلصة',
+        phone: cleanPhone,
+        email: `${cleanPhone}@customer.mokhalasa.online`,
+        provider: 'phone_otp',
+        isVerified: true,
+        governorate: location.governorate || 'الجيزة',
+        city: location.city || 'فيصل',
+        createdAt: new Date().toISOString()
+      };
+      try {
+        localStorage.setItem('mokhalasa_customer_user', JSON.stringify(activeCustomer));
+      } catch {}
     }
 
     // Check if in Edit Mode for an existing case
@@ -995,6 +1010,8 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
 
     if (!submitResult.success) {
       setValidationError(submitResult.message || 'حدث خطأ أثناء حفظ الإعلان في قاعدة البيانات.');
+      setLastErrorTarget(null);
+      setFieldErrors({});
       setIsSubmitting(false);
       return;
     }
@@ -1178,11 +1195,11 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
               <div className="flex-1 font-black leading-relaxed">{validationError}</div>
             </div>
-            {lastErrorTarget && (
+            {lastErrorTarget && lastErrorTarget.key && fieldErrors[lastErrorTarget.key] && (
               <button
                 type="button"
                 onClick={() => {
-                  reportMissingField(lastErrorTarget.key, lastErrorTarget.domId, validationError, lastErrorTarget.step);
+                  reportMissingField(lastErrorTarget.key, lastErrorTarget.domId, fieldErrors[lastErrorTarget.key], lastErrorTarget.step);
                 }}
                 className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-2xs shadow-sm transition flex items-center gap-1.5 flex-shrink-0 self-end sm:self-auto cursor-pointer"
               >
