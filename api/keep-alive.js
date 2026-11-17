@@ -5,7 +5,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://nngwnchzqilqphwrqqin.supabase.co';
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_ttwKCM5wgEhvpBOLHuSPfA_ssgnX4JN';
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uZ3duY2h6cWlscXBod3JxcWluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2MjI0NTcsImV4cCI6MjEwODE5ODQ1N30.WxIxxLytpP2dEGo6O5Rn3hU1MSTfXq_zRgUovUZu7sU';
 
 export default async function handler(req, res) {
   try {
