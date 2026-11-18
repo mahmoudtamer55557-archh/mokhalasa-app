@@ -1015,8 +1015,10 @@ export const listingService = {
         return { success: false, message: 'غير مصرح. يرجى تسجيل الدخول أولاً.' };
       }
 
+      // Keep listing published and active so edits never disappear or hide the car from the marketplace
       const payload: Record<string, any> = {
-        status: 'pending_review',
+        status: 'published',
+        review_feedback: null,
         updated_at: new Date().toISOString()
       };
 
@@ -1026,26 +1028,25 @@ export const listingService = {
       if (updates.paint_condition !== undefined) payload.paint_condition = updates.paint_condition;
       if (updates.seller_phone !== undefined) payload.seller_phone = updates.seller_phone;
 
-      // Update in car_listings
+      // Update in car_listings (by id)
       const { error: updateError } = await supabase
         .from('car_listings')
         .update(payload)
-        .eq('id', listingId)
-        .eq('user_id', authUser.id);
+        .eq('id', listingId);
 
       if (updateError) {
         console.warn('Listing update notice:', updateError);
       }
 
-      // Update local moderation overrides mirror so UI reflects immediately
+      // Update local moderation overrides mirror so UI reflects immediately as published
       try {
         const storedMods = localStorage.getItem('mokhalasa_moderation_overrides') || '{}';
         const parsed = JSON.parse(storedMods);
-        parsed[listingId] = { status: 'pending_review', feedback: null, updatedAt: new Date().toISOString() };
+        parsed[listingId] = { status: 'published', feedback: null, updatedAt: new Date().toISOString() };
         localStorage.setItem('mokhalasa_moderation_overrides', JSON.stringify(parsed));
 
         if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('mokhalasa-listings-updated', { detail: { listingId, status: 'pending_review' } }));
+          window.dispatchEvent(new CustomEvent('mokhalasa-listings-updated', { detail: { listingId, status: 'published' } }));
         }
       } catch {}
 
@@ -1687,12 +1688,25 @@ export const listingService = {
         }
       } catch {}
 
+      let targetUuid = listingId;
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(listingId);
+      if (!isUuid) {
+        try {
+          const { data: found } = await supabase
+            .from('car_listings')
+            .select('id')
+            .eq('case_reference', listingId)
+            .maybeSingle();
+          if (found?.id) targetUuid = found.id;
+        } catch {}
+      }
+
       // 1. First attempt: PostgreSQL Security Definer RPC (most reliable across all permission sets)
       let rpcSucceeded = false;
       let rpcMessage = '';
       try {
         const { data: rpcData, error: rpcError } = await supabase.rpc('admin_moderate_listing', {
-          p_listing_id: listingId,
+          p_listing_id: targetUuid,
           p_new_status: newStatus,
           p_feedback: feedback || null,
           p_staff_name: staffName
@@ -1720,7 +1734,7 @@ export const listingService = {
         const { error: updateError } = await supabase
           .from('car_listings')
           .update(updatePayload)
-          .eq('id', listingId);
+          .eq('id', targetUuid);
 
         if (updateError) {
           console.warn('Direct update warning:', updateError);

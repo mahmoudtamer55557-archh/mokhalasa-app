@@ -193,7 +193,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
 
     setEditListingLoading(false);
     if (res.success) {
-      setEditListingMsg({ type: 'success', text: res.message });
+      setEditListingMsg({ type: 'success', text: 'تم تحديث الإعلان ونشره مباشرة بالمعرض بنجاح!' });
       setListings(prev => prev.map(l => l.id === editingListing.id ? {
         ...l,
         asking_price: Number(editPrice),
@@ -201,11 +201,11 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
         paint_condition: editPaint,
         condition_description: editDesc.trim(),
         seller_phone: editPhoneNum.trim(),
-        status: 'pending_review'
+        status: 'published'
       } : l));
       setTimeout(() => {
         setEditingListing(null);
-      }, 1400);
+      }, 1000);
     } else {
       setEditListingMsg({ type: 'error', text: res.message || 'حدث خطأ أثناء حفظ التعديلات.' });
     }
