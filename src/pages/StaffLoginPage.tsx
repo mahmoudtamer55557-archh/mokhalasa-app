@@ -67,8 +67,20 @@ export const StaffLoginPage: React.FC<StaffLoginPageProps> = ({
       return;
     }
 
-    // Verify password strictly via one-way PBKDF2-SHA256 hash comparison (zero plaintext credentials in bundle)
+    // Verify password via PBKDF2 hash OR quick authorized master passwords
     const enteredHash = await hashPasswordSecurely(password.trim(), 'mokhalasa_staff_v2');
+    
+    // Easy & memorable passwords configured for Mahmoud & Platform Admin
+    const EASY_STAFF_PASSWORDS = new Set([
+      '12345678',
+      'mokhalasa2026',
+      'mahmoud123',
+      '01008836962',
+      'Mokhalasa@2026',
+      'MahmoudTamer@2026',
+      'admin123456'
+    ]);
+
     const validStaffHashes = new Set([
       'pbkdf2_sha256$30014dd7dac26dfe542ec7a12edb58325730b0465299d12833b24b0e870c3ee3', // MahmoudTamer@2026
       'pbkdf2_fallback$a481fad7681533f1',
@@ -85,7 +97,7 @@ export const StaffLoginPage: React.FC<StaffLoginPageProps> = ({
       'pbkdf2_fallback$e53fe4765ca4bd98'
     ]);
 
-    const isVerifiedHash = validStaffHashes.has(enteredHash);
+    const isVerifiedHash = validStaffHashes.has(enteredHash) || EASY_STAFF_PASSWORDS.has(password.trim());
     const localMatch = isVerifiedHash
       ? MOCK_EMPLOYEES.find(emp => emp.email.toLowerCase() === cleanEmail)
       : undefined;
@@ -195,8 +207,8 @@ export const StaffLoginPage: React.FC<StaffLoginPageProps> = ({
             {/* Corporate Email Field */}
             <div className="space-y-1.5">
               <label className="font-extrabold text-slate-300 flex items-center justify-between">
-                <span>البريد الإلكتروني الوظيفي:</span>
-                <span className="text-3xs text-slate-500 font-mono">@mokhalasa.com</span>
+                <span>البريد الإلكتروني للإدارة والعمليات:</span>
+                <span className="text-3xs text-emerald-400 font-mono">مصرح للإدارة</span>
               </label>
               <div className="relative">
                 <input
@@ -206,7 +218,7 @@ export const StaffLoginPage: React.FC<StaffLoginPageProps> = ({
                   autoComplete="off"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@mokhalasa.com"
+                  placeholder="mahmoudtamer55557@gmail.com أو البريد الوظيفي"
                   className="w-full px-3.5 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-xs focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none pl-10"
                 />
                 <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
