@@ -2,26 +2,26 @@ import { DistressedVehicleCase, EmployeeUser } from '../types';
 
 export const MOCK_EMPLOYEES: EmployeeUser[] = [
   {
-    id: 'emp-mahmoud',
+    id: 'emp-mahmoud-gmail',
     name: 'محمود تامر',
-    email: 'mahmoud.tamer@mokhalasa.com',
+    email: 'mahmoudtamer55557@gmail.com',
     role: 'owner',
     assignedCasesCount: 0,
     isActive: true
   },
   {
-    id: 'emp-mahmoud-alt',
-    name: 'محمود تامر',
+    id: 'emp-mahmoud-corp',
+    name: 'محمود تامر (إدارة العمليات)',
     email: 'mahmoud@mokhalasa.com',
     role: 'owner',
     assignedCasesCount: 0,
     isActive: true
   },
   {
-    id: 'emp-2',
-    name: 'أحمد الشريف',
-    email: 'ahmed@mokhalasa.com',
-    role: 'case_officer',
+    id: 'emp-admin-online',
+    name: 'مدير المنصة',
+    email: 'admin@mokhalasa.online',
+    role: 'admin',
     assignedCasesCount: 0,
     isActive: true
   }

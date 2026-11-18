@@ -47,9 +47,18 @@ export const StaffLoginPage: React.FC<StaffLoginPageProps> = ({
 
     const cleanEmail = sanitizeEmailInput(email);
 
-    // Enforce corporate domain constraint
-    if (!cleanEmail.endsWith('@mokhalasa.com')) {
-      setErrorMessage('يقتصر الدخول حصرياً على البريد الوظيفي المعتمد (@mokhalasa.com). لا يُسمح بالبريد الشخصي.');
+    // Enforce authorized dashboard emails constraint (personal founder email & corporate operations email)
+    const ALLOWED_STAFF_EMAILS = new Set([
+      'mahmoudtamer55557@gmail.com',
+      'mahmoud@mokhalasa.com',
+      'mahmoud.tamer@mokhalasa.com',
+      'admin@mokhalasa.online'
+    ]);
+
+    const isAuthorizedStaffEmail = ALLOWED_STAFF_EMAILS.has(cleanEmail) || cleanEmail.endsWith('@mokhalasa.com');
+
+    if (!isAuthorizedStaffEmail) {
+      setErrorMessage('يقتصر الدخول إلى لوحة العمليات حصرياً على البريد المصرح به للإدارة (mahmoudtamer55557@gmail.com أو بريد العمليات @mokhalasa.com).');
       return;
     }
 

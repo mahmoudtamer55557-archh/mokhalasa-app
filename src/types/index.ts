@@ -306,7 +306,7 @@ export interface ItemizedSettlementStatement {
 
 // =================== CRM & EMPLOYEE WORKFLOWS ===================
 
-export type EmployeeRole = 'owner' | 'manager' | 'case_officer' | 'legal_officer';
+export type EmployeeRole = 'owner' | 'manager' | 'admin' | 'case_officer' | 'legal_officer';
 
 export interface EmployeeUser {
   id: string;
