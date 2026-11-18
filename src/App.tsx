@@ -11,7 +11,7 @@ import { CompleteProfileModal } from './components/auth/CompleteProfileModal';
 import { CustomerSupportChatbot } from './components/ai/CustomerSupportChatbot';
 import { supabase } from './services/supabaseClient';
 import { mapSupabaseUserToCustomerUser } from './services/authService';
-import { listingService } from './services/listingService';
+import { listingService, mapDbListingToCase } from './services/listingService';
 import { sendConsultationReceivedWhatsApp } from './services/whatsappService';
 import { isValidEgyptianPhone, normalizeEgyptianPhone } from './utils/phoneValidator';
 import { sanitizeInput } from './utils/securityGuard';
@@ -86,6 +86,30 @@ export function App() {
 
   // Distressed Cases Global Store
   const [distressedCases, setDistressedCases] = useState<DistressedVehicleCase[]>(INITIAL_DISTRESSED_CASES);
+
+  // Synchronize Cases from Supabase car_listings so DB and UI are 100% unified
+  useEffect(() => {
+    const loadRealCasesFromSupabase = async () => {
+      try {
+        const res = await listingService.getAdminListings('all');
+        if (res.success && res.listings && res.listings.length > 0) {
+          const dbCases = res.listings.map(mapDbListingToCase);
+          setDistressedCases(dbCases);
+        }
+      } catch (err) {
+        console.warn('Failed loading cases from DB:', err);
+      }
+    };
+
+    loadRealCasesFromSupabase();
+
+    // Re-sync on custom update events
+    const handleSync = () => loadRealCasesFromSupabase();
+    window.addEventListener('mokhalasa-listings-updated', handleSync);
+    return () => {
+      window.removeEventListener('mokhalasa-listings-updated', handleSync);
+    };
+  }, []);
 
   // Mandatory Phone Completion Modal State (e.g. for Google Sign-In)
   const [showCompletePhoneModal, setShowCompletePhoneModal] = useState<boolean>(false);

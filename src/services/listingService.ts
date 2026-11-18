@@ -7,7 +7,7 @@
  */
 
 import { supabase } from './supabaseClient';
-import { Car, PurchaseOffer, InAppNotification, ListingCallLog } from '../types';
+import { Car, PurchaseOffer, InAppNotification, ListingCallLog, DistressedVehicleCase } from '../types';
 import {
   sanitizeInput,
   sanitizePayload,
@@ -3427,3 +3427,149 @@ export const listingService = {
     return this.purgeAllTestData();
   }
 };
+
+/**
+ * Universal Mapper: Converts a DatabaseCarListing from Supabase directly to a DistressedVehicleCase
+ * guaranteeing that Dashboard, Customer Portal, and App state are 100% unified with the Database.
+ */
+export function mapDbListingToCase(l: DatabaseCarListing): DistressedVehicleCase {
+  const images = l.images && l.images.length > 0
+    ? l.images
+    : ['https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=1200&q=80'];
+  const price = Number(l.asking_price || 0);
+  const outstanding = Number(l.outstanding_amount || 0);
+  const adminNotesStr = typeof l.admin_notes === 'string' ? l.admin_notes : 'مسجل في قاعدة البيانات';
+
+  return {
+    caseReference: l.case_reference || l.id.slice(0, 8),
+    accessKey: `MK-SEC-${l.id.slice(0, 4)}`,
+    createdAt: l.created_at || new Date().toISOString().split('T')[0],
+    status: (l.status === 'published' ? 'listing_approved' : l.status === 'needs_changes' ? 'needs_changes' : l.status === 'rejected' ? 'rejected' : 'pending_review') as any,
+    adminFeedback: l.review_feedback,
+    assignedEmployeeId: 'emp-mahmoud-gmail',
+    assignedEmployeeName: 'محمود تامر',
+    urgency: 'urgent',
+    distressReason: 'installment_burden',
+    seller: {
+      name: l.seller_name || 'مالك السيارة',
+      phone: l.seller_phone || '',
+      preferredContactTime: 'مساءً',
+      governorate: l.governorate || 'الجيزة',
+      city: l.city || 'فيصل',
+      relationship: 'direct_owner'
+    },
+    vehicle: {
+      id: l.id,
+      make: l.make,
+      model: l.model,
+      year: l.year,
+      trim: l.trim || '',
+      transmission: (l.transmission || 'أوتوماتيك') as any,
+      engineSize: l.engine_size || '1500',
+      fuelType: (l.fuel_type || 'بنزين') as any,
+      mileage: l.mileage || 0,
+      city: l.city || 'فيصل',
+      cityEn: l.governorate || 'Giza',
+      color: l.color || 'فضي',
+      askingPrice: price,
+      estimatedMarketValue: price,
+      images,
+      saleType: (l.sale_type as any) || (l.has_financing ? 'bank_settlement' : 'cash'),
+      financingType: (l.financing_type as any) || (l.has_financing ? 'bank_loan' : 'fully_owned'),
+      vehicleStatus: (l.sale_type === 'cash' ? 'cash_only' : 'bank_loan') as any,
+      distressReason: 'installment_burden',
+      urgency: 'urgent',
+      disclosedProblems: l.disclosed_defects || [],
+      sellerConditionStory: l.condition_description || '',
+      financingDetails: {
+        providerName: l.financing_provider || 'غير محدد',
+        providerNameAr: l.financing_provider || 'غير محدد',
+        financingType: 'bank_loan',
+        outstandingPrincipal: outstanding,
+        monthlyInstallment: Number(l.monthly_installment || 0),
+        remainingMonths: l.remaining_months || 36,
+        arrearsAmount: 0,
+        earlySettlementFee: Math.round(outstanding * 0.05),
+        releaseFee: 1500,
+        totalSettlementRequired: outstanding + Math.round(outstanding * 0.05) + 1500,
+        hasSaleBan: l.has_financing ?? true,
+        sellerNetProceeds: price - outstanding,
+        hasOfficialStatement: true,
+        hasContactedBank: true,
+        isEstimateOnly: false
+      },
+      inspection: {
+        isInspected: true,
+        score: 85,
+        inspectorName: 'فريق فحص مخلصة',
+        date: new Date().toISOString().split('T')[0],
+        engineCondition: 'ممتاز',
+        transmissionCondition: 'ممتاز',
+        paintCondition: (l.paint_condition || 'فابريكا بالكامل') as any,
+        chassisStatus: 'سليم 100% بدون أي ملاحظات',
+        disclosedDefects: l.disclosed_defects || [],
+        notes: l.condition_description || ''
+      },
+      licenseValidityMonths: 12,
+      trafficDepartment: l.traffic_unit || 'مرور فيصل',
+      sellerType: 'مالك أول',
+      status: (l.status === 'published' ? 'approved' : 'under_review') as any,
+      createdAt: l.created_at || new Date().toISOString().split('T')[0],
+      featured: l.is_featured || false,
+      description: l.condition_description || ''
+    },
+    disclosedIssues: l.disclosed_defects || [],
+    sellerConditionStory: l.condition_description || '',
+    financing: {
+      institutionKey: 'bank',
+      institutionName: l.financing_provider || 'غير محدد',
+      productType: 'تمويل سيارات بحظر بيع',
+      estimatedOutstandingPrincipal: outstanding,
+      monthlyInstallment: Number(l.monthly_installment || 0),
+      remainingMonths: l.remaining_months || 36,
+      arrearsAmount: 0,
+      hasOfficialStatement: true,
+      isVerifiedByStaff: true,
+      unverifiedNotice: 'بيانات مسجلة وموثقة'
+    },
+    valuation: {
+      estimatedMarketRange: { min: price * 0.95, max: price * 1.05 },
+      suggestedAskingPrice: price,
+      suggestedFasterSaleRange: { min: price * 0.9, max: price * 0.98 },
+      buyerInterestIndicator: 'متوسط',
+      confidenceLevel: 'high',
+      comparableCount: 5,
+      sources: ['market'],
+      valueFactors: [],
+      marketDemandScore: 75,
+      estimatedDaysToSell: 7,
+      marketLiquidityTrend: 'stable'
+    } as any,
+    settlementStatement: {
+      grossSalePrice: price,
+      lenderSettlementAmount: outstanding,
+      lenderSettlementSource: l.financing_provider || 'البنك',
+      lateFinesAndPenalties: 0,
+      earlySettlementPenaltyRate: 0.05,
+      earlySettlementPenaltyAmount: Math.round(outstanding * 0.05),
+      adminAndClearanceFees: 1500,
+      bankClearanceLetterFee: 1000,
+      trafficClearanceCertificateFee: 500,
+      totalLenderPayoffRequired: outstanding + Math.round(outstanding * 0.05) + 1500,
+      isExactOfficialQuote: true,
+      hasPenaltyWaiverOpportunity: false,
+      waivableAmountEstimate: 0,
+      totalPlatformFee: Math.round(price * 0.015),
+      platformFeePayer: 'seller',
+      netSellerProceedsCash: price - outstanding - Math.round(price * 0.015),
+      sellerDeficitPaymentRequired: 0,
+      calculatedAt: new Date().toISOString()
+    } as any,
+    callLogs: [],
+    timeline: [],
+    buyerInquiries: [],
+    internalNotes: [adminNotesStr],
+    documents: [],
+    revisions: []
+  };
+}

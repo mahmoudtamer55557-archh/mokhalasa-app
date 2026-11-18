@@ -941,6 +941,10 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
           await supabase.from('car_listings').update(dbPayload).eq('seller_phone', targetCase.seller.phone);
         }
 
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('mokhalasa-listings-updated', { detail: { caseRef, status: 'published' } }));
+        }
+
         await loadModerationListings();
       } catch (dbErr) {
         console.warn('DB update revision error:', dbErr);
