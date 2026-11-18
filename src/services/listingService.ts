@@ -1447,15 +1447,43 @@ export const listingService = {
         updated_at: now
       };
 
-      // 1. Update in Supabase
+      // 1. Resolve real UUID if listingId is a case reference
+      let realListingId = listingId;
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(listingId);
+      if (!isUuid) {
+        try {
+          const { data: found } = await supabase
+            .from('car_listings')
+            .select('id')
+            .eq('case_reference', listingId)
+            .maybeSingle();
+          if (found?.id) realListingId = found.id;
+        } catch {}
+      }
+
+      // 2. Update in Supabase
       try {
         await supabase
           .from('car_listings')
           .update(payload)
-          .eq('id', listingId);
-      } catch {}
+          .eq('id', realListingId);
 
-      // 2. Update local mirrors
+        // Update listing_images in Supabase
+        if (data.images && data.images.length > 0) {
+          const imageRows = data.images.map((url, idx) => ({
+            listing_id: realListingId,
+            image_url: url,
+            slot_type: 'general',
+            display_order: idx
+          }));
+          await supabase.from('listing_images').delete().eq('listing_id', realListingId);
+          await supabase.from('listing_images').insert(imageRows);
+        }
+      } catch (dbErr) {
+        console.warn('Supabase wizard update notice:', dbErr);
+      }
+
+      // 3. Update local mirrors
       try {
         const storedMods = localStorage.getItem('mokhalasa_moderation_overrides') || '{}';
         const parsed = JSON.parse(storedMods);

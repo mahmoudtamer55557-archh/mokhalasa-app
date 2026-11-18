@@ -63,6 +63,16 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
 
   // Step state: 1 to 7, plus 8 for confirmation
   const [currentStep, setCurrentStep] = useState<number>(1);
+  const [maxVisitedStep, setMaxVisitedStep] = useState<number>(() => (editingCase ? 7 : 1));
+
+  React.useEffect(() => {
+    if (editingCase) {
+      setMaxVisitedStep(7);
+    } else {
+      setMaxVisitedStep(prev => Math.max(prev, currentStep));
+    }
+  }, [currentStep, editingCase]);
+
   const [validationError, setValidationError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [lastErrorTarget, setLastErrorTarget] = useState<{ key: string; domId: string; step?: number } | null>(null);
@@ -1134,45 +1144,83 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
         {/* Stepper Indicator */}
         {currentStep <= 7 && (
           <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm space-y-3">
+            {/* Desktop & Tablet Tabs */}
             <div className="hidden sm:grid sm:grid-cols-7 gap-1.5">
               {stepLabels.map((lbl, idx) => {
                 const stepNum = idx + 1;
                 const isActive = currentStep === stepNum;
                 const isCompleted = currentStep > stepNum;
+                const canNavigate = Boolean(editingCase) || stepNum <= maxVisitedStep;
                 return (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => {
-                      if (stepNum < currentStep) {
+                      if (canNavigate) {
                         setValidationError(null);
                         setCurrentStep(stepNum);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
                       }
                     }}
                     className={`px-2 py-2 rounded-xl text-center transition flex flex-col items-center gap-1 ${
                       isActive
                         ? 'bg-emerald-50 border border-brand-green/40 text-brand-navy shadow-2xs'
-                        : isCompleted
-                        ? 'bg-slate-50 hover:bg-slate-100 text-brand-green cursor-pointer'
-                        : 'text-slate-400 cursor-default'
+                        : canNavigate
+                        ? 'bg-slate-50 hover:bg-slate-100 text-brand-navy cursor-pointer hover:border-slate-300'
+                        : 'text-slate-400 cursor-not-allowed opacity-50'
                     }`}
                   >
                     <span
                       className={`w-6 h-6 rounded-full text-2xs font-black flex items-center justify-center ${
                         isActive
                           ? 'bg-brand-green text-white'
-                          : isCompleted
+                          : isCompleted || (editingCase && stepNum <= 7)
                           ? 'bg-emerald-100 text-brand-green'
                           : 'bg-slate-100 text-slate-400'
                       }`}
                     >
-                      {isCompleted ? '✓' : stepNum}
+                      {isCompleted || (editingCase && !isActive) ? '✓' : stepNum}
                     </span>
                     <span className="text-3xs font-extrabold leading-tight line-clamp-1">{lbl}</span>
                   </button>
                 );
               })}
             </div>
+
+            {/* Mobile Scrollable Step Tabs */}
+            <div className="flex sm:hidden overflow-x-auto no-scrollbar gap-2 pb-1">
+              {stepLabels.map((lbl, idx) => {
+                const stepNum = idx + 1;
+                const isActive = currentStep === stepNum;
+                const canNavigate = Boolean(editingCase) || stepNum <= maxVisitedStep;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      if (canNavigate) {
+                        setValidationError(null);
+                        setCurrentStep(stepNum);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }
+                    }}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                      isActive
+                        ? 'bg-brand-green text-white shadow-sm'
+                        : canNavigate
+                        ? 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                        : 'bg-slate-50 text-slate-400 opacity-60'
+                    }`}
+                  >
+                    <span className="w-4 h-4 rounded-full bg-black/10 flex items-center justify-center text-3xs font-black">
+                      {stepNum}
+                    </span>
+                    <span>{lbl}</span>
+                  </button>
+                );
+              })}
+            </div>
+
             <div className="flex sm:hidden justify-between items-center text-xs font-extrabold text-brand-navy">
               <span>الخطوة {currentStep} من 7: {stepLabels[currentStep - 1]}</span>
               <span className="text-brand-green font-mono bg-emerald-50 px-2.5 py-0.5 rounded-full">
