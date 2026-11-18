@@ -157,8 +157,17 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
 
   const [selectedModerationListing, setSelectedModerationListing] = useState<DatabaseCarListing | null>(null);
   const [adminFeedbackInput, setAdminFeedbackInput] = useState<string>('');
+  const [adminPriceEditValue, setAdminPriceEditValue] = useState<number | ''>('');
+  const [adminPriceSaving, setAdminPriceSaving] = useState(false);
   const [moderationActionLoading, setModerationActionLoading] = useState(false);
   const [moderationMessage, setModerationMessage] = useState<string | null>(null);
+
+  // Sync admin price edit value whenever selectedModerationListing is opened
+  useEffect(() => {
+    if (selectedModerationListing) {
+      setAdminPriceEditValue(selectedModerationListing.asking_price || 0);
+    }
+  }, [selectedModerationListing]);
 
   // Featured & Priority Ranking Modal State (Top 3 & Top 10 by Category / Global)
   const [listingForFeatured, setListingForFeatured] = useState<DatabaseCarListing | null>(null);
@@ -591,6 +600,32 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
     setModerationActionLoading(false);
   };
 
+  // Handle direct admin update to listing asking price in Supabase
+  const handleSaveListingPrice = async () => {
+    if (!selectedModerationListing || adminPriceEditValue === '' || adminPriceEditValue <= 0) return;
+    setAdminPriceSaving(true);
+    try {
+      const newPrice = Number(adminPriceEditValue);
+      const { error } = await supabase
+        .from('car_listings')
+        .update({ asking_price: newPrice, updated_at: new Date().toISOString() })
+        .eq('id', selectedModerationListing.id);
+
+      if (error) {
+        alert('تعذر تحديث السعر: ' + error.message);
+      } else {
+        setSelectedModerationListing(prev => prev ? { ...prev, asking_price: newPrice } : null);
+        setDbListings(prev => prev.map(l => l.id === selectedModerationListing.id ? { ...l, asking_price: newPrice } : l));
+        alert('✅ تم حفظ وتحديث السعر بنجاح في قاعدة البيانات والمعرض!');
+        await loadModerationListings();
+      }
+    } catch (err: any) {
+      alert('خطأ: ' + (err?.message || 'حدث خطأ أثناء حفظ السعر'));
+    } finally {
+      setAdminPriceSaving(false);
+    }
+  };
+
   // Handle Request Official Documents (License, ID, Payoff statement)
   const handleRequestDocuments = async (listingId: string) => {
     const res = await listingService.requestListingDocuments(listingId);
@@ -874,8 +909,37 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
     };
 
     onUpdateCase(updatedCase);
+
+    // Apply changes directly to Supabase car_listings table so changes are permanent across reloads
+    const targetListingId = targetCase.vehicle.id;
+    const dbPayload: Record<string, any> = {
+      status: 'published',
+      updated_at: new Date().toISOString()
+    };
+    if (targetRev.fieldKey === 'askingPrice') {
+      dbPayload.asking_price = Number(targetRev.newValue);
+    } else if (targetRev.fieldKey === 'mileage') {
+      dbPayload.mileage = Number(targetRev.newValue);
+    } else if (targetRev.fieldKey === 'disclosedIssues') {
+      dbPayload.disclosed_defects = targetRev.newValue;
+    } else if (targetRev.fieldKey === 'sellerConditionStory') {
+      dbPayload.condition_description = targetRev.newValue;
+    }
+
+    try {
+      supabase
+        .from('car_listings')
+        .update(dbPayload)
+        .or(`id.eq.${targetListingId},case_reference.eq.${caseRef}`)
+        .then(() => {
+          loadModerationListings();
+        });
+    } catch (dbErr) {
+      console.warn('DB update revision error:', dbErr);
+    }
+
     setReviewNoteInput('');
-    alert(isAr ? 'تم اعتماد التعديل وتحديث بيانات الإعلان بنجاح!' : 'Revision approved and published.');
+    alert(isAr ? 'تم اعتماد التعديل وتحديث بيانات الإعلان بنجاح في قاعدة البيانات والمعرض!' : 'Revision approved and published permanently.');
   }, [cases, currentStaffUser, isAr, onUpdateCase, reviewNoteInput]);
 
   // Reject a Seller Revision
@@ -3013,9 +3077,29 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
 
             {/* Details Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 rounded-2xl bg-slate-900 border border-slate-800 text-xs">
-              <div>
-                <span className="text-slate-400 block text-3xs">السعر المطلوب:</span>
-                <span className="font-black text-brand-green font-mono">{Number(selectedModerationListing.asking_price).toLocaleString('ar-EG')} ج.م</span>
+              <div className="col-span-2 sm:col-span-1 bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 block text-3xs font-bold">السعر المطلوب:</span>
+                  <span className="font-black text-brand-green font-mono">{Number(selectedModerationListing.asking_price).toLocaleString('ar-EG')} ج.م</span>
+                </div>
+                <div className="flex items-center gap-1.5 pt-0.5">
+                  <input
+                    type="number"
+                    step="5000"
+                    value={adminPriceEditValue}
+                    onChange={(e) => setAdminPriceEditValue(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="اكتب السعر..."
+                    className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-700 text-white font-mono font-bold text-xs focus:ring-1 focus:ring-brand-green"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveListingPrice}
+                    disabled={adminPriceSaving || !adminPriceEditValue || adminPriceEditValue === selectedModerationListing.asking_price}
+                    className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-slate-950 font-black text-2xs transition whitespace-nowrap shadow-sm"
+                  >
+                    {adminPriceSaving ? '...' : 'حفظ'}
+                  </button>
+                </div>
               </div>
               <div>
                 <span className="text-slate-400 block text-3xs">نظام وطريقة البيع:</span>

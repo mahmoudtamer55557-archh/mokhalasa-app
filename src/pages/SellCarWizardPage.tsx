@@ -22,7 +22,7 @@ import {
   CheckCircle2, ArrowRight, ArrowLeft, Banknote, 
   AlertCircle, FileText, Sparkles, Car as CarIcon, 
   PhoneCall, Check, Lock, Send, 
-  Clock, MessageSquare, Key, AlertTriangle, ShieldCheck, X, Phone
+  Clock, MessageSquare, Key, AlertTriangle, ShieldCheck, X, Phone, Tag
 } from 'lucide-react';
 
 interface SellCarWizardPageProps {
@@ -2249,20 +2249,41 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                   </div>
 
                   {/* Seller Expected Price */}
-                  <div className="sm:col-span-2 pt-2">
-                    <div className="flex justify-between items-center mb-1.5">
-                      <label className="font-bold text-slate-700">السعر المتوقع أو المطلوب للسيارة (اختياري):</label>
-                      <span className="text-xs font-black text-brand-green">{sellerExpectedPrice > 0 ? formatEGP(sellerExpectedPrice) : 'غير محدد بعد'}</span>
+                  <div className="sm:col-span-2 pt-2 bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200/80 space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                      <label className="font-black text-xs sm:text-sm text-brand-navy flex items-center gap-1.5">
+                        <Tag className="w-4 h-4 text-brand-green" />
+                        <span>سعر البيع المطلوب (اكتب السعر الذي ترغب في بيع سيارتك به كاش):</span>
+                      </label>
+                      <span className="text-xs font-black text-brand-green">
+                        {sellerExpectedPrice > 0 ? formatEGP(sellerExpectedPrice) : 'اكتب السعر بالخانة أدناه'}
+                      </span>
                     </div>
-                    <input
-                      type="range"
-                      min="300000"
-                      max="2500000"
-                      step="25000"
-                      value={sellerExpectedPrice || 500000}
-                      onChange={(e) => setSellerExpectedPrice(Number(e.target.value))}
-                      className="w-full accent-brand-green cursor-pointer"
-                    />
+
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="50000"
+                        step="5000"
+                        value={sellerExpectedPrice || ''}
+                        onChange={(e) => setSellerExpectedPrice(Number(e.target.value))}
+                        placeholder="اكتب السعر هنا، مثال: 450000 أو 550000"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-emerald-300 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 text-base font-black text-brand-navy bg-white"
+                      />
+                      <span className="absolute left-3 top-3.5 text-xs font-black text-slate-400">ج.م كاش</span>
+                    </div>
+
+                    <div className="pt-1">
+                      <input
+                        type="range"
+                        min="200000"
+                        max="2500000"
+                        step="10000"
+                        value={sellerExpectedPrice || 500000}
+                        onChange={(e) => setSellerExpectedPrice(Number(e.target.value))}
+                        className="w-full accent-brand-green cursor-pointer"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2575,6 +2596,31 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                 <div className="bg-white/5 p-2 rounded-lg col-span-2 sm:col-span-1">
                   <span className="text-slate-400 block">مصادر البيانات المعتمدة:</span>
                   <span className="font-bold text-white">ContactCars & YallaMotor</span>
+                </div>
+              </div>
+
+              {/* Direct Final Price Setter */}
+              <div className="bg-slate-900/90 p-4 rounded-2xl border-2 border-emerald-500/50 space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <label className="font-black text-sm text-white flex items-center gap-1.5">
+                    <Tag className="w-4 h-4 text-brand-green" />
+                    <span>السعر النهائي المعتمد للإعلان (السعر الذي ترغب في البيع به):</span>
+                  </label>
+                  <span className="text-xs font-bold text-slate-300">
+                    يمكنك تعديل وتأكيد السعر هنا مباشرة قبل النشر
+                  </span>
+                </div>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="50000"
+                    step="5000"
+                    value={sellerExpectedPrice || ''}
+                    onChange={(e) => setSellerExpectedPrice(Number(e.target.value))}
+                    placeholder="اكتب السعر المطلوب، مثال: 450000 أو 550000"
+                    className="w-full px-4 py-3 rounded-xl border border-emerald-400 bg-slate-950 text-white font-mono font-black text-lg focus:ring-2 focus:ring-brand-green focus:outline-none"
+                  />
+                  <span className="absolute left-3 top-3.5 text-xs font-black text-emerald-400 font-mono">ج.م كاش</span>
                 </div>
               </div>
 
