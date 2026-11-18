@@ -366,10 +366,13 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
   // Load real database data for user
   useEffect(() => {
     const loadRealData = async () => {
-      if (customerUser?.id) {
-        const listingsRes = await listingService.getCustomerListings(customerUser.id);
-        if (listingsRes.success) setDbListings(listingsRes.listings);
+      const targetUserId = customerUser?.id || '';
+      const listingsRes = await listingService.getCustomerListings(targetUserId);
+      if (listingsRes.success && listingsRes.listings.length > 0) {
+        setDbListings(listingsRes.listings);
+      }
 
+      if (customerUser?.id) {
         const notifsRes = await listingService.getCustomerNotifications(customerUser.id);
         if (notifsRes.success) setNotifications(notifsRes.notifications);
       }

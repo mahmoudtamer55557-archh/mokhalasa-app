@@ -493,18 +493,40 @@ export const listingService = {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const currentAuthId = sessionData.session?.user?.id;
-      if (!currentAuthId || !assertResourceOwnership(currentAuthId, userId, false)) {
-        return { success: false, listings: [], error: 'غير مصرح لك بالوصول إلى بيانات عميل آخر.' };
-      }
 
-      const { data, error } = await supabase
+      let userPhone = '';
+      try {
+        const storedCustomer = localStorage.getItem('mokhalasa_customer_user');
+        if (storedCustomer) {
+          const parsed = JSON.parse(storedCustomer);
+          if (parsed?.phone) userPhone = parsed.phone.replace(/\D/g, '');
+        }
+        if (!userPhone) {
+          const lastPhone = localStorage.getItem('mokhalasa_last_phone');
+          if (lastPhone) userPhone = lastPhone.replace(/\D/g, '');
+        }
+      } catch {}
+
+      // Query car_listings matching user_id OR auth ID OR seller_phone
+      let query = supabase
         .from('car_listings')
         .select(`
           *,
           listing_images ( image_url, display_order )
-        `)
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+        `);
+
+      const effectiveId = currentAuthId || userId;
+      if (effectiveId && userPhone) {
+        query = query.or(`user_id.eq.${effectiveId},seller_phone.eq.${userPhone},seller_phone.eq.0${userPhone.slice(-10)}`);
+      } else if (effectiveId) {
+        query = query.or(`user_id.eq.${effectiveId},user_id.eq.${userId}`);
+      } else if (userPhone) {
+        query = query.or(`seller_phone.eq.${userPhone},seller_phone.eq.0${userPhone.slice(-10)}`);
+      } else {
+        query = query.eq('user_id', userId);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) {
         if (error.message.includes('does not exist')) {
