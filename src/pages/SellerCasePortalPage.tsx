@@ -517,10 +517,11 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
     onUpdateCase(updatedCase);
     setEditSaveSuccess(true);
 
-    // If matching db listing exists, update in Supabase
+    // If matching db listing exists or case reference, update in Supabase
     const matchingDb = dbListings.find(l => l.case_reference === activeCase.caseReference || l.id === activeCase.vehicle.id);
-    if (matchingDb) {
-      await listingService.updateListingBySeller(matchingDb.id, {
+    const targetId = matchingDb?.id || activeCase.caseReference || activeCase.vehicle.id;
+    if (targetId) {
+      await listingService.updateListingBySeller(targetId, {
         asking_price: editPrice,
         mileage: editMileage,
         condition_description: editConditionStory

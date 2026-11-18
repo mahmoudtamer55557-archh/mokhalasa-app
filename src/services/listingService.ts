@@ -1009,11 +1009,7 @@ export const listingService = {
   ): Promise<{ success: boolean; message: string; error?: string }> {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
-      const authUser = sessionData.session?.user;
-
-      if (!authUser) {
-        return { success: false, message: 'غير مصرح. يرجى تسجيل الدخول أولاً.' };
-      }
+      const authUser = sessionData?.session?.user;
 
       // Keep listing published and active so edits never disappear or hide the car from the marketplace
       const payload: Record<string, any> = {
@@ -1022,20 +1018,29 @@ export const listingService = {
         updated_at: new Date().toISOString()
       };
 
-      if (updates.asking_price !== undefined) payload.asking_price = updates.asking_price;
-      if (updates.mileage !== undefined) payload.mileage = updates.mileage;
+      if (updates.asking_price !== undefined) payload.asking_price = Number(updates.asking_price);
+      if (updates.mileage !== undefined) payload.mileage = Number(updates.mileage);
       if (updates.condition_description !== undefined) payload.condition_description = updates.condition_description;
       if (updates.paint_condition !== undefined) payload.paint_condition = updates.paint_condition;
       if (updates.seller_phone !== undefined) payload.seller_phone = updates.seller_phone;
 
-      // Update in car_listings (by id)
-      const { error: updateError } = await supabase
-        .from('car_listings')
-        .update(payload)
-        .eq('id', listingId);
+      const isUuid = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+      // Update in car_listings (by UUID or case_reference)
+      let updateQuery = supabase.from('car_listings').update(payload);
+      if (isUuid(listingId)) {
+        updateQuery = updateQuery.eq('id', listingId);
+      } else {
+        updateQuery = updateQuery.eq('case_reference', listingId);
+      }
+      const { error: updateError } = await updateQuery;
 
       if (updateError) {
         console.warn('Listing update notice:', updateError);
+        // Fallback: try by case_reference if initial was uuid or vice versa
+        if (isUuid(listingId)) {
+          await supabase.from('car_listings').update(payload).eq('case_reference', listingId);
+        }
       }
 
       // Update local moderation overrides mirror so UI reflects immediately as published
@@ -1061,16 +1066,20 @@ export const listingService = {
 
       // Send WhatsApp confirmation to seller
       try {
-        const { data: carRow } = await supabase
+        let fetchQuery = supabase
           .from('car_listings')
-          .select('make, model, year, asking_price, seller_name, seller_phone, case_reference')
-          .eq('id', listingId)
-          .maybeSingle();
-        const sellerPhone = updates.seller_phone || carRow?.seller_phone || authUser.user_metadata?.phone;
+          .select('make, model, year, asking_price, seller_name, seller_phone, case_reference');
+        if (isUuid(listingId)) {
+          fetchQuery = fetchQuery.eq('id', listingId);
+        } else {
+          fetchQuery = fetchQuery.eq('case_reference', listingId);
+        }
+        const { data: carRow } = await fetchQuery.maybeSingle();
+        const sellerPhone = updates.seller_phone || carRow?.seller_phone || authUser?.user_metadata?.phone;
         if (sellerPhone) {
           sendListingUpdatedWhatsApp(
             sellerPhone,
-            carRow?.seller_name || authUser.user_metadata?.full_name || 'مالك السيارة',
+            carRow?.seller_name || authUser?.user_metadata?.full_name || 'مالك السيارة',
             carRow ? `${carRow.make} ${carRow.model} ${carRow.year}` : 'سيارتك',
             updates.asking_price ?? carRow?.asking_price ?? 0,
             carRow?.case_reference || listingId.slice(0, 8)
@@ -1080,12 +1089,14 @@ export const listingService = {
 
       // Audit log
       try {
-        await supabase.from('audit_logs').insert({
-          actor_id: authUser.id,
-          event_type: 'LISTING_RESUBMITTED_BY_SELLER',
-          record_id: listingId,
-          details: updates
-        });
+        if (authUser?.id) {
+          await supabase.from('audit_logs').insert({
+            actor_id: authUser.id,
+            event_type: 'LISTING_RESUBMITTED_BY_SELLER',
+            record_id: listingId,
+            details: updates
+          });
+        }
       } catch {}
 
       return {

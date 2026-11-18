@@ -926,17 +926,26 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
       dbPayload.condition_description = targetRev.newValue;
     }
 
-    try {
-      supabase
-        .from('car_listings')
-        .update(dbPayload)
-        .or(`id.eq.${targetListingId},case_reference.eq.${caseRef}`)
-        .then(() => {
-          loadModerationListings();
-        });
-    } catch (dbErr) {
-      console.warn('DB update revision error:', dbErr);
-    }
+    const isUuid = (val?: string) => !!val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+    (async () => {
+      try {
+        let updateRes;
+        if (isUuid(targetListingId)) {
+          updateRes = await supabase.from('car_listings').update(dbPayload).eq('id', targetListingId);
+        } else if (caseRef) {
+          updateRes = await supabase.from('car_listings').update(dbPayload).eq('case_reference', caseRef);
+        }
+
+        if ((!updateRes || updateRes.error) && targetCase.seller?.phone) {
+          await supabase.from('car_listings').update(dbPayload).eq('seller_phone', targetCase.seller.phone);
+        }
+
+        await loadModerationListings();
+      } catch (dbErr) {
+        console.warn('DB update revision error:', dbErr);
+      }
+    })();
 
     setReviewNoteInput('');
     alert(isAr ? 'تم اعتماد التعديل وتحديث بيانات الإعلان بنجاح في قاعدة البيانات والمعرض!' : 'Revision approved and published permanently.');

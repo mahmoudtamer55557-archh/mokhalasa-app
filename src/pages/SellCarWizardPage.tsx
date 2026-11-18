@@ -2268,21 +2268,9 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                         value={sellerExpectedPrice || ''}
                         onChange={(e) => setSellerExpectedPrice(Number(e.target.value))}
                         placeholder="اكتب السعر هنا، مثال: 450000 أو 550000"
-                        className="w-full px-4 py-3 rounded-xl border-2 border-emerald-300 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 text-base font-black text-brand-navy bg-white"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-emerald-400 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 text-lg font-black text-brand-navy bg-white"
                       />
                       <span className="absolute left-3 top-3.5 text-xs font-black text-slate-400">ج.م كاش</span>
-                    </div>
-
-                    <div className="pt-1">
-                      <input
-                        type="range"
-                        min="200000"
-                        max="2500000"
-                        step="10000"
-                        value={sellerExpectedPrice || 500000}
-                        onChange={(e) => setSellerExpectedPrice(Number(e.target.value))}
-                        className="w-full accent-brand-green cursor-pointer"
-                      />
                     </div>
                   </div>
                 </div>
