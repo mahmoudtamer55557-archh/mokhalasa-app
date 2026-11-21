@@ -882,7 +882,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
   };
 
   // Approve a Seller Revision
-  const handleApproveRevision = useCallback((caseRef: string, revisionId: string) => {
+  const handleApproveRevision = useCallback(async (caseRef: string, revisionId: string) => {
     const targetCase = cases.find(c => c.caseReference === caseRef);
     if (!targetCase) return;
 
@@ -896,9 +896,9 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
     } else if (targetRev.fieldKey === 'mileage') {
       updatedVehicle.mileage = Number(targetRev.newValue);
     } else if (targetRev.fieldKey === 'disclosedIssues') {
-      updatedVehicle.disclosedProblems = targetRev.newValue;
+      updatedVehicle.disclosedProblems = Array.isArray(targetRev.newValue) ? targetRev.newValue : [targetRev.newValue];
     } else if (targetRev.fieldKey === 'sellerConditionStory') {
-      updatedVehicle.sellerConditionStory = targetRev.newValue;
+      updatedVehicle.sellerConditionStory = String(targetRev.newValue);
     }
 
     const updatedRevisions = (targetCase.revisions || []).map(r => {
@@ -944,40 +944,42 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
       status: 'published',
       updated_at: new Date().toISOString()
     };
-    if (targetRev.fieldKey === 'askingPrice') {
+    if (targetRev.fieldKey === 'askingPrice' || targetRev.fieldKey === 'downPayment') {
       dbPayload.asking_price = Number(targetRev.newValue);
     } else if (targetRev.fieldKey === 'mileage') {
       dbPayload.mileage = Number(targetRev.newValue);
     } else if (targetRev.fieldKey === 'disclosedIssues') {
-      dbPayload.disclosed_defects = targetRev.newValue;
+      dbPayload.disclosed_defects = Array.isArray(targetRev.newValue) ? targetRev.newValue : [targetRev.newValue];
     } else if (targetRev.fieldKey === 'sellerConditionStory') {
-      dbPayload.condition_description = targetRev.newValue;
+      dbPayload.condition_description = String(targetRev.newValue);
+    } else if (targetRev.fieldKey === 'monthlyInstallment') {
+      dbPayload.monthly_installment = Number(targetRev.newValue);
+    } else if (targetRev.fieldKey === 'remainingMonths') {
+      dbPayload.remaining_months = Number(targetRev.newValue);
     }
 
     const isUuid = (val?: string) => !!val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 
-    (async () => {
-      try {
-        let updateRes;
-        if (isUuid(targetListingId)) {
-          updateRes = await supabase.from('car_listings').update(dbPayload).eq('id', targetListingId);
-        } else if (caseRef) {
-          updateRes = await supabase.from('car_listings').update(dbPayload).eq('case_reference', caseRef);
-        }
-
-        if ((!updateRes || updateRes.error) && targetCase.seller?.phone) {
-          await supabase.from('car_listings').update(dbPayload).eq('seller_phone', targetCase.seller.phone);
-        }
-
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('mokhalasa-listings-updated', { detail: { caseRef, status: 'published' } }));
-        }
-
-        await loadModerationListings();
-      } catch (dbErr) {
-        console.warn('DB update revision error:', dbErr);
+    try {
+      let updateRes;
+      if (isUuid(targetListingId)) {
+        updateRes = await supabase.from('car_listings').update(dbPayload).eq('id', targetListingId).select();
+      } else if (caseRef) {
+        updateRes = await supabase.from('car_listings').update(dbPayload).eq('case_reference', caseRef).select();
       }
-    })();
+
+      if ((!updateRes || !updateRes.data || updateRes.data.length === 0) && targetCase.seller?.phone) {
+        await supabase.from('car_listings').update(dbPayload).eq('seller_phone', targetCase.seller.phone).select();
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mokhalasa-listings-updated', { detail: { caseRef, status: 'published' } }));
+      }
+
+      await loadModerationListings();
+    } catch (dbErr) {
+      console.warn('DB update revision error:', dbErr);
+    }
 
     setReviewNoteInput('');
     alert(isAr ? 'تم اعتماد التعديل وتحديث بيانات الإعلان بنجاح في قاعدة البيانات والمعرض!' : 'Revision approved and published permanently.');

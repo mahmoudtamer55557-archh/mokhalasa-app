@@ -1005,6 +1005,13 @@ export const listingService = {
       condition_description?: string;
       paint_condition?: string;
       seller_phone?: string;
+      monthly_installment?: number;
+      remaining_months?: number;
+      outstanding_amount?: number;
+      financing_provider?: string;
+      financing_type?: string;
+      status?: ListingModerationStatus;
+      down_payment?: number;
     }
   ): Promise<{ success: boolean; message: string; error?: string }> {
     try {
@@ -1013,7 +1020,7 @@ export const listingService = {
 
       // Keep listing published and active so edits never disappear or hide the car from the marketplace
       const payload: Record<string, any> = {
-        status: 'published',
+        status: updates.status || 'published',
         review_feedback: null,
         updated_at: new Date().toISOString()
       };
@@ -1023,35 +1030,74 @@ export const listingService = {
       if (updates.condition_description !== undefined) payload.condition_description = updates.condition_description;
       if (updates.paint_condition !== undefined) payload.paint_condition = updates.paint_condition;
       if (updates.seller_phone !== undefined) payload.seller_phone = updates.seller_phone;
+      if (updates.monthly_installment !== undefined) payload.monthly_installment = Number(updates.monthly_installment);
+      if (updates.remaining_months !== undefined) payload.remaining_months = Number(updates.remaining_months);
+      if (updates.outstanding_amount !== undefined) payload.outstanding_amount = Number(updates.outstanding_amount);
+      if (updates.financing_provider !== undefined) payload.financing_provider = updates.financing_provider;
+      if (updates.financing_type !== undefined) payload.financing_type = updates.financing_type;
 
       const isUuid = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 
-      // Update in car_listings (by UUID or case_reference)
-      let updateQuery = supabase.from('car_listings').update(payload);
-      if (isUuid(listingId)) {
-        updateQuery = updateQuery.eq('id', listingId);
-      } else {
-        updateQuery = updateQuery.eq('case_reference', listingId);
+      // 1. Resolve true target ID (whether caller passed UUID or case_reference like MK-8349)
+      let targetUuid = listingId;
+      if (!isUuid(listingId)) {
+        try {
+          const { data: found } = await supabase
+            .from('car_listings')
+            .select('id')
+            .eq('case_reference', listingId)
+            .maybeSingle();
+          if (found?.id) {
+            targetUuid = found.id;
+          }
+        } catch {}
       }
-      const { error: updateError } = await updateQuery;
+
+      // 2. Perform direct update in Supabase with .select() to confirm affected row
+      let updateRes = await supabase
+        .from('car_listings')
+        .update(payload)
+        .eq('id', targetUuid)
+        .select();
+
+      let updateError = updateRes.error;
+
+      // Fallback: if no rows matched by ID, try by case_reference or phone
+      if (!updateError && (!updateRes.data || updateRes.data.length === 0)) {
+        const fallbackRes = await supabase
+          .from('car_listings')
+          .update(payload)
+          .eq('case_reference', listingId)
+          .select();
+        updateError = fallbackRes.error;
+      }
 
       if (updateError) {
         console.warn('Listing update notice:', updateError);
-        // Fallback: try by case_reference if initial was uuid or vice versa
-        if (isUuid(listingId)) {
-          await supabase.from('car_listings').update(payload).eq('case_reference', listingId);
-        }
+        return { success: false, message: updateError.message || 'فشل التحديث في قاعدة البيانات' };
       }
 
-      // Update local moderation overrides mirror so UI reflects immediately as published
+      // 3. Keep local moderation overrides in sync with latest changes
       try {
         const storedMods = localStorage.getItem('mokhalasa_moderation_overrides') || '{}';
         const parsed = JSON.parse(storedMods);
-        parsed[listingId] = { status: 'published', feedback: null, updatedAt: new Date().toISOString() };
+        parsed[targetUuid] = {
+          ...(parsed[targetUuid] || {}),
+          status: payload.status,
+          feedback: null,
+          asking_price: payload.asking_price ?? parsed[targetUuid]?.asking_price,
+          mileage: payload.mileage ?? parsed[targetUuid]?.mileage,
+          updatedAt: new Date().toISOString()
+        };
+        if (listingId !== targetUuid) {
+          parsed[listingId] = parsed[targetUuid];
+        }
         localStorage.setItem('mokhalasa_moderation_overrides', JSON.stringify(parsed));
 
         if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('mokhalasa-listings-updated', { detail: { listingId, status: 'published' } }));
+          window.dispatchEvent(new CustomEvent('mokhalasa-listings-updated', { 
+            detail: { listingId: targetUuid, caseRef: listingId, status: payload.status } 
+          }));
         }
       } catch {}
 
@@ -2099,8 +2145,10 @@ export const listingService = {
       // Filter to strictly show only approved, published, or sold vehicles AND NOT HIDDEN!
       const visibleRows = (data || []).filter((row: any) => {
         const override = localModerations[row.id];
-        const effectiveStatus = override?.status || row.status;
-        const isHidden = Boolean(override?.is_hidden ?? row.is_hidden);
+        // If DB row status is published, approved, or sold, trust DB over stale cache!
+        const isDbPublished = ['approved', 'published', 'sold'].includes(row.status);
+        const effectiveStatus = isDbPublished ? row.status : (override?.status || row.status);
+        const isHidden = Boolean(row.is_hidden ?? override?.is_hidden);
         if (isHidden) return false; // Strictly hidden from public marketplace!
         return ['approved', 'published', 'sold'].includes(effectiveStatus);
       });
@@ -2114,20 +2162,40 @@ export const listingService = {
           .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
           .map((img: any) => img.image_url);
 
-        const effectiveSaleType = (override?.sale_type || row.sale_type || (
-          override?.is_direct_installment || row.is_direct_installment || row.financing_type === 'direct_installment'
+        const effectiveSaleType = (row.sale_type || override?.sale_type || (
+          row.is_direct_installment || override?.is_direct_installment || row.financing_type === 'direct_installment'
             ? 'direct_installment'
             : (row.financing_type === 'fully_owned' || row.financing_type === 'cash' ? 'cash' : 'bank_settlement')
         )) as 'cash' | 'direct_installment' | 'bank_settlement';
 
         const isDirect = effectiveSaleType === 'direct_installment';
         const directDetails = isDirect ? {
-          downPayment: Number(override?.down_payment ?? row.down_payment) || Math.round((Number(row.asking_price) || 0) * 0.3),
-          monthlyInstallment: Number(override?.monthly_installment ?? row.monthly_installment) || 0,
-          installmentMonths: Number(override?.installment_period_months ?? row.installment_period_months ?? row.remaining_months) || 36,
+          downPayment: Number(row.down_payment ?? override?.down_payment) || Math.round((Number(row.asking_price) || 0) * 0.3),
+          monthlyInstallment: Number(row.monthly_installment ?? override?.monthly_installment) || 0,
+          installmentMonths: Number(row.installment_period_months ?? row.remaining_months ?? override?.installment_period_months) || 36,
           totalInstallmentPrice: Number(row.asking_price) || 0,
-          requiredGuarantees: override?.required_guarantees || row.required_guarantees || ['شيكات بنكية', 'إيصالات أمانة', 'حظر بيع بالرخصة'],
-          sellerType: (override?.direct_installment_seller_type || row.direct_installment_seller_type || 'showroom') as 'showroom' | 'individual'
+          requiredGuarantees: row.required_guarantees || override?.required_guarantees || ['شيكات بنكية', 'إيصالات أمانة', 'حظر بيع بالرخصة'],
+          sellerType: (row.direct_installment_seller_type || override?.direct_installment_seller_type || 'showroom') as 'showroom' | 'individual'
+        } : undefined;
+
+        // Structured financing details for cars under bank/company finance (like 2019 and 2021 Optra)
+        const hasFinance = Boolean(row.has_financing || row.monthly_installment > 0 || row.outstanding_amount > 0);
+        const financingDetails = hasFinance ? {
+          providerName: row.financing_provider || 'بنك / شركة تمويل',
+          providerNameAr: row.financing_provider || 'بنك / شركة تمويل',
+          financingType: (row.financing_type || 'bank_loan') as any,
+          outstandingPrincipal: Number(row.outstanding_amount) || 0,
+          monthlyInstallment: Number(row.monthly_installment) || 0,
+          remainingMonths: Number(row.remaining_months) || 36,
+          arrearsAmount: 0,
+          earlySettlementFee: Math.round((Number(row.outstanding_amount) || 0) * 0.05),
+          releaseFee: 1500,
+          totalSettlementRequired: (Number(row.outstanding_amount) || 0) + Math.round((Number(row.outstanding_amount) || 0) * 0.05) + 1500,
+          hasSaleBan: true,
+          sellerNetProceeds: Math.max(0, (Number(row.asking_price) || 0) - (Number(row.outstanding_amount) || 0)),
+          hasOfficialStatement: true,
+          hasContactedBank: true,
+          isEstimateOnly: false
         } : undefined;
 
         // Featured Settings Hydration
@@ -2158,6 +2226,7 @@ export const listingService = {
           directInstallment: directDetails,
           financingType: (effectiveSaleType === 'direct_installment' ? 'direct_installment' : (effectiveSaleType === 'cash' ? 'fully_owned' : (row.financing_type || 'bank_loan'))) as any,
           vehicleStatus: (effectiveSaleType === 'direct_installment' ? 'direct_installment' : (effectiveSaleType === 'cash' ? 'cash_only' : (row.financing_type || 'bank_loan'))) as any,
+          financingDetails,
           disclosedProblems: row.disclosed_defects || [],
           sellerConditionStory: row.condition_description,
           description: row.condition_description,
