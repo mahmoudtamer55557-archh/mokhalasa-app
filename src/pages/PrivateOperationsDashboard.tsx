@@ -81,9 +81,37 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
     return null;
   });
 
-  const [activeTab, setActiveTab] = useState<'cases' | 'moderation' | 'purchase_offers' | 'customers' | 'audit_logs' | 'edits_review' | 'team' | 'compliance'>('moderation');
+  const [activeTab, setActiveTab] = useState<'cases' | 'moderation' | 'purchase_offers' | 'installment_cases' | 'customers' | 'audit_logs' | 'edits_review' | 'team' | 'compliance'>('moderation');
   const [agreementModalOpen, setAgreementModalOpen] = useState(false);
   const [agreementCarData, setAgreementCarData] = useState<any>(undefined);
+
+  // Installment Continuation Cases & GPS State
+  const [installmentCases, setInstallmentCases] = useState<any[]>([]);
+  const [loadingInstallmentCases, setLoadingInstallmentCases] = useState<boolean>(false);
+
+  const loadInstallmentCases = useCallback(async () => {
+    setLoadingInstallmentCases(true);
+    const res = await listingService.getInstallmentCases();
+    if (res.success) {
+      setInstallmentCases(res.cases);
+    }
+    setLoadingInstallmentCases(false);
+  }, []);
+
+  useEffect(() => {
+    loadInstallmentCases();
+  }, [loadInstallmentCases]);
+
+  const handleGpsAction = async (caseId: string, action: 'engine_disabled' | 'active') => {
+    const confirmMsg = action === 'engine_disabled'
+      ? 'هل أنت متأكد من إرسال أمر تعطيل محرك السيارة عن بعد؟ (سيتم تفعيل الإيقاف عند هبوط السرعة لأقل من 5 كم/س)'
+      : 'هل تريد إعادة تمكين تشغيل المحرك للسيارة؟';
+    if (!window.confirm(confirmMsg)) return;
+
+    const res = await listingService.updateGpsStatus(caseId, action);
+    alert(res.message);
+    await loadInstallmentCases();
+  };
 
   // Supabase Moderation Queue State
   const [dbListings, setDbListings] = useState<DatabaseCarListing[]>([]);
@@ -1292,6 +1320,19 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
           </button>
 
           <button
+            onClick={() => {
+              setActiveTab('installment_cases');
+              loadInstallmentCases();
+            }}
+            className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 ${
+              activeTab === 'installment_cases' ? 'bg-brand-green text-slate-950 font-black shadow-md' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-emerald-400" />
+            <span>قضايا تكملة الأقساط والـ GPS ({installmentCases.length})</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('edits_review')}
             className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 ${
               activeTab === 'edits_review' ? 'bg-brand-green text-slate-950 font-black shadow-md' : 'text-slate-400 hover:text-white'
@@ -2013,15 +2054,19 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                             <span className="font-mono text-3xs text-slate-400 font-normal">#{item.id.slice(0, 8)}</span>
                             {item.is_direct_installment || item.sale_type === 'direct_installment' ? (
                               <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                                🟡 تقسيط مباشر
+                                تقسيط مباشر
+                              </span>
+                            ) : item.sale_type === 'installment_continuation' ? (
+                              <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-teal-500/20 text-teal-300 border border-teal-500/40">
+                                تكملة أقساط
                               </span>
                             ) : item.sale_type === 'cash' || item.financing_type === 'fully_owned' ? (
                               <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                                🟢 بيع كاش
+                                بيع كاش
                               </span>
                             ) : (
                               <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-blue-500/20 text-blue-300 border border-blue-500/40">
-                                🏦 تسوية بنكية
+                                تسوية بنكية
                               </span>
                             )}
 
@@ -2030,7 +2075,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                               !item.is_hidden ? (
                                 <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
                                   <Eye className="w-2.5 h-2.5 text-emerald-400" />
-                                  <span>👁️ معروض في المعرض العام</span>
+                                  <span>معروض في المعرض</span>
                                 </span>
                               ) : (
                                 <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
@@ -2721,6 +2766,177 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
         )}
 
         {/* ============================================================== */}
+        {/* TAB: INSTALLMENT CONTINUATION CASES & GPS CONTROLS (NEW) */}
+        {/* ============================================================== */}
+        {activeTab === 'installment_cases' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="bg-slate-950 p-6 rounded-3xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 font-black text-xs border border-emerald-500/30">
+                    خدمة معتمدة
+                  </span>
+                  <h3 className="text-lg font-black text-white">
+                    قضايا تكملة الأقساط وأجهزة التتبع السحابية (IoT GPS)
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  متابعة سيارات حظر البيع المحولة لمشترين بنظام الحيازة المشروطة، عقود الاتفاق الثلاثي، والتحكم الفوري بتعطيل المحرك عن بعد في حالات التعثر.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={loadInstallmentCases}
+                  disabled={loadingInstallmentCases}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition flex items-center gap-1.5"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loadingInstallmentCases ? 'animate-spin' : ''}`} />
+                  <span>تحديث</span>
+                </button>
+              </div>
+            </div>
+
+            {loadingInstallmentCases ? (
+              <div className="p-12 text-center text-slate-400">
+                <RefreshCw className="w-8 h-8 animate-spin mx-auto text-brand-green mb-2" />
+                <p className="text-sm font-bold">جاري تحميل قضايا تكملة الأقساط...</p>
+              </div>
+            ) : installmentCases.length === 0 ? (
+              <div className="bg-slate-950/80 p-12 text-center rounded-3xl border border-slate-800 space-y-3">
+                <CarIcon className="w-12 h-12 text-slate-600 mx-auto" />
+                <h4 className="text-white font-bold text-base">لا توجد قضايا تكملة أقساط مسجلة حالياً</h4>
+                <p className="text-slate-400 text-xs max-w-md mx-auto">
+                  تظهر هنا تلقائياً كافة السيارات التي يقدم أصحابها على خدمة تكملة الأقساط بعد اعتمادها وتجهيزها بأجهزة التتبع.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {installmentCases.map((c: any) => {
+                  const isEngineDisabled = c.gps_status === 'engine_disabled';
+                  return (
+                    <div 
+                      key={c.id}
+                      className="bg-slate-950 rounded-2xl border border-slate-800 hover:border-slate-700 p-5 space-y-4 transition shadow-sm"
+                    >
+                      {/* Top Bar: Reference & Status */}
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-extrabold text-emerald-400 bg-emerald-950/70 border border-emerald-800/60 px-2 py-0.5 rounded-md">
+                              {c.case_reference}
+                            </span>
+                            <span className="text-2xs px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-bold">
+                              {c.vehicle_plate_number || 'بدون لوحة'}
+                            </span>
+                          </div>
+                          <h4 className="font-black text-base text-white mt-1.5">
+                            {c.vehicle_make} {c.vehicle_model} ({c.vehicle_year})
+                          </h4>
+                        </div>
+
+                        {/* GPS Engine Status Pill */}
+                        <div>
+                          {isEngineDisabled ? (
+                            <span className="px-2.5 py-1 rounded-full text-2xs font-extrabold bg-red-950/90 text-red-300 border border-red-700 flex items-center gap-1.5 animate-pulse">
+                              <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                              المحرك معطل عن بعد
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-full text-2xs font-extrabold bg-emerald-950/90 text-emerald-300 border border-emerald-700 flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                              GPS متصل (المحرك يعمل)
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Financial & Installment Matrix */}
+                      <div className="bg-slate-900/90 rounded-xl p-3 grid grid-cols-3 gap-2 text-center text-xs border border-slate-800/80">
+                        <div>
+                          <span className="text-slate-400 text-3xs block font-medium">جهة التمويل</span>
+                          <span className="font-bold text-slate-200 truncate block mt-0.5">{c.lender_name}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-3xs block font-medium">القسط الشهري</span>
+                          <span className="font-extrabold text-amber-400 font-mono block mt-0.5">{Number(c.monthly_installment || 0).toLocaleString()} ج.م</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-3xs block font-medium">الشهور المتبقية</span>
+                          <span className="font-extrabold text-emerald-400 font-mono block mt-0.5">{c.remaining_months} شهر</span>
+                        </div>
+                      </div>
+
+                      {/* Parties Contacts */}
+                      <div className="grid grid-cols-2 gap-2 text-2xs bg-slate-900/40 p-2.5 rounded-xl border border-slate-800/50">
+                        <div>
+                          <span className="text-slate-500 block">الطرف الأول (البائع):</span>
+                          <span className="font-bold text-slate-300 block">{c.seller_name}</span>
+                          <span className="text-slate-400 font-mono text-3xs">{c.seller_phone}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 block">الطرف الثاني (المشتري/الحائز):</span>
+                          <span className="font-bold text-slate-300 block">{c.buyer_name || 'بانتظار التعاقد'}</span>
+                          <span className="text-slate-400 font-mono text-3xs">{c.buyer_phone || '---'}</span>
+                        </div>
+                      </div>
+
+                      {/* GPS IMEI & Actions */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-900">
+                        <div className="text-3xs text-slate-500 font-mono">
+                          IMEI: <span className="text-slate-400">{c.gps_device_imei || 'FMB920-AUTO'}</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {isEngineDisabled ? (
+                            <button
+                              onClick={() => handleGpsAction(c.id, 'active')}
+                              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition flex items-center gap-1 shadow-sm"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>إعادة تشغيل المحرك</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleGpsAction(c.id, 'engine_disabled')}
+                              className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs transition flex items-center gap-1 shadow-sm"
+                            >
+                              <AlertTriangle className="w-3.5 h-3.5" />
+                              <span>إيقاف المحرك عن بعد</span>
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => {
+                              setAgreementCarData({
+                                make: c.vehicle_make,
+                                model: c.vehicle_model,
+                                year: c.vehicle_year,
+                                askingPrice: c.total_lender_debt,
+                                plateNumber: c.vehicle_plate_number,
+                                sellerName: c.seller_name,
+                                sellerPhone: c.seller_phone,
+                                buyerName: c.buyer_name,
+                                buyerPhone: c.buyer_phone
+                              });
+                              setAgreementModalOpen(true);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition flex items-center gap-1"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-brand-green" />
+                            <span>العقد الثلاثي</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ============================================================== */}
         {/* TAB: CUSTOMER DATABASE & EXCEL EXPORT (LOW OVERHEAD / NO SERVER STRAIN) */}
         {/* ============================================================== */}
         {activeTab === 'customers' && (
@@ -3117,9 +3333,10 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
               <div>
                 <span className="text-slate-400 block text-3xs">نظام وطريقة البيع:</span>
                 <span className="font-bold text-white">
-                  {selectedModerationListing.is_direct_installment || selectedModerationListing.sale_type === 'direct_installment' ? '🟡 تقسيط مباشر' :
-                   selectedModerationListing.sale_type === 'cash' || selectedModerationListing.financing_type === 'fully_owned' ? '🟢 بيع كاش' :
-                   '🏦 تسوية بنكية'}
+                  {selectedModerationListing.is_direct_installment || selectedModerationListing.sale_type === 'direct_installment' ? 'تقسيط مباشر' :
+                   selectedModerationListing.sale_type === 'installment_continuation' ? 'تكملة أقساط' :
+                   selectedModerationListing.sale_type === 'cash' || selectedModerationListing.financing_type === 'fully_owned' ? 'بيع كاش' :
+                   'تسوية بنكية'}
                 </span>
               </div>
               <div>
@@ -4110,7 +4327,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
               <img src={docPreviewUrl} alt={docPreviewTitle} className="max-h-[70vh] w-auto object-contain" />
             </div>
             <div className="flex justify-between items-center text-3xs text-slate-400 pt-1">
-              <span>🔒 سرية تامة — متاحة للتدقيق والمطابقة فقط من مستشاري مخلصة المصرح لهم.</span>
+              <span>سرية تامة — متاحة للتدقيق والمطابقة فقط من مستشاري مخلصة المصرح لهم.</span>
               <button
                 type="button"
                 onClick={() => setDocPreviewUrl(null)}

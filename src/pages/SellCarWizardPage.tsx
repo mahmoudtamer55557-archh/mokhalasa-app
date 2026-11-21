@@ -1007,11 +1007,11 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
       installment_period_months: saleType === 'direct_installment' ? directInstallmentMonths : remainingMonths,
       required_guarantees: saleType === 'direct_installment' ? directGuarantees : [],
       direct_installment_seller_type: directSellerType,
-      has_financing: saleType === 'bank_settlement',
+      has_financing: saleType === 'bank_settlement' || saleType === 'installment_continuation',
       financing_type: saleType === 'direct_installment' ? 'direct_installment' : (saleType === 'cash' ? 'fully_owned' : vehicleStatus),
-      financing_provider: saleType === 'bank_settlement' ? selectedBank.bankNameAr : (saleType === 'direct_installment' ? 'تقسيط مباشر بدون بنوك' : 'ملكية خالصة'),
-      outstanding_amount: saleType === 'bank_settlement' ? outstandingPrincipal : 0,
-      monthly_installment: saleType === 'direct_installment' ? directMonthlyInstallment : (saleType === 'bank_settlement' ? monthlyInstallment : 0),
+      financing_provider: (saleType === 'bank_settlement' || saleType === 'installment_continuation') ? selectedBank.bankNameAr : (saleType === 'direct_installment' ? 'تقسيط مباشر بدون بنوك' : 'ملكية خالصة'),
+      outstanding_amount: (saleType === 'bank_settlement' || saleType === 'installment_continuation') ? outstandingPrincipal : 0,
+      monthly_installment: saleType === 'direct_installment' ? directMonthlyInstallment : ((saleType === 'bank_settlement' || saleType === 'installment_continuation') ? monthlyInstallment : 0),
       remaining_months: saleType === 'direct_installment' ? directInstallmentMonths : remainingMonths,
       seller_name: sellerName,
       seller_phone: sellerPhone,
@@ -1058,7 +1058,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
   const stepLabels = [
     'طريقة البيع والأهلية',
     'السيارة وإفصاح العيوب',
-    saleType === 'cash' ? 'السعر الكاش' : (saleType === 'direct_installment' ? 'خطة التقسيط المباشر' : 'المديونية والأقساط'),
+    saleType === 'cash' ? 'السعر الكاش' : (saleType === 'direct_installment' ? 'خطة التقسيط المباشر' : (saleType === 'installment_continuation' ? 'خطة تكملة الأقساط' : 'المديونية والأقساط')),
     'صور السيارة',
     'المستندات (مرحلية)',
     'الموقع والتواصل',
@@ -1274,10 +1274,37 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
             {/* PRIMARY 3-WAY TRACK SELECTOR */}
             <div className="space-y-2">
               <label className="block font-black text-sm text-brand-navy mb-2">
-                اختر طريقة ونظام عرض السيارة للبيع: <span className="text-red-500">*</span>
+                اختر نظام وطريقة عرض السيارة للبيع: <span className="text-red-500">*</span>
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* 1. Direct Installment Track */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* 1. Installment Continuation Track (Flagship) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSaleType('installment_continuation');
+                    setVehicleStatus('bank_loan');
+                  }}
+                  className={`p-4 rounded-2xl border text-right transition flex flex-col justify-between gap-3 relative ${
+                    saleType === 'installment_continuation'
+                      ? 'border-emerald-600 bg-emerald-50/80 text-brand-navy ring-2 ring-emerald-600/30 shadow-sm'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-start justify-between w-full">
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-950 font-black text-xs border border-emerald-300">
+                      تكملة أقساط (حظر بيع)
+                    </span>
+                    {saleType === 'installment_continuation' && <Check className="w-5 h-5 text-emerald-600" />}
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-xs text-slate-900">مشتري يكمل سداد الأقساط</h3>
+                    <p className="text-3xs text-slate-600 mt-1 leading-relaxed">
+                      استلم مقدم فوري وسلم السيارة لمشترٍ يكمل باقي أقساط البنك بعقد استغلال ثلاثي وجهاز تتبع GPS وإدارة تحصيل تبرئ ذمتك.
+                    </p>
+                  </div>
+                </button>
+
+                {/* 2. Direct Installment Track */}
                 <button
                   type="button"
                   onClick={() => {
@@ -1291,42 +1318,15 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                   }`}
                 >
                   <div className="flex items-start justify-between w-full">
-                    <span className="p-2 rounded-xl bg-amber-100 text-amber-900 font-black text-xs">
-                      🟡 تقسيط مباشر
+                    <span className="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-950 font-black text-xs border border-amber-300">
+                      تقسيط مباشر
                     </span>
                     {saleType === 'direct_installment' && <Check className="w-5 h-5 text-amber-600" />}
                   </div>
                   <div>
                     <h3 className="font-extrabold text-xs text-slate-900">بدون بنوك (معارض وأفراد)</h3>
-                    <p className="text-3xs text-slate-500 mt-1 leading-relaxed">
-                      بيع سيارتك بنظام التقسيط المباشر بشيكات أو إيصالات أمانة، للسيارات التي ترفضها البنوك وبدون تعقيدات ائتمانية.
-                    </p>
-                  </div>
-                </button>
-
-                {/* 2. Pure Cash Sale Track */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSaleType('cash');
-                    setVehicleStatus('fully_owned');
-                  }}
-                  className={`p-4 rounded-2xl border text-right transition flex flex-col justify-between gap-3 relative ${
-                    saleType === 'cash'
-                      ? 'border-emerald-500 bg-emerald-50/70 text-brand-navy ring-2 ring-emerald-500/30 shadow-sm'
-                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-start justify-between w-full">
-                    <span className="p-2 rounded-xl bg-emerald-100 text-emerald-900 font-black text-xs">
-                      🟢 بيع كاش عادي
-                    </span>
-                    {saleType === 'cash' && <Check className="w-5 h-5 text-emerald-600" />}
-                  </div>
-                  <div>
-                    <h3 className="font-extrabold text-xs text-slate-900">ملكية خالصة حرة</h3>
-                    <p className="text-3xs text-slate-500 mt-1 leading-relaxed">
-                      سيارة ملكك بالكامل بدون أي أقساط أو حظر بيع بالرخصة، واستلام قيمتها كاش بالكامل فوراً.
+                    <p className="text-3xs text-slate-600 mt-1 leading-relaxed">
+                      بيع سيارتك بنظام التقسيط المباشر بشيكات بنكية أو إيصالات أمانة، بمقدم ميسر وضمانات مباشرة.
                     </p>
                   </div>
                 </button>
@@ -1347,15 +1347,42 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                   }`}
                 >
                   <div className="flex items-start justify-between w-full">
-                    <span className="p-2 rounded-xl bg-blue-100 text-blue-900 font-black text-xs">
-                      🏦 تسوية بنكية
+                    <span className="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-950 font-black text-xs border border-blue-300">
+                      تسوية وسداد معجل
                     </span>
                     {saleType === 'bank_settlement' && <Check className="w-5 h-5 text-blue-600" />}
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-xs text-slate-900">عليها حظر بيع / أقساط</h3>
-                    <p className="text-3xs text-slate-500 mt-1 leading-relaxed">
-                      خدمة مخلصة الأصلية لفك الحظر وحساب السداد المعجل والتخارج الآمن من قسط السيارة.
+                    <h3 className="font-extrabold text-xs text-slate-900">سداد كاش وتصفية حظر</h3>
+                    <p className="text-3xs text-slate-600 mt-1 leading-relaxed">
+                      تصفية المديونية بالكامل بسداد كاش معجل في البنك واستخراج خطاب فك الحظر ونقل الملكية فوراً.
+                    </p>
+                  </div>
+                </button>
+
+                {/* 4. Pure Cash Sale Track */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSaleType('cash');
+                    setVehicleStatus('fully_owned');
+                  }}
+                  className={`p-4 rounded-2xl border text-right transition flex flex-col justify-between gap-3 relative ${
+                    saleType === 'cash'
+                      ? 'border-slate-800 bg-slate-100 text-brand-navy ring-2 ring-slate-800/30 shadow-sm'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-start justify-between w-full">
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-200 text-slate-900 font-black text-xs border border-slate-300">
+                      بيع كاش ملكية خالصة
+                    </span>
+                    {saleType === 'cash' && <Check className="w-5 h-5 text-slate-800" />}
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-xs text-slate-900">سيارة حرة بدون أقساط</h3>
+                    <p className="text-3xs text-slate-600 mt-1 leading-relaxed">
+                      سيارة ملكك بالكامل بدون أي أقساط أو حظر بيع بالرخصة، واستلام كامل قيمتها كاش عند نقل الملكية.
                     </p>
                   </div>
                 </button>
@@ -1399,14 +1426,26 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
             )}
 
             {/* Bank Debt Settlement Regulatory Notice & Status */}
-            {saleType === 'bank_settlement' && (
+            {(saleType === 'bank_settlement' || saleType === 'installment_continuation') && (
               <>
-                <div className="bg-blue-50/80 border border-blue-200/90 rounded-2xl p-4 flex items-start gap-3 text-xs text-blue-950">
-                  <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className={`rounded-2xl p-4 flex items-start gap-3 text-xs ${
+                  saleType === 'installment_continuation'
+                    ? 'bg-emerald-50/80 border border-emerald-300 text-emerald-950'
+                    : 'bg-blue-50/80 border border-blue-200/90 text-blue-950'
+                }`}>
+                  <ShieldCheck className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+                    saleType === 'installment_continuation' ? 'text-emerald-700' : 'text-blue-600'
+                  }`} />
                   <div className="space-y-1">
-                    <span className="font-extrabold text-blue-900 block">إقرار وتنبيه قانوني بخصوص التمويل وحظر البيع:</span>
-                    <p className="text-2xs text-blue-800 leading-relaxed">
-                      بيع سيارة محملة بأقساط أو حظر بيع يتطلب الحصول على موافقة رسمية من البنك أو جهة التمويل وإيداع حصيلة المخالصة بالفرع المانح. تتولى منصة «مخلصة» الإشراف والتنسيق الفني والميداني.
+                    <span className="font-extrabold block">
+                      {saleType === 'installment_continuation'
+                        ? 'بروتوكول خدمة تكملة الأقساط (نقل الالتزام لمشترٍ جديد):'
+                        : 'إقرار وتنبيه قانوني بخصوص التمويل وحظر البيع:'}
+                    </span>
+                    <p className="text-2xs leading-relaxed">
+                      {saleType === 'installment_continuation'
+                        ? 'تتيح لك مخلّصة تسليم السيارة لمشترٍ يستمر في سداد أقساطها الشهرية للبنك بموجب عقد استغلال ثلاثي معتمد، مع تركيب جهاز تتبع سحابي مشفر وحساب وسيط يضمن توريد الأقساط لحسابك البنكي وتبرئة ذمتك.'
+                        : 'بيع سيارة محملة بأقساط أو حظر بيع يتطلب الحصول على موافقة رسمية من البنك أو جهة التمويل وإيداع حصيلة المخالصة بالفرع المانح. تتولى منصة «مخلصة» الإشراف والتنسيق الفني والميداني.'}
                     </p>
                   </div>
                 </div>
@@ -2141,8 +2180,8 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
               </div>
             )}
 
-            {/* TRACK 3: BANK DEBT SETTLEMENT */}
-            {saleType === 'bank_settlement' && (
+            {/* TRACK 3: BANK DEBT SETTLEMENT & INSTALLMENT CONTINUATION */}
+            {(saleType === 'bank_settlement' || saleType === 'installment_continuation') && (
               <div className="space-y-4 text-xs">
                 {/* Clear Unverified Estimate Notice */}
                 <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-start gap-3 text-xs text-blue-950">

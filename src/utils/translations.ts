@@ -49,6 +49,9 @@ export interface Translations {
   };
   // 3 Tracks
   tracks: {
+    installmentContinuation: string;
+    installmentContinuationDesc: string;
+    installmentContinuationTag: string;
     bankSettlement: string;
     bankSettlementDesc: string;
     bankSettlementTag: string;
@@ -104,6 +107,7 @@ export interface Translations {
     galleryDesc: string;
     btnViewAllCars: string;
     tabAll: string;
+    tabInstallmentContinuation: string;
     tabDirect: string;
     tabCash: string;
     tabBank: string;
@@ -264,15 +268,18 @@ export const translations: Record<Language, Translations> = {
       noNotifications: 'لا توجد إشعارات جديدة حالياً'
     },
     tracks: {
+      installmentContinuation: 'تكملة أقساط سيارات محظورة',
+      installmentContinuationDesc: 'استلام سيارة عليها حظر بيع والاستمرار في سداد أقساطها بعقد استغلال ثلاثي وجهاز تتبع وحساب وسيط يضمن الطرفين.',
+      installmentContinuationTag: 'تكملة أقساط (حظر بيع)',
       bankSettlement: 'تسوية مديونية وحظر بيع بنكي',
       bankSettlementDesc: 'تصفية القرض وسداد معجل بخزينة البنك واستخراج مخالصة فك الحظر رسمياً.',
-      bankSettlementTag: '🏦 تسوية وحظر بيع',
+      bankSettlementTag: 'تسوية وحظر بيع بنكي',
       directInstallment: 'تقسيط مباشر بدون بنوك',
       directInstallmentDesc: 'شراء وبيع بالتقسيط المباشر بمقدم ميسر وضمانات مباشرة بدون تعقيدات ائتمانية.',
-      directInstallmentTag: '🟡 تقسيط مباشر',
+      directInstallmentTag: 'تقسيط مباشر',
       cashSale: 'بيع كاش (ملكية خالصة)',
       cashSaleDesc: 'تسليم كاش فوري وتنازل رسمي بالشهر العقاري بعد الفحص الفني المعتمد.',
-      cashSaleTag: '🟢 بيع كاش'
+      cashSaleTag: 'بيع كاش'
     },
     home: {
       heroBadge: 'المنصة المصرية المتخصصة لحلول سيارات حظر البيع والمديونيات والتقسيط المباشر والكاش المعتمد',
@@ -316,9 +323,10 @@ export const translations: Record<Language, Translations> = {
       galleryDesc: 'جميع السيارات تخضع للفحص الهندسي وتدقيق الموقف القانوني والمالي بإشراف فريق مخلصة.',
       btnViewAllCars: 'شاهد كل السيارات في المعرض',
       tabAll: 'الكل',
-      tabDirect: '🟡 تقسيط مباشر',
-      tabCash: '🟢 بيع كاش (ملكية خالصة)',
-      tabBank: '🏦 تسوية وحظر بيع بنكي',
+      tabInstallmentContinuation: 'تكملة أقساط (حظر بيع)',
+      tabDirect: 'تقسيط مباشر',
+      tabCash: 'بيع كاش',
+      tabBank: 'تسوية وحظر بيع',
       noCarsTitle: 'لا توجد سيارات بهذا التصنيف حالياً',
       noCarsDesc: 'المنصة تستقبل يومياً طلبات بيع سيارات المتعثرين والتقسيط المباشر والكاش المعتمد.',
       btnListYourCar: 'اعرض سيارتك للبيع الآن',
@@ -468,15 +476,18 @@ export const translations: Record<Language, Translations> = {
       noNotifications: 'No new notifications currently'
     },
     tracks: {
+      installmentContinuation: 'Installment Continuation (Bank Lien)',
+      installmentContinuationDesc: 'Take over an existing financed car and continue payments under a tripartite agreement and GPS escrow.',
+      installmentContinuationTag: 'Installment Continuation',
       bankSettlement: 'Bank Settlement & Ban Removal',
       bankSettlementDesc: 'Early debt settlement directly at bank branches with official clearance letters.',
-      bankSettlementTag: '🏦 Bank Settlement',
+      bankSettlementTag: 'Bank Settlement',
       directInstallment: 'Direct In-House Installments',
       directInstallmentDesc: 'Buy and sell on installment directly with showrooms & owners without bank credit checks.',
-      directInstallmentTag: '🟡 Direct Installment',
+      directInstallmentTag: 'Direct Installment',
       cashSale: 'Cash Sale (Clean Title)',
       cashSaleDesc: 'Instant cash payment and notarized title transfer following rigorous 150-point inspection.',
-      cashSaleTag: '🟢 Cash Sale'
+      cashSaleTag: 'Cash Sale'
     },
     home: {
       heroBadge: 'Specialized Egyptian Platform for Encumbered Car Settlements, Direct Installments & Certified Cash Sales',
@@ -520,9 +531,10 @@ export const translations: Record<Language, Translations> = {
       galleryDesc: 'All vehicles undergo 150-point engineering inspections and legal verification supervised by Mokhalasa.',
       btnViewAllCars: 'View All Vehicles in Marketplace',
       tabAll: 'All',
-      tabDirect: '🟡 Direct Installment',
-      tabCash: '🟢 Cash Sale (Clean Title)',
-      tabBank: '🏦 Bank Settlement',
+      tabInstallmentContinuation: 'Installment Continuation',
+      tabDirect: 'Direct Installment',
+      tabCash: 'Cash Sale',
+      tabBank: 'Bank Settlement',
       noCarsTitle: 'No vehicles found in this category currently',
       noCarsDesc: 'Mokhalasa receives daily listing requests across debt settlement, direct installment and cash sales.',
       btnListYourCar: 'List Your Vehicle Today',

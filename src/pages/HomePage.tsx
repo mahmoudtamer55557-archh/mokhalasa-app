@@ -7,7 +7,7 @@ import {
   ShieldCheck, Banknote, 
   ChevronRight, HelpCircle, 
   Check, Car as CarIcon, FileText,
-  Clock, CheckCircle2, AlertTriangle, ArrowRight
+  Clock, CheckCircle2, AlertTriangle, ArrowRight, Sparkles
 } from 'lucide-react';
 
 interface HomePageProps {
@@ -39,10 +39,11 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [consultSubmitted, setConsultSubmitted] = useState(false);
 
   // Home gallery track tab filter
-  const [homeGalleryTab, setHomeGalleryTab] = useState<'all' | 'direct_installment' | 'cash' | 'bank_settlement'>('all');
+  const [homeGalleryTab, setHomeGalleryTab] = useState<'all' | 'installment_continuation' | 'direct_installment' | 'cash' | 'bank_settlement'>('all');
 
   const filteredHomeCars = cars.filter(c => {
     if (homeGalleryTab === 'all') return true;
+    if (homeGalleryTab === 'installment_continuation') return c.saleType === 'installment_continuation';
     if (homeGalleryTab === 'direct_installment') return c.saleType === 'direct_installment' || c.vehicleStatus === 'direct_installment' || c.financingType === 'direct_installment';
     if (homeGalleryTab === 'cash') return c.saleType === 'cash' || c.vehicleStatus === 'fully_owned' || c.vehicleStatus === 'cash_only' || c.financingType === 'fully_owned';
     if (homeGalleryTab === 'bank_settlement') return c.saleType === 'bank_settlement' || (c.financingType !== 'fully_owned' && c.financingType !== 'direct_installment');
@@ -89,29 +90,30 @@ export const HomePage: React.FC<HomePageProps> = ({
             {t.home.heroSubtitle}
           </p>
 
-          {/* 3 PRIMARY TRACK TILES */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-4xl mx-auto pt-2 text-right">
+          {/* 4 PRIMARY TRACK TILES (PROMINENT INSTALLMENT CONTINUATION & DIRECT INSTALLMENTS) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 max-w-5xl mx-auto pt-2 text-right">
             
-            {/* Track 1: Bank Debt Settlement & Encumbered Vehicles */}
+            {/* Track 1 (FLAGSHIP): Existing Car Installment Continuation */}
             <div
-              onClick={() => onNavigate('marketplace')}
-              className={`p-4 sm:p-5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 transition cursor-pointer backdrop-blur-sm group space-y-2 hover:border-blue-400/50 ${isAr ? 'text-right' : 'text-left'}`}
+              onClick={() => { setHomeGalleryTab('installment_continuation'); onNavigate('marketplace'); }}
+              className={`p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-emerald-600/25 to-teal-900/30 hover:from-emerald-600/35 hover:to-teal-900/40 border-2 border-emerald-400/60 shadow-lg shadow-emerald-950/20 transition cursor-pointer backdrop-blur-sm group space-y-2 hover:border-emerald-300 transform hover:-translate-y-0.5 ${isAr ? 'text-right' : 'text-left'}`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-2xs font-black bg-blue-500/20 text-blue-300 px-2.5 py-1 rounded-full border border-blue-400/30">
-                  {t.tracks.bankSettlementTag}
+                <span className="text-2xs font-black bg-emerald-500/30 text-emerald-200 px-2.5 py-1 rounded-full border border-emerald-400/50 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3 h-3 text-emerald-300" />
+                  <span>{isAr ? 'خدمة مخلّصة: تكملة أقساط' : 'Installment Continuation'}</span>
                 </span>
-                <ShieldCheck className="w-5 h-5 text-blue-400 group-hover:scale-110 transition-transform" />
+                <Sparkles className="w-4 h-4 text-emerald-300 group-hover:scale-110 transition-transform" />
               </div>
-              <h3 className="font-black text-sm text-white">{t.home.track1Title}</h3>
-              <p className="text-3xs text-slate-300 leading-relaxed">
-                {t.home.track1Desc}
+              <h3 className="font-black text-sm text-white">{isAr ? 'تكملة أقساط سيارات محظورة' : 'Financed Car Continuation'}</h3>
+              <p className="text-3xs text-emerald-100/90 leading-relaxed">
+                {isAr ? 'استلم سيارة بمقدم مخفض وكمل أقساطها البنكية بعقد استغلال ثلاثي وجهاز تتبع GPS وإشراف كامل لحين فك الحظر.' : 'Take over existing bank installments under a tripartite contract with GPS immobilizer security.'}
               </p>
             </div>
 
             {/* Track 2: Direct Installment */}
             <div
-              onClick={() => onNavigate('marketplace')}
+              onClick={() => { setHomeGalleryTab('direct_installment'); onNavigate('marketplace'); }}
               className={`p-4 sm:p-5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/30 transition cursor-pointer backdrop-blur-sm group space-y-2 hover:border-amber-400 ${isAr ? 'text-right' : 'text-left'}`}
             >
               <div className="flex items-center justify-between">
@@ -126,9 +128,26 @@ export const HomePage: React.FC<HomePageProps> = ({
               </p>
             </div>
 
-            {/* Track 3: Certified Cash Sales */}
+            {/* Track 3: Bank Debt Settlement & Encumbered Vehicles */}
             <div
-              onClick={() => onNavigate('marketplace')}
+              onClick={() => { setHomeGalleryTab('bank_settlement'); onNavigate('marketplace'); }}
+              className={`p-4 sm:p-5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 transition cursor-pointer backdrop-blur-sm group space-y-2 hover:border-blue-400/50 ${isAr ? 'text-right' : 'text-left'}`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-2xs font-black bg-blue-500/20 text-blue-300 px-2.5 py-1 rounded-full border border-blue-400/30">
+                  {t.tracks.bankSettlementTag}
+                </span>
+                <ShieldCheck className="w-5 h-5 text-blue-400 group-hover:scale-110 transition-transform" />
+              </div>
+              <h3 className="font-black text-sm text-white">{t.home.track1Title}</h3>
+              <p className="text-3xs text-slate-300 leading-relaxed">
+                {t.home.track1Desc}
+              </p>
+            </div>
+
+            {/* Track 4: Certified Cash Sales */}
+            <div
+              onClick={() => { setHomeGalleryTab('cash'); onNavigate('marketplace'); }}
               className={`p-4 sm:p-5 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/30 transition cursor-pointer backdrop-blur-sm group space-y-2 hover:border-emerald-400 ${isAr ? 'text-right' : 'text-left'}`}
             >
               <div className="flex items-center justify-between">
@@ -307,9 +326,10 @@ export const HomePage: React.FC<HomePageProps> = ({
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
           {[
             { id: 'all', label: t.home.tabAll },
+            { id: 'installment_continuation', label: t.home.tabInstallmentContinuation },
             { id: 'direct_installment', label: t.home.tabDirect },
-            { id: 'cash', label: t.home.tabCash },
-            { id: 'bank_settlement', label: t.home.tabBank }
+            { id: 'bank_settlement', label: t.home.tabBank },
+            { id: 'cash', label: t.home.tabCash }
           ].map(tab => (
             <button
               key={tab.id}

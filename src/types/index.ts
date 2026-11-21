@@ -23,7 +23,51 @@ export type ListingVehicleStatus =
   | 'cash_only'                    // بيع كاش عادي (ملكية خالصة)
   | 'fully_owned';                 // سيارة مملوكة بالكامل كاش
 
-export type SaleType = 'cash' | 'direct_installment' | 'bank_settlement';
+export type SaleType = 'cash' | 'direct_installment' | 'bank_settlement' | 'installment_continuation';
+
+export interface InstallmentCase {
+  id: string;
+  case_reference: string;
+  listing_id?: string;
+  seller_id: string;
+  seller_name: string;
+  seller_phone: string;
+  seller_national_id?: string;
+  buyer_id?: string;
+  buyer_name?: string;
+  buyer_phone?: string;
+  buyer_national_id?: string;
+  vehicle_make: string;
+  vehicle_model: string;
+  vehicle_year: number;
+  vehicle_plate_number?: string;
+  lender_name: string;
+  total_lender_debt: number;
+  monthly_installment: number;
+  remaining_months: number;
+  agreed_down_payment: number;
+  agreed_monthly_payment: number;
+  gps_device_imei?: string;
+  gps_status: 'not_installed' | 'active' | 'warning_signal' | 'engine_disabled';
+  case_status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ListingEditRequest {
+  id: string;
+  listing_id: string;
+  seller_id: string;
+  original_data: any;
+  proposed_data: any;
+  changed_fields: any;
+  status: 'pending' | 'approved' | 'rejected';
+  rejection_reason?: string;
+  reviewed_by?: string;
+  reviewed_at?: string;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface DirectInstallmentDetails {
   downPayment: number;             // المقدم المطلوب (مثال: 150,000 ج.م)

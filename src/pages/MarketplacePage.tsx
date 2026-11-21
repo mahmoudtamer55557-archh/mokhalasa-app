@@ -25,7 +25,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
   const t = translations[lang] || translations.ar;
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [saleTypeFilter, setSaleTypeFilter] = useState<'all' | 'direct_installment' | 'cash' | 'bank_settlement'>('all');
+  const [saleTypeFilter, setSaleTypeFilter] = useState<'all' | 'installment_continuation' | 'direct_installment' | 'cash' | 'bank_settlement'>('all');
   const [selectedFinancing, setSelectedFinancing] = useState<string>('all');
   const [selectedMake, setSelectedMake] = useState<string>('all');
   const [maxPrice, setMaxPrice] = useState<number>(3000000);
@@ -35,7 +35,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
   const [buyerMake, setBuyerMake] = useState('');
   const [buyerBudget, setBuyerBudget] = useState('');
   const [buyerPhone, setBuyerPhone] = useState('');
-  const [buyerTrack, setBuyerTrack] = useState<'bank_settlement' | 'direct_installment' | 'cash'>('bank_settlement');
+  const [buyerTrack, setBuyerTrack] = useState<'installment_continuation' | 'bank_settlement' | 'direct_installment' | 'cash'>('installment_continuation');
   const [buyerRequestSuccess, setBuyerRequestSuccess] = useState(false);
 
   const handleBuyerRequestSubmit = (e: React.FormEvent) => {
@@ -97,12 +97,14 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
           car.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
           car.trim.toLowerCase().includes(searchTerm.toLowerCase());
 
+        const isContinuation = car.saleType === 'installment_continuation';
         const isDirect = car.saleType === 'direct_installment' || car.financingType === 'direct_installment' || !!car.directInstallment;
         const isCash = car.saleType === 'cash' || car.financingType === 'fully_owned' || car.vehicleStatus === 'cash_only';
-        const isBank = !isDirect && !isCash;
+        const isBank = !isDirect && !isCash && !isContinuation;
 
         const matchSaleType =
           saleTypeFilter === 'all' ||
+          (saleTypeFilter === 'installment_continuation' && isContinuation) ||
           (saleTypeFilter === 'direct_installment' && isDirect) ||
           (saleTypeFilter === 'cash' && isCash) ||
           (saleTypeFilter === 'bank_settlement' && isBank);
@@ -193,9 +195,10 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar w-full md:w-auto pb-1 md:pb-0 text-xs font-bold">
               {[
                 { id: 'all', label: t.common.all },
+                { id: 'installment_continuation', label: isAr ? 'تكملة أقساط (حظر بيع)' : 'Continuation' },
                 { id: 'direct_installment', label: t.tracks.directInstallmentTag },
-                { id: 'cash', label: t.tracks.cashSaleTag },
-                { id: 'bank_settlement', label: t.tracks.bankSettlementTag }
+                { id: 'bank_settlement', label: t.tracks.bankSettlementTag },
+                { id: 'cash', label: t.tracks.cashSaleTag }
               ].map((pill) => (
                 <button
                   key={pill.id}

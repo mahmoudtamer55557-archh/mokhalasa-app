@@ -74,6 +74,12 @@ export const CarCard: React.FC<CarCardProps> = ({
 
         {/* Financing Status Badge */}
         <div className="absolute top-3 right-3 flex flex-col gap-1.5 items-end z-10">
+          {car.saleType === 'installment_continuation' && (
+            <span className="px-2.5 py-1 rounded-full text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-md flex items-center gap-1 border border-emerald-400">
+              <Sparkles className="w-3 h-3 text-emerald-200" />
+              {isAr ? 'تكملة أقساط (حظر بيع)' : 'Installment Continuation'}
+            </span>
+          )}
           {(car.saleType === 'direct_installment' || car.financingType === 'direct_installment' || car.directInstallment) && (
             <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500 text-slate-950 shadow-sm">
               {isAr ? 'تقسيط مباشر' : 'Direct Installment'}
@@ -84,12 +90,12 @@ export const CarCard: React.FC<CarCardProps> = ({
               {isAr ? 'بيع كاش' : 'Cash Sale'}
             </span>
           )}
-          {car.financingType === 'bank_loan' && car.saleType !== 'direct_installment' && car.saleType !== 'cash' && (
+          {(car.financingType === 'bank_loan' || car.saleType === 'bank_settlement') && car.saleType !== 'direct_installment' && car.saleType !== 'cash' && car.saleType !== 'installment_continuation' && (
             <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-900/90 text-white shadow-sm">
               {isAr ? 'تسوية بنكية' : 'Bank Lien'}
             </span>
           )}
-          {car.financingType === 'consumer_finance' && car.saleType !== 'direct_installment' && car.saleType !== 'cash' && (
+          {car.financingType === 'consumer_finance' && car.saleType !== 'direct_installment' && car.saleType !== 'cash' && car.saleType !== 'installment_continuation' && (
             <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-600/90 text-white shadow-sm">
               {isAr ? 'تمويل استهلاكي' : 'Consumer Finance'}
             </span>
@@ -134,6 +140,32 @@ export const CarCard: React.FC<CarCardProps> = ({
             <span className="line-clamp-1">{car.city}</span>
           </div>
         </div>
+
+        {/* Installment Continuation Highlight Box (تكملة أقساط محظورة) */}
+        {car.saleType === 'installment_continuation' && (
+          <div className="bg-gradient-to-br from-emerald-50 to-teal-50/80 rounded-xl p-3 text-xs border border-emerald-300 space-y-1.5 shadow-2xs">
+            <div className="flex justify-between items-center text-emerald-950 font-black">
+              <span className="flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                {isAr ? 'مقدم للبائع (تسليم فوري):' : 'Down to Seller:'}
+              </span>
+              <span className="font-extrabold text-emerald-800 font-mono text-sm">
+                {formatEGP(car.askingPrice || car.financingDetails?.sellerNetProceeds || 0)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center text-slate-700 text-2xs font-semibold pt-1 border-t border-emerald-200/60">
+              <span>{isAr ? `قسط بنكي: ${formatEGP(car.financingDetails?.monthlyInstallment || 0)}/شهر` : `Bank Mo.: ${formatEGP(car.financingDetails?.monthlyInstallment || 0)}/mo`}</span>
+              <span className="text-emerald-700 font-bold">{isAr ? `المتبقي: ${car.financingDetails?.remainingMonths || 0} شهر` : `Remaining: ${car.financingDetails?.remainingMonths || 0} mos`}</span>
+            </div>
+            <div className="text-3xs text-emerald-800 font-bold flex items-center justify-between pt-0.5">
+              <span className="flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3 text-emerald-700" />
+                <span>{isAr ? 'عقد استغلال ثلاثي + تتبع GPS' : 'Tripartite Agreement + GPS'}</span>
+              </span>
+              <span className="text-slate-500 font-normal">{isAr ? car.financingDetails?.providerNameAr || 'تمويل بنكي' : 'Bank Lien'}</span>
+            </div>
+          </div>
+        )}
 
         {/* Direct Installment Highlight Box */}
         {car.directInstallment && (

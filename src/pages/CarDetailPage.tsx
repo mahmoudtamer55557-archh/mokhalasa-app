@@ -8,7 +8,7 @@ import {
   ArrowRight, ShieldCheck, Heart, Share2, MapPin, Gauge, 
   Banknote, FileCheck, CheckCircle2, 
   PhoneCall, ChevronLeft, ChevronRight,
-  AlertTriangle, Lock, FileText, Tag, Send, Clock
+  AlertTriangle, Lock, FileText, Tag, Send, Clock, Sparkles
 } from 'lucide-react';
 
 interface CarDetailPageProps {
@@ -523,6 +523,55 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
                   <p className="text-2xs text-slate-600 leading-relaxed">
                     السيارة خالية من أي أقساط أو حظر بيع بالرخصة. البيع نقداً بالكامل، والتنازل فوري للمشتري بالشهر العقاري ونقل القيد بوحدة المرور دون أي انتظار بنكي.
                   </p>
+                </div>
+              )}
+
+              {/* Installment Continuation Option (تكملة الأقساط بضمان مخلصة) */}
+              {car.saleType === 'installment_continuation' && (
+                <div className="bg-gradient-to-br from-emerald-50 to-teal-50/70 rounded-2xl p-4.5 border-2 border-emerald-400/80 text-xs space-y-3 shadow-sm">
+                  <div className="flex justify-between items-center pb-2 border-b border-emerald-200">
+                    <span className="font-extrabold text-emerald-950 flex items-center gap-1.5 text-sm">
+                      <Sparkles className="w-4 h-4 text-emerald-600" />
+                      <span>{isAr ? 'خطة تكملة الأقساط (استلام فوري للسيارة):' : 'Installment Continuation Plan:'}</span>
+                    </span>
+                    <span className="bg-emerald-600 text-white font-black text-2xs px-2.5 py-1 rounded-full shadow-xs">
+                      {isAr ? 'عقد ثلاثي معتمد' : 'Tripartite Contract'}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 text-slate-700">
+                    <div className="flex justify-between items-center bg-white/80 p-2.5 rounded-xl border border-emerald-200/80 font-bold">
+                      <span>{isAr ? 'مقدم نقدي في يد البائع:' : 'Down to Seller:'}</span>
+                      <span className="text-base text-emerald-700 font-extrabold font-mono">
+                        {formatEGP(car.askingPrice || car.financingDetails?.sellerNetProceeds || 0)}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-2xs">
+                      <div className="bg-white/70 p-2 rounded-xl border border-emerald-100">
+                        <span className="text-slate-500 block">{isAr ? 'القسط الشهري للبنك:' : 'Monthly Bank Installment:'}</span>
+                        <span className="font-extrabold text-slate-900 font-mono text-xs">{formatEGP(car.financingDetails?.monthlyInstallment || 0)}/شهر</span>
+                      </div>
+                      <div className="bg-white/70 p-2 rounded-xl border border-emerald-100">
+                        <span className="text-slate-500 block">{isAr ? 'المدة المتبقية:' : 'Remaining Period:'}</span>
+                        <span className="font-extrabold text-slate-900 font-mono text-xs">{car.financingDetails?.remainingMonths || 0} شهراً</span>
+                      </div>
+                    </div>
+
+                    {/* Security Features */}
+                    <div className="bg-emerald-100/60 p-3 rounded-xl border border-emerald-200 text-[11px] text-emerald-950 space-y-1">
+                      <span className="font-black flex items-center gap-1 text-emerald-900">
+                        <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                        <span>{isAr ? 'ضمانات مخلّصة المشتركة للطرفين:' : 'Mokhalasa Joint Guarantees:'}</span>
+                      </span>
+                      <ul className="text-3xs space-y-0.5 text-slate-700 list-disc list-inside">
+                        <li>{isAr ? 'عقد استغلال وحيازة ثلاثي موثق ينقل المسؤولية الجنائية للمشتري.' : 'Notarized tripartite contract assigning criminal & civil liability.'}</li>
+                        <li>{isAr ? 'جهاز تتبع سحابي IoT GPS مشفر وإمكانية إيقاف المحرك عن بعد عند التأخر.' : 'Encrypted IoT GPS tracking with remote immobilizer for default protection.'}</li>
+                        <li>{isAr ? 'تحصيل وإيداع الأقساط الشهرية بحساب وسيط وتوريدها للبنك فوراً.' : 'Monthly debt servicing via designated escrow account.'}</li>
+                        <li>{isAr ? 'التزام البائع بنقل الملكية وفك الحظر فور سداد آخر قسط بدون أي مصاريف إضافية.' : 'Binding seller obligation to clear lien and transfer title at loan payoff.'}</li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
               )}
 
