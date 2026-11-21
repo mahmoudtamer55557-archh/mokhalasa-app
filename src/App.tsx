@@ -32,23 +32,57 @@ const CustomerProfilePage = lazy(() => import('./pages/CustomerProfilePage').the
 // Helper to parse view from URL path OR hash (SEO-friendly clean URLs)
 const parseViewFromUrl = (): string => {
   if (typeof window === 'undefined') return 'home';
-  // Check pathname first (e.g. /marketplace or /sell)
-  const path = window.location.pathname.replace(/^\//, '').split('/')[0].trim();
-  // Fallback to hash (e.g. #/marketplace)
-  const hash = window.location.hash.replace(/^#\/?/, '').split('/')[0].trim();
 
-  const clean = path && path !== 'index.html' ? path : hash;
-  if (!clean || clean === 'home') return 'home';
-  if (['staff', 'owner', 'seller-portal', 'marketplace', 'sell-wizard', 'calculator', 'how-it-works', 'faq', 'contact', 'terms', 'privacy', 'blog', 'guides', 'articles', 'car-detail', 'dashboards', 'register', 'profile'].includes(clean)) {
-    return clean;
+  // 1. Check explicit search parameter (?view=...)
+  try {
+    const searchParams = new URLSearchParams(window.location.search);
+    const viewParam = searchParams.get('view')?.trim();
+    if (viewParam) {
+      if (viewParam === 'home') return 'home';
+      if (['staff', 'owner', 'seller-portal', 'marketplace', 'sell-wizard', 'calculator', 'how-it-works', 'faq', 'contact', 'terms', 'privacy', 'blog', 'guides', 'articles', 'car-detail', 'dashboards', 'register', 'profile'].includes(viewParam)) {
+        return viewParam;
+      }
+    }
+  } catch {}
+
+  // 2. Check hash (e.g. #/marketplace or #/how-it-works)
+  const hashRaw = window.location.hash.replace(/^#\/?/, '').split('?')[0].trim();
+  if (hashRaw) {
+    if (hashRaw === 'home') return 'home';
+    if (['staff', 'owner', 'seller-portal', 'marketplace', 'sell-wizard', 'calculator', 'how-it-works', 'faq', 'contact', 'terms', 'privacy', 'blog', 'guides', 'articles', 'car-detail', 'dashboards', 'register', 'profile'].includes(hashRaw)) {
+      return hashRaw;
+    }
+    if (hashRaw === 'register' || hashRaw === 'signup') return 'register';
+    if (hashRaw === 'profile' || hashRaw === 'account' || hashRaw === 'my-account') return 'profile';
+    if (hashRaw === 'sell' || hashRaw === 'sell-car') return 'sell-wizard';
+    if (hashRaw === 'portal') return 'seller-portal';
+    if (hashRaw === 'admin') return 'owner';
+    if (hashRaw === 'staff-login') return 'staff';
+    if (hashRaw === 'guides' || hashRaw === 'articles') return 'blog';
   }
-  if (clean === 'register' || clean === 'signup') return 'register';
-  if (clean === 'profile' || clean === 'account' || clean === 'my-account') return 'profile';
-  if (clean === 'sell' || clean === 'sell-car') return 'sell-wizard';
-  if (clean === 'portal') return 'seller-portal';
-  if (clean === 'admin') return 'owner';
-  if (clean === 'staff-login') return 'staff';
-  if (clean === 'guides' || clean === 'articles') return 'blog';
+
+  // 3. Check pathname (e.g. /marketplace or /sell-wizard)
+  const path = window.location.pathname.replace(/^\//, '').split('/')[0].trim();
+  if (path && path !== 'index.html' && path !== '') {
+    if (path === 'home') return 'home';
+    if (['staff', 'owner', 'seller-portal', 'marketplace', 'sell-wizard', 'calculator', 'how-it-works', 'faq', 'contact', 'terms', 'privacy', 'blog', 'guides', 'articles', 'car-detail', 'dashboards', 'register', 'profile'].includes(path)) {
+      return path;
+    }
+    if (path === 'register' || path === 'signup') return 'register';
+    if (path === 'profile' || path === 'account' || path === 'my-account') return 'profile';
+    if (path === 'sell' || path === 'sell-car') return 'sell-wizard';
+    if (path === 'portal') return 'seller-portal';
+    if (path === 'admin') return 'owner';
+    if (path === 'staff-login') return 'staff';
+    if (path === 'guides' || path === 'articles') return 'blog';
+  }
+
+  // 4. Check persistent storage fallback if on root
+  try {
+    const saved = localStorage.getItem('mokhalasa_current_view');
+    if (saved === 'home') return 'home';
+  } catch {}
+
   return 'home';
 };
 
@@ -412,10 +446,15 @@ export function App() {
 
   const handleNavigate = (view: string) => {
     setCurrentView(view);
+    try {
+      localStorage.setItem('mokhalasa_current_view', view);
+    } catch {}
+
     const targetPath = view === 'home' ? '/' : `/#/${view}`;
-    if (window.location.hash !== `#/${view}` && (view !== 'home' || window.location.pathname !== '/')) {
+    // Always push history cleanly so refreshing the browser retains current view or returns cleanly to home
+    try {
       window.history.pushState({ view }, '', targetPath);
-    }
+    } catch {}
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

@@ -15,6 +15,7 @@ interface StaticPagesProps {
 
 export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang = 'ar' }) => {
   const isAr = lang === 'ar';
+  const [activeWorkflowTab, setActiveWorkflowTab] = useState<'continuation' | 'payoff'>('continuation');
   const [contactSubmitted, setContactSubmitted] = useState(false);
   const [contactName, setContactName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
@@ -32,75 +33,178 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
                 {isAr ? 'دليل المعاملات الآمنة' : 'Safe Transaction Protocol'}
               </span>
               <h1 className="text-2xl sm:text-3xl font-black text-brand-navy">
-                {isAr ? 'كيف تتم المعاملة خطوة بخطوة عبر «مخلصة»؟' : 'How It Works: Step-by-Step with Mokhalasa'}
+                {isAr ? 'كيف تعمل منظومة «مخلصة» لحماية الطرفين؟' : 'How It Works: Step-by-Step with Mokhalasa'}
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 max-w-lg mx-auto">
                 {isAr
-                  ? 'الطريقة القانونية الرسمية الوحيدة في مصر للتخارج من أقساط السيارات وحظر البيع البنكي، والتقسيط المباشر والكاش المعتمد دون التعرض للنصب أو المساءلة.'
+                  ? 'المنظومة القانونية والتقنية الأولى في مصر للتخارج من أقساط سيارات حظر البيع بأمان، والتقسيط المباشر والكاش المعتمد دون التعرض للنصب أو المساءلة.'
                   : 'The official and legally secured platform in Egypt for auto loan exits, sale ban releases, in-house installments, and certified cash sales without risks.'}
               </p>
             </div>
 
-            <div className="space-y-4 sm:space-y-6">
-              {[
-                {
-                  step: '01',
-                  titleAr: 'الفحص الفني المعتمد (150 نقطة فحص)',
-                  titleEn: '150-Point Certified Technical Inspection',
-                  descAr: 'تخضع السيارة لفحص دقيق للشاسيه والمحرك والدهان وسجل الصيانات بمركز فحص معتمد لضمان خلوها التام من الحوادث الهيكلية وتحديد القيمة السوقية العادلة.',
-                  descEn: 'The vehicle undergoes rigorous inspection covering chassis, engine, paint, and service history at certified diagnostic centers to guarantee structural integrity and establish fair market value.'
-                },
-                {
-                  step: '02',
-                  titleAr: 'استخراج بيان المديونية البنكية الرسمي (Payoff Quote)',
-                  titleEn: 'Official Bank Debt Statement (Payoff Quote)',
-                  descAr: 'يتوجه البائع للبنك الدائن أو شركة التمويل الاستهلاكي لاستخراج خطاب استعلام رسمي مختوم يحدد أصل الدين المتبقي وعمولة السداد المعجل ورسوم فك الحظر بدقة.',
-                  descEn: 'The seller requests an official, stamped bank payoff quote specifying principal debt, early settlement fee, and lien clearance charges with zero guesswork.'
-                },
-                {
-                  step: '03',
-                  titleAr: 'مطابقة المشتري وتوقيع الاتفاق الثلاثي المشروط',
-                  titleEn: 'Buyer Matching & Conditional Tripartite Agreement',
-                  descAr: 'يتم توقيع عقد اتفاق ثلاثي منظم بين البائع والمشتري والمنصة، يحدد سعر البيع المتفق عليه، والمبلغ الواجب إيداعه بالبنك، وضمان حيازة المشتري للسيارة ومستنداتها فور السداد.',
-                  descEn: 'A binding tripartite contract is executed between seller, buyer, and Mokhalasa detailing agreed sale price, exact bank payoff deposit, and buyer possession guarantees upon counter payment.'
-                },
-                {
-                  step: '04',
-                  titleAr: 'سداد مديونية البنك مباشرة في حساب القرض بالفرع',
-                  titleEn: 'Direct Bank Payoff at Creditor Branch (Zero-Custody)',
-                  descAr: 'يتوجه المشتري بصحبة البائع ومندوب مخلصة لفرع البنك لإيداع مبلغ التسوية مباشرة في حساب القرض، واستلام إيصال الصراف الرسمي (Teller Slip) المثبت لبراءة الذمة.',
-                  descEn: 'Buyer, seller, and a Mokhalasa specialist visit the creditor bank. Settlement funds are deposited directly into the loan account and an official teller receipt is issued.'
-                },
-                {
-                  step: '05',
-                  titleAr: 'إصدار خطاب فك الحظر والتوجه لإدارة المرور',
-                  titleEn: 'Lien Clearance Letter & Traffic Directorate Deregistration',
-                  descAr: 'يصدر البنك خطاب رفع حظر البيع الموجه للمرور وشهادة المخالصة النهائية. يتوجه الطرفان لوحدة المرور لإلغاء إشارة الحظر من على السيستم الإلكتروني للمرور.',
-                  descEn: 'The bank issues official clearance and ban removal letters directed to the Traffic Department. Both parties clear the computer lien record at the traffic unit.'
-                },
-                {
-                  step: '06',
-                  titleAr: 'توثيق عقد البيع النهائي بالشهر العقاري وسداد باقي الثمن',
-                  titleEn: 'Notarized Sale Transfer at Real Estate Registry',
-                  descAr: 'يتم تحرير عقد بيع نهائي مسجل وموثق بالشهر العقاري باسم المشتري مباشرة، ويستلم البائع صافي المبلغ المتبقي كاش في يده، وتسدد أتعاب المنصة (1.5%).',
-                  descEn: 'Final notarized ownership transfer deed is registered at the Notary Office directly in buyer’s name. The seller receives net cash balance, and 1.5% fee is finalized.'
-                }
-              ].map((s) => (
-                <div key={s.step} className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                  <div className="w-12 h-12 rounded-2xl bg-brand-navy text-white font-black text-lg flex items-center justify-center flex-shrink-0 shadow-sm">
-                    {s.step}
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="font-extrabold text-sm sm:text-base text-brand-navy">
-                      {isAr ? s.titleAr : s.titleEn}
-                    </h3>
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                      {isAr ? s.descAr : s.descEn}
+            {/* Workflow Mode Tabs */}
+            <div className="flex p-1 bg-slate-100 rounded-2xl max-w-md mx-auto">
+              <button
+                type="button"
+                onClick={() => setActiveWorkflowTab('continuation')}
+                className={`flex-1 py-2.5 px-3 rounded-xl font-black text-xs transition ${
+                  activeWorkflowTab === 'continuation'
+                    ? 'bg-brand-navy text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                تكملة الأقساط (حظر بيع)
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveWorkflowTab('payoff')}
+                className={`flex-1 py-2.5 px-3 rounded-xl font-black text-xs transition ${
+                  activeWorkflowTab === 'payoff'
+                    ? 'bg-brand-navy text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                التسوية البنكية الفورية (كاش)
+              </button>
+            </div>
+
+            {/* TAB 1: INSTALLMENT CONTINUATION WORKFLOW */}
+            {activeWorkflowTab === 'continuation' && (
+              <div className="space-y-4 sm:space-y-6 animate-fadeIn">
+                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950 flex items-start gap-3">
+                  <ShieldCheck className="w-5 h-5 text-emerald-700 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-black text-emerald-900 block mb-0.5">منظومة تكملة الأقساط: كيف يتم تأمينك كبائع أو مشترٍ؟</span>
+                    <p className="text-2xs text-emerald-800 leading-relaxed">
+                      هذا المسار مخصص لنقل حيازة السيارة لمشترٍ يكمل باقي أقساط البنك مع استلام البائع مقدماً نقدياً فورياً في يده. تعمل مخلصة كضامن ومراقب تقني وقانوني حتى سداد آخر قسط وفك الحظر النهائي.
                     </p>
                   </div>
                 </div>
-              ))}
-            </div>
+
+                {[
+                  {
+                    step: '01',
+                    titleAr: 'الفحص الفني المعتمد وتدقيق المديونية البنكية',
+                    titleEn: 'Certified Technical Inspection & Debt Verification',
+                    descAr: 'فحص فني شامل للسيارة لتحديد حالتها الواقعية، ومراجعة رسمية لكشف حساب البنك أو شركة التمويل للتأكد من قيمة القسط وأصل المديونية وعدد الأقساط المتبقية.',
+                    descEn: 'Comprehensive inspection of vehicle condition alongside bank verification of monthly installments and remaining terms.'
+                  },
+                  {
+                    step: '02',
+                    titleAr: 'توقيع عقد الاستغلال والانتفاع الثلاثي الموثق',
+                    titleEn: 'Notarized Tripartite Usufruct Contract',
+                    descAr: 'تحرير عقد قانوني رسمي بين البائع والمشتري ومخلصة ينقل كامل المسؤولية الجنائية والمدنية والمخالفات والحوادث فورياً على المشتري المستغل، مع إقرار استلام السيارة كأمانة لحماية البائع من شبهة تبديد الضمانة.',
+                    descEn: 'Execution of a tripartite usufruct contract transferring all criminal and civil liability for traffic and vehicle use directly to the new buyer.'
+                  },
+                  {
+                    step: '03',
+                    titleAr: 'تأمين السيارة بجهاز تتبع ذكي IoT GPS مع ميزة إيقاف المحرك',
+                    titleEn: 'IoT GPS Tracking & Remote Engine Cutoff Installation',
+                    descAr: 'تركيب جهاز تتبع مشفر مرتبط بسيرفرات مخلصة مع تحديد النطاق الجغرافي (Geofencing)، وتفعيل ميزة التعطيل الآمن لتشغيل المحرك (Engine Immobilizer) عند التخلف عن السداد لحفظ أصل المركبة.',
+                    descEn: 'Installation of high-grade encrypted IoT tracker with geofencing and remote starter cutoff failsafes in case of default.'
+                  },
+                  {
+                    step: '04',
+                    titleAr: 'تسليم السيارة واستلام البائع المقدم النقدي الفوري',
+                    titleEn: 'Vehicle Handover & Seller Down Payment Delivery',
+                    descAr: 'يستلم البائع مبلغ التنازل النقدي المتفق عليه كاش في يده، ويستلم المشتري حيازة السيارة ورخصتها ومفتاحها تحت إشراف المنصة.',
+                    descEn: 'The seller receives their agreed cash advance at handover, while buyer receives physical custody and vehicle keys.'
+                  },
+                  {
+                    step: '05',
+                    titleAr: 'إدارة حساب الضمان وتوريد الأقساط للبنك شهرياً',
+                    titleEn: 'Escrow Payment Servicing & Bank Deposit Receipts',
+                    descAr: 'يودع المشتري القسط شهرياً في حساب الضمان عبر مخلصة، وتقوم المنصة بتوريد القسط مباشرة للبنك وإرسال إيصال السداد الرسمي فورياً لهاتف البائع لإبراء ذمته.',
+                    descEn: 'Buyer deposits monthly installments into Mokhalasa escrow; we remit directly to the lender and issue official clearance receipts to seller.'
+                  },
+                  {
+                    step: '06',
+                    titleAr: 'سداد آخر قسط واستخراج خطاب فك الحظر ونقل الملكية',
+                    titleEn: 'Final Payoff, Lien Release & Title Registration',
+                    descAr: 'عند سداد القسط الأخير، يتولى فريق مخلصة استخراج مخالصة البنك الرسمية وشهادة فك الحظر الموجهة للمرور، والتنسيق لحضور الطرفين بالشهر العقاري لنقل الملكية النهائية للمشتري.',
+                    descEn: 'Upon final installment completion, Mokhalasa secures official bank lien release and coordinates final Notary title registration.'
+                  }
+                ].map((s) => (
+                  <div key={s.step} className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-700 text-white font-black text-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                      {s.step}
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="font-extrabold text-sm sm:text-base text-brand-navy">
+                        {isAr ? s.titleAr : s.titleEn}
+                      </h3>
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        {isAr ? s.descAr : s.descEn}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* TAB 2: CASH PAYOFF WORKFLOW */}
+            {activeWorkflowTab === 'payoff' && (
+              <div className="space-y-4 sm:space-y-6 animate-fadeIn">
+                {[
+                  {
+                    step: '01',
+                    titleAr: 'الفحص الفني المعتمد (150 نقطة فحص)',
+                    titleEn: '150-Point Certified Technical Inspection',
+                    descAr: 'تخضع السيارة لفحص دقيق للشاسيه والمحرك والدهان وسجل الصيانات بمركز فحص معتمد لضمان خلوها التام من الحوادث الهيكلية وتحديد القيمة السوقية العادلة.',
+                    descEn: 'The vehicle undergoes rigorous inspection covering chassis, engine, paint, and service history at certified diagnostic centers.'
+                  },
+                  {
+                    step: '02',
+                    titleAr: 'استخراج بيان المديونية البنكية الرسمي (Payoff Quote)',
+                    titleEn: 'Official Bank Debt Statement (Payoff Quote)',
+                    descAr: 'يتوجه البائع للبنك الدائن أو شركة التمويل الاستهلاكي لاستخراج خطاب استعلام رسمي مختوم يحدد أصل الدين المتبقي وعمولة السداد المعجل ورسوم فك الحظر بدقة.',
+                    descEn: 'The seller requests an official, stamped bank payoff quote specifying principal debt, early settlement fee, and lien clearance charges.'
+                  },
+                  {
+                    step: '03',
+                    titleAr: 'مطابقة المشتري وتوقيع الاتفاق الثلاثي المشروط',
+                    titleEn: 'Buyer Matching & Conditional Tripartite Agreement',
+                    descAr: 'يتم توقيع عقد اتفاق ثلاثي منظم بين البائع والمشتري والمنصة، يحدد سعر البيع المتفق عليه، والمبلغ الواجب إيداعه بالبنك، وضمان حيازة المشتري للسيارة ومستنداتها فور السداد.',
+                    descEn: 'A binding tripartite contract is executed detailing agreed price, exact payoff deposit, and buyer possession guarantees upon bank counter payment.'
+                  },
+                  {
+                    step: '04',
+                    titleAr: 'سداد مديونية البنك مباشرة في حساب القرض بالفرع',
+                    titleEn: 'Direct Bank Payoff at Creditor Branch (Zero-Custody)',
+                    descAr: 'يتوجه المشتري بصحبة البائع ومندوب مخلصة لفرع البنك لإيداع مبلغ التسوية مباشرة في حساب القرض، واستلام إيصال الصراف الرسمي (Teller Slip) المثبت لبراءة الذمة.',
+                    descEn: 'Buyer, seller, and a Mokhalasa specialist visit the bank. Settlement funds are deposited directly into the loan account with zero intermediary custody.'
+                  },
+                  {
+                    step: '05',
+                    titleAr: 'إصدار خطاب فك الحظر والتوجه لإدارة المرور',
+                    titleEn: 'Lien Clearance Letter & Traffic Directorate Deregistration',
+                    descAr: 'يصدر البنك خطاب رفع حظر البيع الموجه للمرور وشهادة المخالصة النهائية. يتوجه الطرفان لوحدة المرور لإلغاء إشارة الحظر من على السيستم الإلكتروني للمرور.',
+                    descEn: 'The bank issues official clearance and ban removal letters. Both parties clear the computer lien record at the traffic unit.'
+                  },
+                  {
+                    step: '06',
+                    titleAr: 'توثيق عقد البيع النهائي بالشهر العقاري وسداد باقي الثمن',
+                    titleEn: 'Notarized Sale Transfer at Real Estate Registry',
+                    descAr: 'يتم تحرير عقد بيع نهائي مسجل وموثق بالشهر العقاري باسم المشتري مباشرة، ويستلم البائع صافي المبلغ المتبقي كاش في يده، وتسدد أتعاب المنصة (1.5%).',
+                    descEn: 'Final notarized ownership transfer deed is registered at the Notary Office directly in buyer’s name. The seller receives net cash balance.'
+                  }
+                ].map((s) => (
+                  <div key={s.step} className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                    <div className="w-12 h-12 rounded-2xl bg-brand-navy text-white font-black text-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                      {s.step}
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="font-extrabold text-sm sm:text-base text-brand-navy">
+                        {isAr ? s.titleAr : s.titleEn}
+                      </h3>
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        {isAr ? s.descAr : s.descEn}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="pt-4 text-center">
               <button
@@ -167,6 +271,30 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
                   qEn: 'Does Mokhalasa offer direct in-house installment cars and certified cash cars?',
                   aAr: 'نعم بالتأكيد. بالإضافة إلى تخصصنا الرائد في تسوية سيارات الأقساط البنكية وحظر البيع، توفر مخلصة مساراً متكاملاً للتقسيط المباشر بين المعارض أو الملاك والمشترين بضمانات مباشرة بدون استعلام بنكي معقد، إلى جانب قسم متخصص للسيارات الكاش ذات الملكية الخالصة والمفحوصة بالكامل.',
                   aEn: 'Yes! Along with our premier bank distress and sale-ban track, Mokhalasa provides dedicated tracks for direct in-house installments with showrooms/owners (no bank credit checks required) and verified clean-title cash cars.'
+                },
+                {
+                  qAr: 'كيف يضمن البائع ألا يهرب المشتري بالسيارة أو يتوقف عن سداد أقساط البنك في نظام تكملة الأقساط؟',
+                  qEn: 'How does the seller ensure the buyer does not default on bank installments or abscond with the car in the continuation system?',
+                  aAr: 'عبر منظومة الحماية الرباعية من مخلصة: 1) تركيب جهاز تتبع مشفر IoT GPS مربوط بسيرفرات مخلصة مع ميزة الإيقاف الآمن للمحرك عن بُعد (Engine Immobilizer) عند التخلف غير المبرر عن السداد، 2) عقد استغلال وانتفاع ثلاثي رسمي يثبت استلام المشتري للسيارة كأمانة وينقل كامل المسؤولية الجنائية والمدنية والمخالفات والحوادث عليه فورياً، 3) حساب الضمان البنكي لتوريد القسط وإصدار إيصال السداد الرسمي للبائع شهرياً، 4) حق الاسترداد الفوري للأصل.',
+                  aEn: 'Through Mokhalasa’s 4-pillar protection: 1) Encrypted IoT GPS with remote starter immobilizer, 2) Notarized tripartite usufruct contract transferring all civil and criminal liability to the buyer, 3) Escrow servicing ensuring direct bank payoff receipts for the seller, and 4) Immediate repossession protocols.'
+                },
+                {
+                  qAr: 'هل يعتبر تسليم السيارة لمشتري يكمل الأقساط تبديداً أو جريمة يعاقب عليها القانون المصري؟',
+                  qEn: 'Does handing over a bank-financed car to a buyer who continues installments constitute criminal breach of trust in Egypt?',
+                  aAr: 'لا، طالما تم ذلك عبر عقد استغلال وانتفاع ثلاثي رسمي منظم (وليس بيعاً أو تنازلاً ناقلاً للملكية بالمخالفة للحظر). العقد يثبت صراحة استمرار ملكية البائع وقيد حظر البيع لصالح البنك، وأن المشتري مجرد حائز ومستغل ونائب في السداد؛ وبالتالي تنتفي نية التملك أو التصرف الضار بالضمانة البنكية، ويتم إبراء ذمة البائع شهرياً بتوريد الأقساط.',
+                  aEn: 'No, provided it is executed under a notarized tripartite usufruct contract (not an unauthorized title transfer). The contract explicitly affirms the existing bank lien and designates the buyer solely as an authorized usufructuary custodian and installment servicer.'
+                },
+                {
+                  qAr: 'كيف يعمل جهاز التتبع الذكي IoT GPS وخاصية إيقاف المحرك عن بُعد في مخلصة؟',
+                  qEn: 'How does the IoT GPS tracking and remote engine cutoff operate at Mokhalasa?',
+                  aAr: 'يتم تركيب جهاز تتبع معتمد مخفي داخل ضفيرة السيارة لا يمكن نزعه أو التلاعب به، متصل بسيرفرات مخلصة على مدار الساعة لرصد الموقع الجغرافي وتحديد النطاقات المصرح بها (Geofencing). في حال تأخر المشتري عن سداد القسط الشهري، ترسل المنصة إنذارات رسمية، وإذا امتنع يتم تفعيل خاصية الإيقاف الآمن للمحرك (لا ينطفئ أثناء السير حفاظاً على الأرواح، بل يُمنع المحرك من إعادة التشغيل بعد توقفه التام) حتى تسوية الموقف.',
+                  aEn: 'A tamper-resistant IoT device connects to Mokhalasa servers with 24/7 geofencing. If installments default after automated notices, the remote immobilizer prevents engine restarts safely while stationary until arrears are resolved.'
+                },
+                {
+                  qAr: 'لماذا لا تكفي إيصالات الأمانة وحدها بين البائع والمشتري في سوق السيارات؟',
+                  qEn: 'Why are promissory notes (trust receipts) insufficient on their own between buyers and sellers?',
+                  aAr: 'لأن إيصال الأمانة لا يحمي أصل السيارة إذا تم تهريبها أو إخفاؤها، ولا يمنع البنك من سحب السيارة أو ملاحقة البائع في حال تعثر المشتري، ولا ينفي المسؤولية الجنائية عن البائع في الحوادث والمخالفات الجسيمة إذا لم يحرر إقرار استلام وعقد استغلال رسمي ثلاثي مثبت التاريخ ومقترن بنظام مراقبة وتتبع لحظي.',
+                  aEn: 'Because trust receipts do not safeguard the physical asset against theft or hiding, do not stop bank repossession or credit blacklisting, and do not shield the original owner from traffic/criminal liabilities without a comprehensive tripartite custody system.'
                 }
               ].map((item, idx) => (
                 <div key={idx} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">

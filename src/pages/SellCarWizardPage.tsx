@@ -131,8 +131,8 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
   const [isGeneratingAiDesc, setIsGeneratingAiDesc] = useState(false);
   const [aiFeedbackMsg, setAiFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // PRIMARY SALE TRACK: 'direct_installment' | 'cash' | 'bank_settlement'
-  const [saleType, setSaleType] = useState<SaleType>('direct_installment');
+  // PRIMARY SALE TRACK: 'installment_continuation' | 'direct_installment' | 'cash' | 'bank_settlement'
+  const [saleType, setSaleType] = useState<SaleType>('installment_continuation');
 
   // DIRECT INSTALLMENT SPECIFIC STATES
   const [directDownPayment, setDirectDownPayment] = useState<number>(150000);
@@ -148,7 +148,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
   // STEP 1: Financing Eligibility & Distress Cause
   const [distressReason, setDistressReason] = useState<DistressReason>('installment_burden');
   const [urgency, setUrgency] = useState<UrgencyLevel>('very_urgent');
-  const [vehicleStatus, setVehicleStatus] = useState<ListingVehicleStatus>('direct_installment');
+  const [vehicleStatus, setVehicleStatus] = useState<ListingVehicleStatus>('bank_loan');
   const [ownerRelationship, setOwnerRelationship] = useState<OwnerRelationship>('direct_owner');
   const [hasContactedLender, setHasContactedLender] = useState<boolean | 'not_sure'>(true);
   const [hasOfficialQuote, setHasOfficialQuote] = useState<boolean | 'not_sure'>('not_sure');
@@ -567,6 +567,15 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
         }
         if (!directMonthlyInstallment || directMonthlyInstallment <= 0) {
           reportMissingField('monthlyInstallment', 'field-monthlyInstallment', 'يرجى إدخال قيمة القسط الشهري بالتقسيط المباشر.', 3);
+          return false;
+        }
+      } else if (saleType === 'installment_continuation') {
+        if (!monthlyInstallment || monthlyInstallment <= 0) {
+          reportMissingField('monthlyInstallment', 'field-monthlyInstallment', 'يرجى إدخال قيمة القسط الشهري للبنك.', 3);
+          return false;
+        }
+        if (!remainingMonths || remainingMonths <= 0) {
+          reportMissingField('remainingMonths', 'field-remainingMonths', 'يرجى إدخال عدد الأقساط المتبقية للبنك.', 3);
           return false;
         }
       } else {
@@ -1905,7 +1914,9 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                     ? 'الخطوة 3: السعر المطلوب للبيع كاش (ملكية خالصة)'
                     : saleType === 'direct_installment'
                     ? 'الخطوة 3: شروط وخطة التقسيط المباشر والضمانات'
-                    : 'الخطوة 3: بيانات الجهة الدائنة والأقساط التقديرية'}
+                    : saleType === 'installment_continuation'
+                    ? 'الخطوة 3: تفاصيل تكملة الأقساط ومنظومة الأمان والضمانات (IoT GPS + العقود الموثقة)'
+                    : 'الخطوة 3: بيانات الجهة الدائنة وأصل الدين'}
                 </span>
               </h2>
               <p className="text-2xs text-slate-500 mt-1">
@@ -1913,6 +1924,8 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                   ? 'حدد السعر الذي ترغب في استلامه نقداً دون أي تعقيدات بنكية'
                   : saleType === 'direct_installment'
                   ? 'حدد أقل مقدم تقبله، وقيمة القسط الشهري، والضمانات المطلوبة من المشتري'
+                  : saleType === 'installment_continuation'
+                  ? 'سجل المقدم المطلوب لك كبائع، وقيمة قسط البنك الشهري، وتعرف على منظومة تأمين السيارة والعقود'
                   : 'تسجيل بيانات القسط التقريبية لمساعدتك في استخراج بيان المديونية الرسمي لاحقاً'}
               </p>
             </div>
@@ -2180,8 +2193,237 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
               </div>
             )}
 
-            {/* TRACK 3: BANK DEBT SETTLEMENT & INSTALLMENT CONTINUATION */}
-            {(saleType === 'bank_settlement' || saleType === 'installment_continuation') && (
+            {/* TRACK 3: INSTALLMENT CONTINUATION (PREMIER SERVICE) */}
+            {saleType === 'installment_continuation' && (
+              <div className="space-y-6 text-xs animate-fadeIn">
+                
+                {/* Visual Overview Banner */}
+                <div className="bg-emerald-50/90 border border-emerald-300 rounded-2xl p-5 flex items-start gap-3.5 text-emerald-950">
+                  <ShieldCheck className="w-6 h-6 text-emerald-700 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1.5">
+                    <span className="font-black text-sm text-emerald-950 block">
+                      نظام تكملة الأقساط المنظم عبر «مخلصة» (حل قانوني معتمد لسيارات حظر البيع)
+                    </span>
+                    <p className="text-2xs text-emerald-900 leading-relaxed">
+                      هذا النظام مخصص للسيارات التي عليها حظر بيع بنكي وترغب في التخارج من أقساطها واستلام مقدم نقدي فوري، بينما يستلم المشتري السيارة ويكمل سداد الأقساط للبنك مباشرة. يتم تنظيم المعاملة بالكامل عبر منظومة قانونية وتقنية تحمي الطرفين من أي تعثر أو مساءلة.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Financial Details Grid */}
+                <div className="bg-slate-50/80 p-5 rounded-2xl border border-slate-200 space-y-4">
+                  <h3 className="font-black text-xs text-brand-navy border-b border-slate-200 pb-2">
+                    1. الموقف المالي وتفاصيل الأقساط
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Bank / Lender */}
+                    <div>
+                      <label className="block font-black text-slate-800 mb-1.5">
+                        جهة التمويل (البنك أو شركة التمويل الدائنة): <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={bankKey}
+                        onChange={(e) => setBankKey(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green"
+                      >
+                        {Object.entries(COMPREHENSIVE_BANK_DATABASE).map(([key, b]) => (
+                          <option key={key} value={key}>
+                            {b.bankNameAr}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="text-3xs text-slate-400 mt-1 block">البنك الصادر لصالحه حظر البيع على رخصة السيارة</span>
+                    </div>
+
+                    {/* Seller Cash Down Payment */}
+                    <div id="field-sellerDownPayment-wrapper">
+                      <label className="block font-black text-slate-800 mb-1.5">
+                        المقدم النقدي المطلوب للبائع (كاش فوري): <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="5000"
+                        value={sellerExpectedPrice || ''}
+                        onChange={(e) => {
+                          setSellerExpectedPrice(Number(e.target.value));
+                          clearFieldError('sellerDownPayment');
+                        }}
+                        placeholder="مثال: 150000"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-black text-brand-navy bg-white focus:outline-none focus:ring-2 focus:ring-brand-green"
+                      />
+                      <span className="text-3xs text-slate-400 mt-1 block">المبلغ الذي ستستلمه كاش في يدك عند توقيع العقد وتسليم السيارة</span>
+                    </div>
+
+                    {/* Monthly Installment */}
+                    <div id="field-monthlyInstallment-wrapper">
+                      <label className="block font-black text-slate-800 mb-1.5">
+                        قيمة القسط الشهري للبنك: <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="500"
+                        value={monthlyInstallment || ''}
+                        onChange={(e) => {
+                          setMonthlyInstallment(Number(e.target.value));
+                          clearFieldError('monthlyInstallment');
+                        }}
+                        placeholder="مثال: 8500"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green"
+                      />
+                      <span className="text-3xs text-slate-400 mt-1 block">القسط الثابت الذي سيتحمل المشتري سداده شهرياً للبنك</span>
+                    </div>
+
+                    {/* Remaining Months */}
+                    <div id="field-remainingMonths-wrapper">
+                      <label className="block font-black text-slate-800 mb-1.5">
+                        عدد الشهور / الأقساط المتبقية للبنك: <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="84"
+                        value={remainingMonths || ''}
+                        onChange={(e) => {
+                          setRemainingMonths(Number(e.target.value));
+                          clearFieldError('remainingMonths');
+                        }}
+                        placeholder="مثال: 24"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green"
+                      />
+                      <span className="text-3xs text-slate-400 mt-1 block">عدد الأقساط المتبقية حتى استخراج المخالصة وفك الحظر</span>
+                    </div>
+
+                    {/* Outstanding Principal */}
+                    <div>
+                      <label className="block font-black text-slate-800 mb-1.5">
+                        أصل الدين المتبقي التقريبي للبنك (Principal):
+                      </label>
+                      <input
+                        type="number"
+                        step="5000"
+                        value={outstandingPrincipal || ''}
+                        onChange={(e) => setOutstandingPrincipal(Number(e.target.value))}
+                        placeholder="مثال: 200000"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-green"
+                      />
+                      <span className="text-3xs text-slate-400 mt-1 block">تقدير أصل المديونية بدون فوائد السنوات القادمة</span>
+                    </div>
+
+                    {/* Arrears */}
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 flex flex-col justify-between">
+                      <label className="flex items-center gap-2 font-bold text-slate-800 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={hasArrears}
+                          onChange={(e) => setHasArrears(e.target.checked)}
+                          className="w-4 h-4 accent-brand-green"
+                        />
+                        <span>هل توجد أي أقساط متأخرة أو غرامات حالياً؟</span>
+                      </label>
+                      {hasArrears && (
+                        <div className="mt-2">
+                          <input
+                            type="number"
+                            value={arrearsAmount || ''}
+                            onChange={(e) => setArrearsAmount(Number(e.target.value))}
+                            placeholder="قيمة المتأخرات التقريبية"
+                            className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* THE 4 PILLARS OF SECURITY & OPERATION */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                    <h3 className="font-black text-xs text-brand-navy flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      <span>2. منظومة الحماية والأمان المعتمدة عبر «مخلصة» (كيف نؤمن الطرفين؟)</span>
+                    </h3>
+                    <span className="text-3xs font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                      حماية قانونية وتقنية 100%
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
+                    {/* Pillar 1 */}
+                    <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-1.5">
+                      <div className="flex items-center gap-2 font-extrabold text-brand-navy text-xs">
+                        <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-black">
+                          1
+                        </div>
+                        <span>عقد الاستغلال والانتفاع الثلاثي الموثق</span>
+                      </div>
+                      <p className="text-3xs text-slate-600 leading-relaxed pr-8">
+                        عقد رسمي ثلاثي (البائع، المشتري، مخلصة) ينقل كامل المسؤولية الجنائية والمدنية والمخالفات والحوادث فورياً على المشتري المستغل بموجب إقرار استلام رسمي كأمانة، مع إثبات قيد حظر البيع البنكي لحماية البائع تماماً من شبهة تبديد الضمانة.
+                      </p>
+                    </div>
+
+                    {/* Pillar 2 */}
+                    <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-1.5">
+                      <div className="flex items-center gap-2 font-extrabold text-brand-navy text-xs">
+                        <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-black">
+                          2
+                        </div>
+                        <span>تأمين IoT GPS وخاصية الإيقاف الآمن للمحرك</span>
+                      </div>
+                      <p className="text-3xs text-slate-600 leading-relaxed pr-8">
+                        تركيب جهاز تتبع ذكي مشفر مربوط بسيرفرات مخلصة مع رصد جغرافي دقيق (Geofencing)، وتفعيل خاصية الإيقاف الآمن للمحرك عن بُعد (Engine Immobilizer) حصرياً عند التأخر عن السداد لحفظ أصل السيارة ومنع تهريبها أو التلاعب بها.
+                      </p>
+                    </div>
+
+                    {/* Pillar 3 */}
+                    <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-1.5">
+                      <div className="flex items-center gap-2 font-extrabold text-brand-navy text-xs">
+                        <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-black">
+                          3
+                        </div>
+                        <span>حساب الضمان البنكي وتوريد الأقساط (Escrow)</span>
+                      </div>
+                      <p className="text-3xs text-slate-600 leading-relaxed pr-8">
+                        لا يدفع المشتري للبنك مباشرة ولا يسلمك كاش يدوياً؛ بل يودع المشتري القسط شهرياً في حساب الضمان عبر مخلصة، وتقوم المنصة بتوريده للبنك وإرسال إيصال السداد الرسمي فورياً على هاتفك لإبراء ذمتك شهرياً أمام البنك.
+                      </p>
+                    </div>
+
+                    {/* Pillar 4 */}
+                    <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-1.5">
+                      <div className="flex items-center gap-2 font-extrabold text-brand-navy text-xs">
+                        <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-black">
+                          4
+                        </div>
+                        <span>فك الحظر ونقل الملكية النهائي</span>
+                      </div>
+                      <p className="text-3xs text-slate-600 leading-relaxed pr-8">
+                        فور اكتمال سداد آخر قسط، تتولى مخلصة استخراج المخالصة البنكية الرسمية وشهادة فك الحظر الموجهة للمرور، والتنسيق لحضور الطرفين بالشهر العقاري لنقل الملكية النهائية للمشتري وتجديد رخصة السيارة باسمه.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Calculation Summary Card */}
+                <div className="bg-emerald-50/80 p-4 rounded-2xl border border-emerald-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <span className="text-3xs font-black text-emerald-900 uppercase block">ملخص صفقة تكملة الأقساط:</span>
+                    <div className="font-black text-brand-navy text-sm mt-0.5">
+                      المقدم الفوري للبائع: {formatEGP(sellerExpectedPrice)} + ({formatEGP(monthlyInstallment)} شهرياً × {remainingMonths} شهر للبنك)
+                    </div>
+                  </div>
+                  <div className="text-left sm:text-right">
+                    <span className="text-3xs text-slate-500 block">إجمالي ما سيتحمله المشتري:</span>
+                    <span className="text-base font-black text-emerald-800">
+                      {formatEGP(sellerExpectedPrice + (monthlyInstallment * remainingMonths))}
+                    </span>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* TRACK 4: STANDARD BANK DEBT SETTLEMENT (FULL PAYOFF) */}
+            {saleType === 'bank_settlement' && (
               <div className="space-y-4 text-xs">
                 {/* Clear Unverified Estimate Notice */}
                 <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-start gap-3 text-xs text-blue-950">
