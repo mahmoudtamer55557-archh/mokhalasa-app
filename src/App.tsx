@@ -444,13 +444,35 @@ export function App() {
     applyPageSeo(currentView, selectedCar, lang);
   }, [currentView, selectedCar, lang]);
 
+  // Keep URL hash synchronized with currentView so the browser URL always reflects current view (e.g. /#/home)
+  // and browser refresh (F5) retains the exact view reliably without falling back to marketplace.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const currentHash = window.location.hash.replace(/^#\/?/, '').split('?')[0];
+
+    // Avoid overwriting OAuth access token hashes
+    if (window.location.hash.includes('access_token') || window.location.hash.includes('error=')) {
+      return;
+    }
+
+    const expectedHash = currentView;
+    if (currentHash !== expectedHash) {
+      try {
+        const targetPath = currentView === 'car-detail' && selectedCar 
+          ? `/#/car-detail?id=${selectedCar.id}` 
+          : `/#/${currentView}`;
+        window.history.replaceState({ view: currentView }, '', targetPath);
+      } catch {}
+    }
+  }, [currentView, selectedCar]);
+
   const handleNavigate = (view: string) => {
     setCurrentView(view);
     try {
       localStorage.setItem('mokhalasa_current_view', view);
     } catch {}
 
-    const targetPath = view === 'home' ? '/' : `/#/${view}`;
+    const targetPath = `/#/${view}`;
     // Always push history cleanly so refreshing the browser retains current view or returns cleanly to home
     try {
       window.history.pushState({ view }, '', targetPath);
