@@ -67,9 +67,9 @@ export const BlogPage: React.FC<BlogPageProps> = ({ onNavigate, lang = 'ar' }) =
           ]
         },
         {
-          sectionTitle: 'كيف حلت منصة «مخلصة» هذه المعادلة الصعبة؟',
+          sectionTitle: 'كيف حلت منصة «مخالصة» هذه المعادلة الصعبة؟',
           paragraphs: [
-            'ابتكرت منصة «مخلصة» منظومة متكاملة من 4 أركان تجمع بين القانون والتكنولوجيا:',
+            'ابتكرت منصة «مخالصة» منظومة متكاملة من 4 أركان تجمع بين القانون والتكنولوجيا:',
             '1. عقد استغلال وانتفاع ثلاثي موثق: يثبت تسليم السيارة للمشتري بصفته مستغلاً ونائباً في السداد، وينقل كامل المسؤولية الجنائية والمدنية والمخالفات عليه فوراً.',
             '2. تأمين IoT GPS وإيقاف المحرك عن بُعد: تركيب جهاز تتبع ذكي مشفر بسيرفرات المنصة يتيح الرصد اللحظي وتفعيل الإيقاف الآمن للمحرك بعد التوقف التام في حال التخلف غير المبرر عن السداد.',
             '3. حساب الضمان البنكي: المشتري يودع القسط عبر المنصة التي تورده مباشرة للبنك وتصدر إيصال السداد الرسمي للبائع شهرياً.',
@@ -127,7 +127,7 @@ export const BlogPage: React.FC<BlogPageProps> = ({ onNavigate, lang = 'ar' }) =
       category: 'ban_settlement',
       categoryLabelAr: 'سيارات حظر البيع والتسوية',
       categoryLabelEn: 'Bank Lien & Settlement',
-      summaryAr: 'طرق التخارج الآمن من قسط السيارة، وتجنب فخ إيصالات الأمانة والتوكيلات العرفية، وضمان سداد البنك فورياً عبر منصة مخلصة.',
+      summaryAr: 'طرق التخارج الآمن من قسط السيارة، وتجنب فخ إيصالات الأمانة والتوكيلات العرفية، وضمان سداد البنك فورياً عبر منصة مخالصة.',
       summaryEn: 'Safe exit strategies for car owners unable to service auto loan payments, avoiding informal promissory notes and unauthorized sub-leases.',
       readTimeAr: '6 دقائق قراءة',
       readTimeEn: '6 min read',
@@ -142,9 +142,9 @@ export const BlogPage: React.FC<BlogPageProps> = ({ onNavigate, lang = 'ar' }) =
           ]
         },
         {
-          sectionTitle: 'الحل الآمن: التسوية الثلاثية المباشرة عبر مخلصة',
+          sectionTitle: 'الحل الآمن: التسوية الثلاثية المباشرة عبر مخالصة',
           paragraphs: [
-            'الآلية الصحيحة والمعتمدة تقوم على وجود مشتري جاد يملك السيولة النقدية، ويتم حساب إجمالي المديونية بدقة باستخدام حاسبة مخلصة.',
+            'الآلية الصحيحة والمعتمدة تقوم على وجود مشتري جاد يملك السيولة النقدية، ويتم حساب إجمالي المديونية بدقة باستخدام حاسبة مخالصة.',
             'يقوم المشتري بإيداع مبلغ المديونية مباشرة في حساب قرض السيارة بخزينة البنك وليس للبائع، ويحصل البائع على الفارق الصافي (صافي الربح) فور استخراج إيصال السداد، وبذلك يتخلص البائع من الالتزام تماماً وتنتقل السيارة للمشتري نظيفة وبلا ديون.'
           ]
         }
@@ -241,13 +241,13 @@ export const BlogPage: React.FC<BlogPageProps> = ({ onNavigate, lang = 'ar' }) =
           {activeArticle ? (
             <>
               <button onClick={() => setActiveArticle(null)} className="hover:text-brand-navy transition">
-                {isAr ? 'دليل ومقالات مخلصة' : 'Guides & Knowledge Hub'}
+                {isAr ? 'دليل ومقالات مخالصة' : 'Guides & Knowledge Hub'}
               </button>
               <span>/</span>
               <span className="text-brand-navy font-bold line-clamp-1">{isAr ? activeArticle.titleAr : activeArticle.titleEn}</span>
             </>
           ) : (
-            <span className="text-brand-navy font-bold">{isAr ? 'دليل ومقالات مخلصة' : 'Guides & Knowledge Hub'}</span>
+            <span className="text-brand-navy font-bold">{isAr ? 'دليل ومقالات مخالصة' : 'Guides & Knowledge Hub'}</span>
           )}
         </nav>
 
@@ -329,7 +329,7 @@ export const BlogPage: React.FC<BlogPageProps> = ({ onNavigate, lang = 'ar' }) =
                   </h3>
                   <p className="text-xs text-slate-300">
                     {isAr 
-                      ? 'فريق مخلصة القانوني والفني ينظم كافة الخطوات في البنوك والشهر العقاري بعمولة 1.5% فقط.'
+                      ? 'فريق مخالصة القانوني والفني ينظم كافة الخطوات في البنوك والشهر العقاري بعمولة 1.5% فقط.'
                       : 'Mokhalasa handles legal and technical coordination with 1.5% success fee only.'}
                   </p>
                 </div>

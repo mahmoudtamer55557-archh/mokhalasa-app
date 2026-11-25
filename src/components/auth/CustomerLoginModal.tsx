@@ -221,7 +221,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
       }
 
       setAuthStatus('authenticated');
-      setSuccessNotice('تم تسجيل الدخول بنجاح! مرحباً بك في مخلصة.');
+      setSuccessNotice('تم تسجيل الدخول بنجاح! مرحباً بك في مخالصة.');
       setTimeout(() => {
         onLoginSuccess(response.user!);
         onClose();
@@ -306,7 +306,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
         return;
       }
 
-      setMatchedAccountName(accountCheck.account.fullName || 'عميل مخلصة');
+      setMatchedAccountName(accountCheck.account.fullName || 'عميل مخالصة');
 
       // 2. Phone is confirmed linked to an account -> Send WhatsApp OTP
       const res = await otpService.generateAndSendOtp(cleanPhone, {
@@ -491,7 +491,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
 
         if (response.success && response.user) {
           setAuthStatus('authenticated');
-          setSuccessNotice('تم إنشاء حسابك وتفعيله بنجاح! مرحباً بك في مخلصة.');
+          setSuccessNotice('تم إنشاء حسابك وتفعيله بنجاح! مرحباً بك في مخالصة.');
           setTimeout(() => {
             onLoginSuccess(response.user!);
             onClose();
@@ -515,7 +515,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
       const existingCheck = await authService.checkPhoneAccountExists(cleanPhone);
       if (existingCheck.exists) {
         recordFailedAttempt('register', cleanPhone);
-        setErrorMessage(`هذا الرقم (${cleanPhone}) مربوط بالفعل بحساب مسجل في قاعدة البيانات (${existingCheck.account?.fullName || 'عميل مخلصة'})! يرجى تسجيل الدخول أو استخدام «نسيت كلمة المرور».`);
+        setErrorMessage(`هذا الرقم (${cleanPhone}) مربوط بالفعل بحساب مسجل في قاعدة البيانات (${existingCheck.account?.fullName || 'عميل مخالصة'})! يرجى تسجيل الدخول أو استخدام «نسيت كلمة المرور».`);
         setAuthStatus('error');
         setIsSubmitting(false);
         return;
@@ -561,7 +561,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
 
       if (response.success && response.user) {
         setAuthStatus('authenticated');
-        setSuccessNotice('تم تفعيل حسابك بنجاح! مرحباً بك في مخلصة.');
+        setSuccessNotice('تم تفعيل حسابك بنجاح! مرحباً بك في مخالصة.');
         setTimeout(() => {
           onLoginSuccess(response.user!);
           onClose();
@@ -618,7 +618,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
 
       if (response.success && response.user) {
         setAuthStatus('authenticated');
-        setSuccessNotice('تم تأكيد كود الواتساب وتفعيل حسابك بنجاح! مرحباً بك في مخلصة.');
+        setSuccessNotice('تم تأكيد كود الواتساب وتفعيل حسابك بنجاح! مرحباً بك في مخالصة.');
         setTimeout(() => {
           onLoginSuccess(response.user!);
           onClose();
@@ -721,7 +721,7 @@ export const CustomerLoginModal: React.FC<CustomerLoginModalProps> = ({
             <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 text-center space-y-1.5 animate-pulse">
               <div className="w-6 h-6 border-2 border-brand-green border-t-transparent rounded-full animate-spin mx-auto" />
               <div className="font-extrabold text-xs text-brand-navy">
-                جاري التحقق وتأمين حسابك في مخلصة...
+                جاري التحقق وتأمين حسابك في مخالصة...
               </div>
             </div>
           )}

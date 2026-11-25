@@ -48,7 +48,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang = 'ar' }) => {
             <ul className="space-y-2.5 text-xs text-slate-300">
               <li>
                 <button onClick={() => onNavigate('sell-wizard')} className="hover:text-brand-green transition">
-                  {isAr ? 'بيع عربيتك مع مخلصة' : 'Sell Your Car with Mokhalasa'}
+                  {isAr ? 'بيع عربيتك مع مخالصة' : 'Sell Your Car with Mokhalasa'}
                 </button>
               </li>
               <li>
@@ -74,7 +74,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang = 'ar' }) => {
               </li>
               <li>
                 <button onClick={() => onNavigate('faq')} className="hover:text-brand-green transition">
-                  {isAr ? 'اسأل فريق مخلصة عن الإجراءات' : 'Ask Mokhalasa Team'}
+                  {isAr ? 'اسأل فريق مخالصة عن الإجراءات' : 'Ask Mokhalasa Team'}
                 </button>
               </li>
               <li>
@@ -93,7 +93,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang = 'ar' }) => {
             <ul className="space-y-2.5 text-xs text-slate-300">
               <li>
                 <button onClick={() => onNavigate('how-it-works')} className="hover:text-brand-green transition">
-                  {isAr ? 'كيف تعمل مخلصة خطوة بخطوة؟' : 'How It Works (Step-by-Step)'}
+                  {isAr ? 'كيف تعمل مخالصة خطوة بخطوة؟' : 'How It Works (Step-by-Step)'}
                 </button>
               </li>
               <li>
@@ -113,7 +113,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang = 'ar' }) => {
               </li>
               <li>
                 <button onClick={() => onNavigate('contact')} className="hover:text-brand-green transition">
-                  {isAr ? 'تواصل مع فريق مخلصة' : 'Contact Support Team'}
+                  {isAr ? 'تواصل مع فريق مخالصة' : 'Contact Support Team'}
                 </button>
               </li>
             </ul>
@@ -160,7 +160,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang = 'ar' }) => {
                 {isAr ? 'إخلاء مسؤولية تنظيمي وقانوني:' : 'Regulatory & Legal Disclaimer:'}
               </strong>{' '}
               {isAr
-                ? 'منصة «مخلصة» هي منصة استشارية وتكنولوجية لتنسيق صفقات بيع سيارات التمويل وتسويتها، وليست بنكاً، أو جهة إقراض، أو مكتب توثيق حكومي، أو بديلاً عن وحدات المرور المصرية. لا تقدم المنصة أي وعود بنكية مسبقة أو ضمانات بنقل المديونية دون موافقة الجهة الدائنة، ولا تحتفظ بأموال التسوية في حساباتها الشخصية بل يتم الإيداع مباشرة بخزينة البنك الدائن.'
+                ? 'منصة «مخالصة» هي منصة استشارية وتكنولوجية لتنسيق صفقات بيع سيارات التمويل وتسويتها، وليست بنكاً، أو جهة إقراض، أو مكتب توثيق حكومي، أو بديلاً عن وحدات المرور المصرية. لا تقدم المنصة أي وعود بنكية مسبقة أو ضمانات بنقل المديونية دون موافقة الجهة الدائنة، ولا تحتفظ بأموال التسوية في حساباتها الشخصية بل يتم الإيداع مباشرة بخزينة البنك الدائن.'
                 : 'Mokhalasa is an advisory and technological platform coordinating vehicle payoffs and sales. It is not a bank, lending company, or government notary. The platform does not hold settlement funds in its own accounts; all payments are deposited directly at the creditor bank counter.'}
             </div>
           </div>

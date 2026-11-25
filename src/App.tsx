@@ -285,7 +285,7 @@ export function App() {
           userId: customerUser?.id || 'guest',
           type: 'listing_status_changed',
           title: `مطلوب تعديل على إعلان سيارتك (${c.vehicle.make} ${c.vehicle.model})`,
-          message: c.adminFeedback || c.timeline?.find(t => t.status === 'needs_changes')?.reason || 'طلبت إدارة مخلصة تعديل بيانات السعر أو العداد أو حالة السيارة للموافقة على النشر.',
+          message: c.adminFeedback || c.timeline?.find(t => t.status === 'needs_changes')?.reason || 'طلبت إدارة مخالصة تعديل بيانات السعر أو العداد أو حالة السيارة للموافقة على النشر.',
           linkView: 'seller-portal',
           relatedId: c.caseReference,
           isRead,
@@ -900,7 +900,7 @@ export function App() {
         />
       )}
 
-      {/* Global Consultation Modal ("اسأل فريق مخلصة") */}
+      {/* Global Consultation Modal ("اسأل فريق مخالصة") */}
       {consultationModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-elevated border border-slate-100 space-y-4 animate-scaleUp">
@@ -909,7 +909,7 @@ export function App() {
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-5 h-5 text-brand-green" />
                 <h3 className="font-extrabold text-base text-brand-navy">
-                  {lang === 'ar' ? 'استشارة مجانية مع مستشار مخلصة' : 'Free Consultation with Mokhalasa'}
+                  {lang === 'ar' ? 'استشارة مجانية مع مستشار مخالصة' : 'Free Consultation with Mokhalasa'}
                 </h3>
               </div>
               <button
@@ -928,7 +928,7 @@ export function App() {
                 </h4>
                 <p className="text-xs text-slate-500 leading-relaxed">
                   {lang === 'ar' 
-                    ? 'سيقوم مستشار مصرفي متخصص من مخلصة بالتواصل معك هاتفياً للإجابة على استفساراتك حول تسوية البنك وفك الحظر.'
+                    ? 'سيقوم مستشار مصرفي متخصص من مخالصة بالتواصل معك هاتفياً للإجابة على استفساراتك حول تسوية البنك وفك الحظر.'
                     : 'A specialized Mokhalasa banking advisor will contact you by phone to answer your questions regarding bank settlement and lien removal.'}
                 </p>
               </div>
@@ -936,7 +936,7 @@ export function App() {
               <form onSubmit={handleConsultationSubmit} className="space-y-3 text-xs">
                 <p className="text-slate-500 text-xs">
                   {lang === 'ar'
-                    ? 'اسأل فريق مخلصة عن إجراءات السداد المعجل، تفادي غرامات التأخير، أو كيفية بيع سيارتك بدون أي مخاطرة قانونية.'
+                    ? 'اسأل فريق مخالصة عن إجراءات السداد المعجل، تفادي غرامات التأخير، أو كيفية بيع سيارتك بدون أي مخاطرة قانونية.'
                     : 'Ask our team about early payoff procedures, avoiding delay penalties, or selling your car without legal risks.'}
                 </p>
 
@@ -1006,7 +1006,7 @@ export function App() {
                     type="submit"
                     className="w-full py-3 rounded-xl bg-brand-green hover:bg-brand-green-hover text-white font-extrabold text-xs shadow-md transition"
                   >
-                    {lang === 'ar' ? 'طلب التواصل مع مستشار مخلصة' : 'Request Mokhalasa Advisor Call'}
+                    {lang === 'ar' ? 'طلب التواصل مع مستشار مخالصة' : 'Request Mokhalasa Advisor Call'}
                   </button>
                 </div>
               </form>

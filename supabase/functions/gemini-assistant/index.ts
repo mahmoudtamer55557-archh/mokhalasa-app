@@ -39,15 +39,15 @@ serve(async (req) => {
 
     if (task === 'generate_car_description') {
       const { make, model, year, trim, mileage, paintCondition, disclosedDefects, askingPrice, trafficUnit } = payload || {};
-      systemInstruction = `أنت خبير محترف في إعلانات السيارات لمنصة مخلصة المصرية. اكتب وصفاً واقعياً بالعامية المصرية الراقية بناءً على البيانات المقدمة فقط. لا تخترع مواصفات أو سجلات صيانة لم تذكر.`;
+      systemInstruction = `أنت خبير محترف في إعلانات السيارات لمنصة مخالصة المصرية. اكتب وصفاً واقعياً بالعامية المصرية الراقية بناءً على البيانات المقدمة فقط. لا تخترع مواصفات أو سجلات صيانة لم تذكر.`;
       userPrompt = `السيارة: ${make} ${model} ${year} ${trim || ''} - عداد: ${mileage} كم - دهان: ${paintCondition} - عيوب: ${disclosedDefects?.join('، ') || 'لا يوجد'} - سعر: ${askingPrice} - مرور: ${trafficUnit}`;
     } else if (task === 'customer_support') {
       const { userQuestion } = payload || {};
-      systemInstruction = `أنت المساعد الذكي لمنصة مخلصة المصرية المتخصصة في سيارات التقسيط والتسوية البنكية المباشرة. أجب بمعلومات المنصة المؤكدة فقط ولا تخترع أرقام فوائد أو رسوم.`;
+      systemInstruction = `أنت المساعد الذكي لمنصة مخالصة المصرية المتخصصة في سيارات التقسيط والتسوية البنكية المباشرة. أجب بمعلومات المنصة المؤكدة فقط ولا تخترع أرقام فوائد أو رسوم.`;
       userPrompt = userQuestion || '';
     } else if (task === 'admin_summary') {
       const { pendingListingsCount, openOffersCount } = payload || {};
-      systemInstruction = `أنت مستشار تشغيلي لمنصة مخلصة. لخص الأولويات التشغيلية في 3 نقاط محددة.`;
+      systemInstruction = `أنت مستشار تشغيلي لمنصة مخالصة. لخص الأولويات التشغيلية في 3 نقاط محددة.`;
       userPrompt = `إعلانات معلقة: ${pendingListingsCount} - عروض جارية: ${openOffersCount}`;
     }
 

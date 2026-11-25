@@ -259,7 +259,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
   const [prevCustomerUserId, setPrevCustomerUserId] = useState(customerUser?.id);
   if (customerUser && customerUser.id !== prevCustomerUserId) {
     setPrevCustomerUserId(customerUser.id);
-    if (customerUser.name && customerUser.name !== 'عميل مخلصة') {
+    if (customerUser.name && customerUser.name !== 'عميل مخالصة') {
       setSellerName(customerUser.name);
     }
     if (customerUser.phone) {
@@ -904,7 +904,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
         : `00000000-0000-4000-8000-${cleanPhone.slice(-12).padStart(12, '0')}`;
       activeCustomer = {
         id: guestId,
-        name: sellerName.trim() || 'عميل مخلصة',
+        name: sellerName.trim() || 'عميل مخالصة',
         phone: cleanPhone,
         email: `${cleanPhone}@customer.mokhalasa.online`,
         provider: 'phone_otp',
@@ -1123,7 +1123,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
               عايز تبيع عربيتك وتتخلص من عبء الأقساط؟
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 max-w-xl mx-auto">
-              خطوات ميسرة لتسجيل حالتك، تقييم سعرها العادل من واقع السوق، وبدء إجراءات السداد والتسوية مع البنك بإشراف فريق مخلصة.
+              خطوات ميسرة لتسجيل حالتك، تقييم سعرها العادل من واقع السوق، وبدء إجراءات السداد والتسوية مع البنك بإشراف فريق مخالصة.
             </p>
           </div>
         )}
@@ -1454,7 +1454,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                     <p className="text-2xs leading-relaxed">
                       {saleType === 'installment_continuation'
                         ? 'تتيح لك مخلّصة تسليم السيارة لمشترٍ يستمر في سداد أقساطها الشهرية للبنك بموجب عقد استغلال ثلاثي معتمد، مع تركيب جهاز تتبع سحابي مشفر وحساب وسيط يضمن توريد الأقساط لحسابك البنكي وتبرئة ذمتك.'
-                        : 'بيع سيارة محملة بأقساط أو حظر بيع يتطلب الحصول على موافقة رسمية من البنك أو جهة التمويل وإيداع حصيلة المخالصة بالفرع المانح. تتولى منصة «مخلصة» الإشراف والتنسيق الفني والميداني.'}
+                        : 'بيع سيارة محملة بأقساط أو حظر بيع يتطلب الحصول على موافقة رسمية من البنك أو جهة التمويل وإيداع حصيلة المخالصة بالفرع المانح. تتولى منصة «مخالصة» الإشراف والتنسيق الفني والميداني.'}
                     </p>
                   </div>
                 </div>
@@ -2202,7 +2202,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                   <ShieldCheck className="w-6 h-6 text-emerald-700 flex-shrink-0 mt-0.5" />
                   <div className="space-y-1.5">
                     <span className="font-black text-sm text-emerald-950 block">
-                      نظام تكملة الأقساط المنظم عبر «مخلصة» (حل قانوني معتمد لسيارات حظر البيع)
+                      نظام تكملة الأقساط المنظم عبر «مخالصة» (حل قانوني معتمد لسيارات حظر البيع)
                     </span>
                     <p className="text-2xs text-emerald-900 leading-relaxed">
                       هذا النظام مخصص للسيارات التي عليها حظر بيع بنكي وترغب في التخارج من أقساطها واستلام مقدم نقدي فوري، بينما يستلم المشتري السيارة ويكمل سداد الأقساط للبنك مباشرة. يتم تنظيم المعاملة بالكامل عبر منظومة قانونية وتقنية تحمي الطرفين من أي تعثر أو مساءلة.
@@ -2341,7 +2341,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                   <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                     <h3 className="font-black text-xs text-brand-navy flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                      <span>2. منظومة الحماية والأمان المعتمدة عبر «مخلصة» (كيف نؤمن الطرفين؟)</span>
+                      <span>2. منظومة الحماية والأمان المعتمدة عبر «مخالصة» (كيف نؤمن الطرفين؟)</span>
                     </h3>
                     <span className="text-3xs font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
                       حماية قانونية وتقنية 100%
@@ -2358,7 +2358,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                         <span>عقد الاستغلال والانتفاع الثلاثي الموثق</span>
                       </div>
                       <p className="text-3xs text-slate-600 leading-relaxed pr-8">
-                        عقد رسمي ثلاثي (البائع، المشتري، مخلصة) ينقل كامل المسؤولية الجنائية والمدنية والمخالفات والحوادث فورياً على المشتري المستغل بموجب إقرار استلام رسمي كأمانة، مع إثبات قيد حظر البيع البنكي لحماية البائع تماماً من شبهة تبديد الضمانة.
+                        عقد رسمي ثلاثي (البائع، المشتري، مخالصة) ينقل كامل المسؤولية الجنائية والمدنية والمخالفات والحوادث فورياً على المشتري المستغل بموجب إقرار استلام رسمي كأمانة، مع إثبات قيد حظر البيع البنكي لحماية البائع تماماً من شبهة تبديد الضمانة.
                       </p>
                     </div>
 
@@ -2371,7 +2371,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                         <span>تأمين IoT GPS وخاصية الإيقاف الآمن للمحرك</span>
                       </div>
                       <p className="text-3xs text-slate-600 leading-relaxed pr-8">
-                        تركيب جهاز تتبع ذكي مشفر مربوط بسيرفرات مخلصة مع رصد جغرافي دقيق (Geofencing)، وتفعيل خاصية الإيقاف الآمن للمحرك عن بُعد (Engine Immobilizer) حصرياً عند التأخر عن السداد لحفظ أصل السيارة ومنع تهريبها أو التلاعب بها.
+                        تركيب جهاز تتبع ذكي مشفر مربوط بسيرفرات مخالصة مع رصد جغرافي دقيق (Geofencing)، وتفعيل خاصية الإيقاف الآمن للمحرك عن بُعد (Engine Immobilizer) حصرياً عند التأخر عن السداد لحفظ أصل السيارة ومنع تهريبها أو التلاعب بها.
                       </p>
                     </div>
 
@@ -2384,7 +2384,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                         <span>حساب الضمان البنكي وتوريد الأقساط (Escrow)</span>
                       </div>
                       <p className="text-3xs text-slate-600 leading-relaxed pr-8">
-                        لا يدفع المشتري للبنك مباشرة ولا يسلمك كاش يدوياً؛ بل يودع المشتري القسط شهرياً في حساب الضمان عبر مخلصة، وتقوم المنصة بتوريده للبنك وإرسال إيصال السداد الرسمي فورياً على هاتفك لإبراء ذمتك شهرياً أمام البنك.
+                        لا يدفع المشتري للبنك مباشرة ولا يسلمك كاش يدوياً؛ بل يودع المشتري القسط شهرياً في حساب الضمان عبر مخالصة، وتقوم المنصة بتوريده للبنك وإرسال إيصال السداد الرسمي فورياً على هاتفك لإبراء ذمتك شهرياً أمام البنك.
                       </p>
                     </div>
 
@@ -2397,7 +2397,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                         <span>فك الحظر ونقل الملكية النهائي</span>
                       </div>
                       <p className="text-3xs text-slate-600 leading-relaxed pr-8">
-                        فور اكتمال سداد آخر قسط، تتولى مخلصة استخراج المخالصة البنكية الرسمية وشهادة فك الحظر الموجهة للمرور، والتنسيق لحضور الطرفين بالشهر العقاري لنقل الملكية النهائية للمشتري وتجديد رخصة السيارة باسمه.
+                        فور اكتمال سداد آخر قسط، تتولى مخالصة استخراج المخالصة البنكية الرسمية وشهادة فك الحظر الموجهة للمرور، والتنسيق لحضور الطرفين بالشهر العقاري لنقل الملكية النهائية للمشتري وتجديد رخصة السيارة باسمه.
                       </p>
                     </div>
                   </div>
@@ -2431,7 +2431,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                   <div className="space-y-1">
                     <span className="font-bold">تنبيه: الأرقام المدخلة هنا هي تقدير مبدئي من البائع (غير معتمدة رسمياً)</span>
                     <p className="text-2xs text-blue-800 leading-relaxed">
-                      لا نعتمد هذه المبالغ كأرقام تسوية نهائية؛ بل سيقوم فريق مخلصة بمراجعة بيان المديونية الرسمي (Payoff Quote) الصادر والمختوم من فرع البنك قبل توقيع أي اتفاق مع المشتري.
+                      لا نعتمد هذه المبالغ كأرقام تسوية نهائية؛ بل سيقوم فريق مخالصة بمراجعة بيان المديونية الرسمي (Payoff Quote) الصادر والمختوم من فرع البنك قبل توقيع أي اتفاق مع المشتري.
                     </p>
                   </div>
                 </div>
@@ -2655,7 +2655,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
               <div className="space-y-1">
                 <span className="font-extrabold">لست ملزماً برفع بطاقتك أو عقد التمويل الآن!</span>
                 <p className="text-2xs text-slate-600 leading-relaxed">
-                  يمكنك الاكتفاء بإرسال بيانات السيارة والتواصل للمعاينة المبدئية. قبل إتمام أي إجراء بنكي أو عرض السيارة للمشترين، سيتولى فريق مخلصة مساعدتك في استيفاء الوثائق المطلوبة عبر قناة اتصال مشفرة وخاصة.
+                  يمكنك الاكتفاء بإرسال بيانات السيارة والتواصل للمعاينة المبدئية. قبل إتمام أي إجراء بنكي أو عرض السيارة للمشترين، سيتولى فريق مخالصة مساعدتك في استيفاء الوثائق المطلوبة عبر قناة اتصال مشفرة وخاصة.
                 </p>
               </div>
             </div>
@@ -2716,7 +2716,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                 <span>الخطوة 6: الموقع التقريبي وبيانات التواصل مع البائع</span>
               </h2>
               <p className="text-2xs text-slate-500 mt-1">
-                بياناتك سرية تماماً ولن تظهر للمشترين؛ التواصل مقتصر حصرياً على موظفي مخلصة المعتمدين
+                بياناتك سرية تماماً ولن تظهر للمشترين؛ التواصل مقتصر حصرياً على موظفي مخالصة المعتمدين
               </p>
             </div>
 
@@ -2780,7 +2780,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
               </div>
 
               <div className="sm:col-span-2">
-                <label className="block font-bold text-slate-700 mb-1.5">الوقت المفضل لتواصل فريق مخلصة معك:</label>
+                <label className="block font-bold text-slate-700 mb-1.5">الوقت المفضل لتواصل فريق مخالصة معك:</label>
                 <select
                   value={preferredContactTime}
                   onChange={(e) => setPreferredContactTime(e.target.value)}
@@ -2834,7 +2834,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
                 <div>
                   <span className="text-3xs font-extrabold bg-brand-green text-white px-2 py-0.5 rounded-full">
-                    تقييم محرك مخلصة الذكي
+                    تقييم محرك مخالصة الذكي
                   </span>
                   <h3 className="text-base font-black text-white mt-1">
                     متوسط سعر السوق: {formatEGP(valuation.suggestedAskingPrice)}
@@ -2960,7 +2960,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                     أقر بصحة البيانات وأوافق على شروط المراجعة والتسوية: <span className="text-red-500">*</span>
                   </strong>
                   <p className="text-2xs text-slate-600">
-                    أؤكد أنني أفصحت بأمانة عن كافة العيوب المعروفة لي بالسيارة، وأن بيانات القسط تقريبية لحين تدقيقها رسمياً مع البنك، وأعلم بأن تسجيل الطلب لا يضمن البيع بسعر محدد ولا يمثل موافقة بنكية مسبقة، وأن عمولة مخلصة هي 1.5% من إجمالي البيع تستحق فقط عند إتمام الصفقة.
+                    أؤكد أنني أفصحت بأمانة عن كافة العيوب المعروفة لي بالسيارة، وأن بيانات القسط تقريبية لحين تدقيقها رسمياً مع البنك، وأعلم بأن تسجيل الطلب لا يضمن البيع بسعر محدد ولا يمثل موافقة بنكية مسبقة، وأن عمولة مخالصة هي 1.5% من إجمالي البيع تستحق فقط عند إتمام الصفقة.
                   </p>
                 </div>
               </label>
@@ -3022,7 +3022,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
                 تم نشر إعلانك بنجاح
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">
-                تم حفظ بيانات سيارتك وتأكيد استلام الطلب رسمياً في نظام مخلصة. تم تعيين مسؤول لمراجعة الأوراق تمهيداً للاعتماد النهائي في المعرض.
+                تم حفظ بيانات سيارتك وتأكيد استلام الطلب رسمياً في نظام مخالصة. تم تعيين مسؤول لمراجعة الأوراق تمهيداً للاعتماد النهائي في المعرض.
               </p>
             </div>
 
@@ -3081,10 +3081,10 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
               <div className="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/60 text-2xs space-y-1 text-slate-300">
                 <div className="font-bold text-emerald-400 flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>الخطوة التالية لمسؤول المعاملات في مخلصة:</span>
+                  <span>الخطوة التالية لمسؤول المعاملات في مخالصة:</span>
                 </div>
                 <p className="leading-relaxed">
-                  يقوم مستشار مخلصة بمراجعة بيانات السيارة، والتأكد من توافق القسط وأصل المديونية مع جهة التمويل، واعتماد النشر في المعرض العام خلال ساعات العمل الرسمية.
+                  يقوم مستشار مخالصة بمراجعة بيانات السيارة، والتأكد من توافق القسط وأصل المديونية مع جهة التمويل، واعتماد النشر في المعرض العام خلال ساعات العمل الرسمية.
                 </p>
               </div>
             </div>
@@ -3100,7 +3100,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
               </div>
               <div className="flex items-start gap-2.5">
                 <span className="w-5 h-5 rounded-full bg-brand-navy text-white text-3xs font-bold flex items-center justify-center flex-shrink-0">2</span>
-                <span>في حال طلب مستندات (رخصة / بطاقة / بيان مديونية)، يمكنك رفعها مباشرة من حسابك أو إرسالها لواتساب مخلصة.</span>
+                <span>في حال طلب مستندات (رخصة / بطاقة / بيان مديونية)، يمكنك رفعها مباشرة من حسابك أو إرسالها لواتساب مخالصة.</span>
               </div>
               <div className="flex items-start gap-2.5">
                 <span className="w-5 h-5 rounded-full bg-brand-navy text-white text-3xs font-bold flex items-center justify-center flex-shrink-0">3</span>
@@ -3143,7 +3143,7 @@ export const SellCarWizardPage: React.FC<SellCarWizardPageProps> = ({
 
             <div className="text-center space-y-2">
               <h3 className="font-black text-lg text-brand-navy">
-                سيارتك مؤهلة للعرض والبيع في مخلصة!
+                سيارتك مؤهلة للعرض والبيع في مخالصة!
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
                 إذا كانت سيارتك ملكية حرة بدون ديون، يمكنك بيعها نقداً كاش فوراً، أو عرضها بنظام التقسيط المباشر للمشترين.

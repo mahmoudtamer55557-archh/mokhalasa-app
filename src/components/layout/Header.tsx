@@ -78,8 +78,8 @@ export const Header: React.FC<HeaderProps> = ({
   const navItems = [
     { id: 'home', labelAr: 'الرئيسية', labelEn: 'Home' },
     { id: 'marketplace', labelAr: 'تصفح السيارات', labelEn: 'Browse Cars' },
-    { id: 'sell-wizard', labelAr: 'بيع عربيتك مع مخلصة', labelEn: 'Sell Your Car' },
-    { id: 'how-it-works', labelAr: 'كيف تعمل مخلصة؟', labelEn: 'How It Works' },
+    { id: 'sell-wizard', labelAr: 'بيع عربيتك مع مخالصة', labelEn: 'Sell Your Car' },
+    { id: 'how-it-works', labelAr: 'كيف تعمل مخالصة؟', labelEn: 'How It Works' },
     { id: 'blog', labelAr: 'دليل السيارات', labelEn: 'Car Guides' },
     { id: 'faq', labelAr: 'الأسئلة الشائعة', labelEn: 'FAQ' },
     { id: 'contact', labelAr: 'تواصل معنا', labelEn: 'Contact Us' },
@@ -722,7 +722,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => { handleNav('sell-wizard'); setMobileMenuOpen(false); }}
               className="w-full py-2.5 rounded-xl bg-brand-green text-white font-extrabold text-xs shadow-md text-center"
             >
-              {isAr ? 'عايز أبيع عربيتي مع مخلصة' : 'Sell Your Car with Mokhalasa'}
+              {isAr ? 'عايز أبيع عربيتي مع مخالصة' : 'Sell Your Car with Mokhalasa'}
             </button>
 
             <button
@@ -743,7 +743,7 @@ export const Header: React.FC<HeaderProps> = ({
               }}
               className="w-full py-2.5 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs text-center"
             >
-              {isAr ? 'اسأل فريق مخلصة عن الإجراءات' : 'Ask Mokhalasa Team About Bank Procedures'}
+              {isAr ? 'اسأل فريق مخالصة عن الإجراءات' : 'Ask Mokhalasa Team About Bank Procedures'}
             </button>
           </div>
         </div>

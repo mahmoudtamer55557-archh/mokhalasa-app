@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>ملف التقديم لحاضنة الأعمال — منصة مخالصة | ريادة الأعمال الاجتماعية والتمكين الاقتصادي</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    @page {
+      size: A4;
+      margin: 14mm 12mm;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    body {
+      background-color: #ffffff;
+      color: #1e293b;
+      font-size: 11pt;
+      line-height: 1.6;
+    }
+    .page {
+      page-break-after: always;
+      position: relative;
+      min-height: 260mm;
+      padding-bottom: 20px;
+    }
+    .page:last-child {
+      page-break-after: auto;
+    }
+    
+    /* Cover Page Styling */
+    .cover {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 265mm;
+      padding: 20px 10px;
+      border: 3px double #065f46;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 40%, #f8fafc 100%);
+    }
+    .cover-top {
+      text-align: center;
+      border-bottom: 2px solid #059669;
+      padding-bottom: 20px;
+    }
+    .inst-badge {
+      display: inline-block;
+      background: #065f46;
+      color: #ffffff;
+      padding: 6px 18px;
+      border-radius: 20px;
+      font-weight: 800;
+      font-size: 11pt;
+      margin-bottom: 15px;
+    }
+    .cover-title {
+      font-size: 26pt;
+      font-weight: 900;
+      color: #064e3b;
+      margin: 10px 0;
+      letter-spacing: -0.5px;
+    }
+    .cover-subtitle {
+      font-size: 14pt;
+      font-weight: 700;
+      color: #0284c7;
+      margin-bottom: 10px;
+    }
+    .cover-domain {
+      display: inline-block;
+      direction: ltr;
+      font-family: monospace;
+      font-size: 12pt;
+      font-weight: 800;
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 4px 14px;
+      border-radius: 6px;
+      border: 1px solid #bae6fd;
+    }
+    .cover-middle {
+      text-align: center;
+      padding: 30px 20px;
+    }
+    .mission-box {
+      background: #ffffff;
+      border: 2px dashed #059669;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(5, 150, 105, 0.08);
+      text-align: justify;
+    }
+    .mission-box h3 {
+      color: #065f46;
+      font-size: 14pt;
+      font-weight: 800;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    .cover-team {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 18px;
+      margin-top: 15px;
+    }
+    .team-grid {
+      display: flex;
+      justify-content: space-around;
+      gap: 15px;
+      margin-top: 10px;
+    }
+    .team-card {
+      flex: 1;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-top: 4px solid #059669;
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+    }
+    .team-card.social {
+      border-top-color: #0284c7;
+    }
+    .team-name {
+      font-size: 12pt;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .team-role {
+      font-size: 10pt;
+      font-weight: 700;
+      color: #059669;
+      margin: 4px 0;
+    }
+    .team-card.social .team-role {
+      color: #0284c7;
+    }
+    .team-desc {
+      font-size: 8.5pt;
+      color: #64748b;
+      line-height: 1.4;
+    }
+    .cover-footer {
+      text-align: center;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 12px;
+      font-size: 9pt;
+      color: #64748b;
+    }
+
+    /* Inner Pages Layout */
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #065f46;
+      padding-bottom: 8px;
+      margin-bottom: 16px;
+    }
+    .header-brand {
+      font-size: 14pt;
+      font-weight: 900;
+      color: #065f46;
+    }
+    .header-tag {
+      font-size: 9pt;
+      color: #64748b;
+      font-weight: 600;
+    }
+    .footer-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid #cbd5e1;
+      padding-top: 6px;
+      font-size: 8.5pt;
+      color: #94a3b8;
+    }
+
+    /* Section Styling */
+    h2.section-title {
+      font-size: 15pt;
+      font-weight: 900;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      background: #f1f5f9;
+      padding: 6px 12px;
+      border-right: 5px solid #059669;
+      border-radius: 4px;
+    }
+    h2.section-title.social-focus {
+      border-right-color: #0284c7;
+      background: #f0f9ff;
+    }
+    h3.sub-title {
+      font-size: 12pt;
+      font-weight: 800;
+      color: #065f46;
+      margin: 12px 0 6px 0;
+    }
+    h3.sub-title.social {
+      color: #0369a1;
+    }
+    p {
+      text-align: justify;
+      margin-bottom: 10px;
+      font-size: 10pt;
+      color: #334155;
+    }
+    
+    /* Highlight Cards */
+    .card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+    .card.social-card {
+      background: #f0fdf4;
+      border-color: #a7f3d0;
+    }
+    .card.economic-card {
+      background: #f0f9ff;
+      border-color: #bae6fd;
+    }
+    .card-title {
+      font-size: 11pt;
+      font-weight: 800;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .card.social-card .card-title { color: #047857; }
+    .card.economic-card .card-title { color: #0369a1; }
+    
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 9.5pt;
+    }
+    th {
+      background: #0f172a;
+      color: #ffffff;
+      padding: 8px 10px;
+      font-weight: 800;
+      text-align: right;
+    }
+    th.th-social { background: #0369a1; }
+    th.th-budget { background: #065f46; }
+    td {
+      padding: 7px 10px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #334155;
+    }
+    tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 8pt;
+    }
+    .badge-green { background: #dcfce7; color: #166534; }
+    .badge-blue { background: #e0f2fe; color: #075985; }
+    .badge-amber { background: #fef3c7; color: #92400e; }
+
+    ul.bullet-list {
+      list-style-type: none;
+      padding-right: 5px;
+      margin-bottom: 10px;
+    }
+    ul.bullet-list li {
+      position: relative;
+      padding-right: 18px;
+      margin-bottom: 5px;
+      font-size: 9.5pt;
+      color: #334155;
+      text-align: justify;
+    }
+    ul.bullet-list li::before {
+      content: "■";
+      position: absolute;
+      right: 0;
+      top: 0;
+      color: #059669;
+      font-size: 8pt;
+    }
+    ul.bullet-list.social li::before {
+      color: #0284c7;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== PAGE 1: COVER PAGE ==================== -->
+  <div class="page cover">
+    <div class="cover-top">
+      <span class="inst-badge">مقدم إلى: حاضنة الأعمال — كلية الخدمة الاجتماعية</span>
+      <h1 class="cover-title">منصة «مخالصة | Mokhalasa»</h1>
+      <p class="cover-subtitle">منظومة ريادة الأعمال الاجتماعية والحلول الاقتصادية الآمنة لمتعثري تمويل السيارات في مصر</p>
+      <span class="cover-domain">https://mokalasa.online</span>
+    </div>
+
+    <div class="cover-middle">
+      <div class="mission-box">
+        <h3>🌱 جوهر المشروع ورسالته الاجتماعية</h3>
+        <p>
+          تأسست منصة <strong>«مخالصة»</strong> كنموذج ريادي مبتكر يدمج بين <strong>الخدمة الاجتماعية التطبيقية</strong> و<strong>التكنولوجيا المالية (FinTech)</strong>؛ لحماية الأسر المصرية من التفكك، ودرء مخاطر السجن والغرم الناجم عن الديون وتعثر أقساط السيارات في ظل الأزمات التضخمية الراهنة. تهدف المنصة إلى تحويل التعثر من "كارثة قضائية واجتماعية" إلى <strong>"تخارج مالي كريم واسترداد آمن للحقوق"</strong> وفق أعلى معايير الشفافية والتضامن الإنساني.
+        </p>
+      </div>
+
+      <div class="cover-team">
+        <h4 style="font-size: 11pt; font-weight: 800; color: #0f172a; margin-bottom: 6px;">فريق التأسيس والقيادة الريادية</h4>
+        <div class="team-grid">
+          
+          <div class="team-card">
+            <div class="team-name">محمود تامر</div>
+            <div class="team-role">الرئيس التنفيذي والمؤسس الشريك (CEO)</div>
+            <div class="team-desc">
+              إدارة العمليات التكنولوجية، التحالفات الاستراتيجية مع المعارض والبنوك، وإدارة منصة البرمجيات والأنظمة الآلية.
+            </div>
+          </div>
+
+          <div class="team-card social">
+            <div class="team-name">ماسا تامر</div>
+            <div class="team-role">رئيس دراسة الحالات الاجتماعية والأثر المجتمعي</div>
+            <div class="team-desc">
+              التشخيص الاجتماعي للمتعثرين، دراسة الحالات الأسرية (Casework)، تصميم خطط التخارج والوساطة الإنسانية وحماية الأسرة.
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="cover-footer">
+      <p>جمهورية مصر العربية — نوفمبر 2026 | وثيقة مشروع متكاملة مقدمة لحاضنة الأعمال الجامعية</p>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE 2: SOCIAL WORK FOUNDATION ==================== -->
+  <div class="page">
+    <div class="header-bar">
+      <span class="header-brand">مخالصة | Mokhalasa.online</span>
+      <span class="header-tag">المحور الأول: الركيزة الاجتماعية وأثر الخدمة الاجتماعية</span>
+    </div>
+
+    <h2 class="section-title social-focus">1. ركيزة الخدمة الاجتماعية: صميم فلسفة منصة «مخالصة»</h2>
+    
+    <p>
+      لا تمثل منصة «مخالصة» مجرد سوق لتبادل السيارات، بل هي في الأساس <strong>أداة تدخل اجتماعي مهني (Social Intervention)</strong> في واحدة من أخطر الأزمات التي تهدد الاستقرار الأسري والمجتمعي في مصر حالياً، وهي أزمة <strong>«تعثر الديون والاستدانة الاستهلاكية المفرطة»</strong>.
+    </p>
+
+    <div class="card social-card">
+      <div class="card-title">🔍 الأبعاد المجتمعية الخطيرة لقضية تعثر أقساط السيارات في مصر:</div>
+      <ul class="bullet-list social">
+        <li><strong>التفكك الأسري والطلاق:</strong> الضغوط النفسية المستمرة على عائل الأسرة نتيجة ملاحقة البنوك وتراكم الشيكات وإيصالات الأمانة تؤدي مباشرة إلى انهيار الاستقرار المنزلي وارتفاع معدلات الطلاق والخلافات الأسرية.</li>
+        <li><strong>مخاطر الحبس وسقوط عائل الأسرة (قضايا الغارمات والغارمين):</strong> تحول المقترضين بحسن نية إلى مدانين بأحكام حبس قضائية في قضايا تبديد وشيكات مصرفية بدون رصيد، مما يحرم الأبناء من مصدر رزقهم ودعمهم المعنوي.</li>
+        <li><strong>الوصمة الاجتماعية والضغط النفسي:</strong> معاناة المدينين من الخوف المستمر من أحكام الضبط والإحضار وتجميد الحسابات البنكية ومصادرة أموالهم، مما يشل قدرتهم الإنتاجية في المجتمع.</li>
+      </ul>
+    </div>
+
+    <h3 class="sub-title social">دور الخدمة الاجتماعية والقيادة الإنسانية (أ. ماسا تامر):</h3>
+    <p>
+      تقود <strong>أ. ماسا تامر</strong> وحدة <strong>«دراسة الحالات الاجتماعية والتأهيل المالي»</strong> داخل المنصة، والتي تطبق المناهج العلمية المعتمدة في كليات الخدمة الاجتماعية:
+    </p>
+
+    <table style="margin-top: 5px;">
+      <thead>
+        <tr>
+          <th class="th-social" style="width: 25%;">المرحلة المهنية</th>
+          <th class="th-social" style="width: 35%;">الإجراء الاجتماعي المتبع</th>
+          <th class="th-social" style="width: 40%;">الأثر الأسري المباشر</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>1. استقبال الحالة والاستماع الفعّال</strong></td>
+          <td>مقابلة المالك المتعثر، دراسة مسببات الأزمة (فقدان عمل، مرض، التزامات أسرية)، والتخفيف من وطأة الهلع النفسي.</td>
+          <td>استعادة التوازن النفسي لرب الأسرة وحمايته من اتخاذ قرارات يائسة (مثل البيع بأسعار بخسة للمحتالين).</td>
+        </tr>
+        <tr>
+          <td><strong>2. دراسة الحالة والتشخيص (Casework)</strong></td>
+          <td>تحليل شامل للوضع المالي والاجتماعي للأسرة، وحساب الفجوة بين الدخل الفعلي وأقساط السيارة والتزامات المعيشة.</td>
+          <td>تحديد "الحد الأدنى الآمن" الذي تحتاجه الأسرة كفائض كاش بعد سداد دين البنك لضمان استمرار معيشتها.</td>
+        </tr>
+        <tr>
+          <td><strong>3. الوساطة الإنسانية وحفظ الكرامة</strong></td>
+          <td>إدارة التفاوض المالي بين المالك والجهات التمويلية والمعارض بروح حامية للمدين، دون أي ابتزاز أو مساومة.</td>
+          <td>تخليص الأسرة من الديون بكرامة، ونقل الملكية رسمياً مع إبراء ذمة المدين البنكية والجنائية بنسبة 100%.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="card" style="border-right: 4px solid #0284c7; margin-top: 10px;">
+      <p style="font-size: 9.5pt; font-weight: 700; color: #0369a1; margin-bottom: 2px;">
+        🎯 الهدف الاجتماعي المستدام للمشروع:
+      </p>
+      <p style="font-size: 9pt; margin-bottom: 0;">
+        الوصول إلى <strong>«صفر قضايا حبس»</strong> للمواطنين المسجلين بالمنصة، وإعادة دمج الأسر المتعثرة في الدورة الاقتصادية الطبيعية، وهو صلب رسالة حاضنة أعمال كلية الخدمة الاجتماعية.
+      </p>
+    </div>
+
+    <div class="footer-bar">
+      <span>منصة مخالصة | ملف حاضنة الأعمال</span>
+      <span>صفحة 2 من 5</span>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE 3: ECONOMIC MODEL & GOOGLE INDEXING ==================== -->
+  <div class="page">
+    <div class="header-bar">
+      <span class="header-brand">مخالصة | Mokhalasa.online</span>
+      <span class="header-tag">المحور الثاني: الجاهزية الرقمية ونموذج الإيرادات</span>
+    </div>
+
+    <h2 class="section-title">2. الجدوى الاقتصادية، الجاهزية والفرز في جوجل، وتدفقات الأرباح</h2>
+
+    <p>
+      تتميز منصة «مخالصة» بأنها <strong>مشروع قائم وشغال بالكامل على أرض الواقع (Live & Fully Operational)</strong>، وتجاوزت تماماً مرحلة الأفكار النظرية، ومثبتة تكنولوجياً عبر الرابط الرسمي المباشر:
+    </p>
+
+    <div class="card economic-card">
+      <div class="card-title">🌐 الجاهزية التكنولوجية والفرز الكامل في محركات البحث (Google Indexing & SEO):</div>
+      <ul class="bullet-list">
+        <li><strong>مفهرسة ومتفرزنة رسمياً في جوجل (Google Search Indexed):</strong> تم إدراج صفحات وخرائط الموقع بالكامل في محرك بحث جوجل (Google Search Console) ومحرك (Bing) بواسطة ملفات الـ Sitemap و Robots و Schema Markup المتطورة.</li>
+        <li><strong>نظام تحسين محركات البحث المحلي (Local SEO):</strong> المنصة متوافقة مع الكلمات المفتاحية الأكثر بحثاً في مصر المتعلقة بـ (فك حظر بيع السيارات، سداد قروض السيارات، بيع سيارات بتكملة أقساط في الجيزة والقاهرة).</li>
+        <li><strong>بنية برمجية سريعة ومتجاوبة:</strong> تم بناء المنصة باستخدام أحدث تقنيات الويب الحديثة لتعمل بكفاءة فائقة على أجهزة الموبايل لخدمة الجمهور والمعارض دون أي بطء.</li>
+      </ul>
+    </div>
+
+    <h3 class="sub-title">أ. حجم السوق والطلب الحقيقي (Market Demand):</h3>
+    <ul class="bullet-list">
+      <li><strong>أزمة التضخم والفائدة القياسية:</strong> مع وصول أسعار الفائدة المصرفية في مصر لأكثر من 27%، أصبح آلاف المواطنين عاجزين عن سداد أقساط شهرية تتراوح بين 12,000 إلى 25,000 ج.م شهرياً.</li>
+      <li><strong>فشل الأسواق العشوائية:</strong> المعارض التقليدية تخشى شراء السيارات المحظورة لتعقيد إجراءاتها، والمجموعات العشوائية غارقة في النصب وتوكيلات الإدارة المزيفة.</li>
+      <li><strong>شبكة معارض جاهزة:</strong> تمتلك المنصة شبكة علاقات مع معارض معتمدة بالقاهرة الكبرى والجيزة (فيصل، الهرم، المريوطية)، وأثبتت المراسلات الجارية رغبة المعارض الأكيدة في شراء هذه السيارات كاش فوراً بضمان «مخالصة».</li>
+    </ul>
+
+    <h3 class="sub-title">ب. مصفوفة تدفقات الإيرادات المتعددة (Monetization Streams):</h3>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 28%;">مصدر الإيراد</th>
+          <th style="width: 44%;">آلية التحصيل والتسعير</th>
+          <th style="width: 28%;">طبيعة التدفق المالي</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>1. عمولة الوساطة والتخارج الكاش</strong></td>
+          <td>نسبة وساطة تتراوح بين <strong>1.5% إلى 2.5%</strong> من إجمالي قيمة صفقة بيع السيارة وسداد البنك، تُخصم تلقائياً عند التنفيذ.</td>
+          <td><span class="badge badge-green">إيراد مباشر فوري عن كل صفقة</span></td>
+        </tr>
+        <tr>
+          <td><strong>2. عمولة وساطة التقسيط المباشر (P2P)</strong></td>
+          <td>نسبة وساطة تجارية تتراوح بين <strong>2% إلى 3%</strong> تُدفع لمرة واحدة عند ربط المالك بالمشتري وتوقيع العقود وتسليم السيارة.</td>
+          <td><span class="badge badge-green">إيراد تعاقدي مع كل عملية تقسيط</span></td>
+        </tr>
+        <tr>
+          <td><strong>3. رسوم التحصيل الشهري وخدمة الـ GPS</strong></td>
+          <td>مبلغ خدمة إدارية مقطوع يُضاف شهرياً على قسط السيارة مقابل متابعة السداد البنكي، إصدار الإيصالات، وسيرفر التتبع.</td>
+          <td><span class="badge badge-blue">إيراد شهري متكرر ثابت (Recurring MRR)</span></td>
+        </tr>
+        <tr>
+          <td><strong>4. رسوم الإجراءات القانونية وفك الحظر</strong></td>
+          <td>رسوم خدمة مقطوعة مقابل استخراج المخالصات البنكية الرسمية، شهادات البيانات، وإنهاء إجراءات فك الحظر بالمرور.</td>
+          <td><span class="badge badge-green">رسوم خدمات لوجستية وقانونية</span></td>
+        </tr>
+        <tr>
+          <td><strong>5. باقات الاشتراكات المميزة للمعارض (SaaS)</strong></td>
+          <td>باقات اشتراك شهرية وسنوية مرنة تتيح لمعارض السيارات الاطلاع المبكر على الفرص والسيارات المحروقة قبل طرحها للعامة.</td>
+          <td><span class="badge badge-blue">اشتراكات قطاع الأعمال (B2B SaaS)</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="footer-bar">
+      <span>منصة مخالصة | ملف حاضنة الأعمال</span>
+      <span>صفحة 3 من 5</span>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE 4: P2P INNOVATION & LEGAL FRAMEWORK ==================== -->
+  <div class="page">
+    <div class="header-bar">
+      <span class="header-brand">مخالصة | Mokhalasa.online</span>
+      <span class="header-tag">المحور الثالث: الابتكار في تكملة الأقساط والأطر الشرعية والقانونية</span>
+    </div>
+
+    <h2 class="section-title">3. خدمة «التقسيط المباشر الآمن بضمان مخالصة» (P2P Car Finance)</h2>
+
+    <p>
+      بناءً على الرصد الميداني لجروبات ومجتمعات السيارات في مصر، تبيّن أن <strong>أكثر من 80% من طالبي السيارات</strong> يبحثون عن دفع مقدم متوسط (100 - 150 ألف) وتقسيط الباقي مباشرة، نظراً لصعوبة استيفاء شروط البنوك (عدم وجود مفردات مرتب، تعثر الآي سكور، العمل الحر).
+    </p>
+
+    <div class="card economic-card">
+      <div class="card-title">⚙️ منظومة التشغيل الآمن والرقابة التكنولوجية (المخطط التنفيذي):</div>
+      <p style="font-size: 9.5pt; margin-bottom: 6px;">
+        ابتكرت منصة «مخالصة» حلاً تكنولوجياً وقانونياً ثلاثي الأركان لحماية الطرفين، سيتم إطلاقه رسمياً عبر المنصة:
+      </p>
+      <ul class="bullet-list">
+        <li><strong>أولاً: التحصيل عبر خزانة المنصة (Escrow):</strong> لا يدفع المشتري مليماً للبائع مباشرة؛ بل يودع المشتري القسط شهرياً في حساب المنصة الوسيط، والتي تقوم بسداده مباشرة لحساب قرض البنك وتصدير إيصال الإيداع الرسمي للطرفين لضمان عدم تبديد الأموال.</li>
+        <li><strong>ثانياً: الحماية التكنولوجية (GPS Remote Immobilizer):</strong> تركيب جهاز تتبع متطور مخفي في كل سيارة مقسطة، يتيح قفل تشغيل المحرك عن بعد وتحديد موقع السيارة فوراً في حال تخلف المشتري عن سداد القسط الشهري لمدة تتجاوز 7 أيام.</li>
+        <li><strong>ثالثاً: الحزمة القانونية والائتمانية:</strong> توقيع عقود انتفاع وحيازة مشروطة، إيصالات أمانة وشيكات بنكية بقيمة الأقساط، إقرار استلام سيارة ومحافظة عليها، توكيل قيادة وإدارة مشروط ومحدد بسنة واحدة فقط، مع وجود ضامن متضامن من الدرجة الأولى.</li>
+      </ul>
+    </div>
+
+    <h3 class="sub-title">الالتزام الكامل بالضوابط الشرعية والمعاملات الإسلامية:</h3>
+    <div class="card social-card">
+      <p style="font-size: 9.5pt; margin-bottom: 4px;">
+        حرصت إدارة المنصة على استشارة أحكام فقه المعاملات لضمان **حِلّ المشروع وبركته** وخلوه من الربا:
+      </p>
+      <ul class="bullet-list social">
+        <li><strong>البيع بالتقسيط حلال شرعاً:</strong> يجوز اتفاق البائع والمشتري على سعر إجمالي محدد بالتقسيط أعلى من الكاش طالما حُددت الأقساط والمواعيد في مجلس العقد دون زيادة لاحقة.</li>
+        <li><strong>منع غرامات التأخير الربوية:</strong> المنصة لا تفرض أي غرامات تأخير مالية لصالحها (حماية من ربا الجاهلية)، والبديل هو استرداد حيازة السيارة عبر الـ GPS في حال المماطلة.</li>
+        <li><strong>تكييف دخل المنصة:</strong> أرباح المنصة هي <strong>«أجر وكالة وسمسرة + أجر خدمات إدارية وتتبع تقني»</strong> حلال بإجماع الفقهاء نظير عمل وجهد ملموس.</li>
+      </ul>
+    </div>
+
+    <h3 class="sub-title">التشغيل التجريبي والعمليات الحقيقية المسجلة:</h3>
+    <p style="font-size: 9.5pt;">
+      قامت المنصة بالتعامل مع حالات حقيقية مسجلة بكامل مستنداتها، منها: سيارة أوبترا 2021 (تقسيط عبد اللطيف جميل بمبلغ سداد 470 ألف)، وسيارة أوبترا 2019 (بنك إيجي بنك بقسط 14,800 ج.م)، وتم توثيق طلبات الشراء من معارض كبرى للتنفيذ الكاش الفوري، مما يثبت نجاح نموذج العمل وجاهزيته للانطلاق الكامل.
+    </p>
+
+    <div class="footer-bar">
+      <span>منصة مخالصة | ملف حاضنة الأعمال</span>
+      <span>صفحة 4 من 5</span>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE 5: INCUBATION ALLOCATION & LEGAL INCORPORATION ==================== -->
+  <div class="page">
+    <div class="header-bar">
+      <span class="header-brand">مخالصة | Mokhalasa.online</span>
+      <span class="header-tag">المحور الرابع: متطلبات الدعم المؤسسي، التأسيس، والملكية الفكرية</span>
+    </div>
+
+    <h2 class="section-title">4. متطلبات دعم واحتضان المشروع: التأسيس المؤسسي، البنية السحابية، وحماية الملكية الفكرية</h2>
+
+    <p>
+      تتطلع منصة «مخالصة» من خلال انضمامها لحاضنة الأعمال إلى توجيه الدعم التأسيسي لتغطية الاحتياجات الجوهرية التي تضمن تحويل المنصة من مشروع ناشئ إلى <strong>كيان تجاري وقانوني رسمي مسجل</strong> يعمل بكفاءة تكنولوجية غير منقطعة:
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th class="th-budget" style="width: 32%;">بند الدعم التأسيسي المطلوب</th>
+          <th class="th-budget" style="width: 48%;">المخرجات الملموسة والأثر التشغيلي للمشروع</th>
+          <th class="th-budget" style="width: 20%;">الأولوية الاستراتيجية</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background: #f0fdf4;">
+          <td><strong>1. تأسيس وتسجيل الشركة رسمياً</strong></td>
+          <td>
+            <strong>الأولوية القصوى للمشروع:</strong> السير في إجراءات التأسيس القانوني واستخراج السجل التجاري، البطاقة الضريبية، وفتح الملف التأميني عبر <strong>الهيئة العامة للاستثمار والمناطق الحرة (GAFI)</strong> لإضفاء الصفة الرسمية والقانونية الكاملة على تعاملات المنصة مع البنوك والمواطنين.
+          </td>
+          <td><span class="badge badge-green">أولوية قصوى عاجلة</span></td>
+        </tr>
+        <tr>
+          <td><strong>2. استضافة السيرفرات والـ VPS (Hostinger / VPS)</strong></td>
+          <td>
+            حجز خوادم خاصة افتراضية (VPS / Cloud Hosting) فائقة السرعة والأمان عبر مزودات سحابية معتمدة مثل (Hostinger / Dedicated VPS) لتحمل حركة المرور المتزايدة، وربط النطاقات، وضمان تشغيل المنصة 24/7 دون انقطاع.
+          </td>
+          <td><span class="badge badge-green">بنية تحتية أساسية</span></td>
+        </tr>
+        <tr>
+          <td><strong>3. قواعد البيانات السحابية الآمنة (Cloud Database)</strong></td>
+          <td>
+            الاشتراك المؤسسي في قواعد بيانات سحابية مشفرة ومؤمنة (Managed PostgreSQL / Supabase Instance) لتخزين وحفظ وثائق وبيانات العملاء، رخص السيارات، وعقود البيع وفق أعلى معايير أمن وسرية البيانات.
+          </td>
+          <td><span class="badge badge-green">بنية تحتية أساسية</span></td>
+        </tr>
+        <tr>
+          <td><strong>4. سيرفرات إنترنت الأشياء والـ GPS Telematics</strong></td>
+          <td>
+            خوادم سحابية مخصصة للربط المباشر مع أجهزة التتبع والتحكم بالسيارات (GPS IoT Telematics Servers) لإرسال إشارات التعطيل الآمن للمحرك واستقبال إحداثيات المواقع الحية لمنظومة التقسيط المباشر.
+          </td>
+          <td><span class="badge badge-blue">تشغيل تقني متقدم</span></td>
+        </tr>
+        <tr>
+          <td><strong>5. تسجيل الملكية الفكرية وحماية المصنفات (ITIDA)</strong></td>
+          <td>
+            إيداع وتسجيل مصنف الحاسب الآلي وقواعد البيانات ونموذج العمل الرقمي لـ «مخالصة» لدى <strong>مكتب حماية حقوق الملكية الفكرية بهيئة تنمية صناعة تكنولوجيا المعلومات (ITIDA)</strong> بالقرية الذكية لحماية الفكرة والبرمجيات من الاقتباس أو القرصنة.
+          </td>
+          <td><span class="badge badge-blue">حماية ملكية فكرية</span></td>
+        </tr>
+        <tr>
+          <td><strong>6. الاستشارات القانونية وتغطية الانطلاق الرسمي</strong></td>
+          <td>
+            الاستعانة بمستشار قانوني متخصص لصياغة العقود النموذجية للوساطة والتقسيط المباشر وإقرارات الأمانة المتوافقة مع القانون التجاري المصري، وتغطية مصاريف الإطلاق المؤسسي الرسمي للمشروع.
+          </td>
+          <td><span class="badge badge-amber">جاهزية تعاقدية</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3 class="sub-title">إيضاح قانوني: كيف يتم تسجيل وحماية فكرة وموقع «مخالصة» في مصر؟</h3>
+    <div class="card" style="border-right: 4px solid #059669;">
+      <ul class="bullet-list">
+        <li><strong>أولاً: تسجيل برمجيات وموقع المنصة (ITIDA):</strong> ينص القانون رقم 82 لسنة 2002 على حماية برامج الحاسب الآلي وقواعد البيانات؛ ويتم استخراج شهادة إيداع رسمي تسجل الكود البرمجي ونظام عمل المنصة باسم المؤسسين لحمايتها جنائياً ومدنياً من السرقة.</li>
+        <li><strong>ثانياً: تسجيل العلامة التجارية (Trademark):</strong> تسجيل الاسم التجاري والشعار (مخالصة | Mokhalasa) بالإدارة المركزية للعلامات التجارية بوزارة التموين لحمايته كعلامة تجارية في قطاع الخدمات التكنولوجية والوساطة.</li>
+        <li><strong>ثالثاً: التأسيس الرسمي للشركة (GAFI):</strong> تأسيس الكيان القانوني كـ (شركة شخص واحد أو شركة ذات مسؤولية محدودة) بهيئة الاستثمار، لتمتلك المنصة سجلاً تجارياً وبطاقة ضريبية معتمدة.</li>
+      </ul>
+    </div>
+
+    <div class="card social-card" style="margin-top: 10px; text-align: center;">
+      <h4 style="color: #064e3b; font-size: 10.5pt; font-weight: 800; margin-bottom: 2px;">رسالة ختامية لحاضنة الأعمال:</h4>
+      <p style="font-size: 9pt; color: #047857; margin-bottom: 0;">
+        إن احتضانكم لمنصة «مخالصة» في كلية الخدمة الاجتماعية يمثل تجسيداً حقيقياً لرؤية مصر 2030 في تطويع الابتكار الرقمي لحماية التماسك الأسري والمجتمعي، ودعم الاقتصاد الوطني من خلال تحويل المتعثرين من عبء قضائي إلى طاقة إنتاجية آمنة.
+      </p>
+    </div>
+
+    <div class="footer-bar">
+      <span>منصة مخالصة | ملف حاضنة الأعمال</span>
+      <span>صفحة 5 من 5</span>
+    </div>
+  </div>
+
+</body>
+</html>

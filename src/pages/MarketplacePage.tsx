@@ -287,7 +287,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
                   {isAr 
-                    ? 'السيارات المعتمدة يتم حجزها وفحصها باستمرار. سجّل مواصفات سيارتك المطلوبة وميزانيتك، وسيقوم مستشار مخلصة بالتواصل معك فور توفرها وقبل طرحها في السوق العام.'
+                    ? 'السيارات المعتمدة يتم حجزها وفحصها باستمرار. سجّل مواصفات سيارتك المطلوبة وميزانيتك، وسيقوم مستشار مخالصة بالتواصل معك فور توفرها وقبل طرحها في السوق العام.'
                     : 'Certified vehicles are frequently pre-booked. Register your desired car and budget, and our advisor will reach out as soon as a matching car is verified.'}
                 </p>
               </div>
@@ -295,7 +295,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
               {buyerRequestSuccess ? (
                 <div className="bg-emerald-500/20 border border-emerald-500/40 rounded-2xl p-5 text-center text-emerald-300 text-xs font-bold space-y-1">
                   <p className="text-sm font-black">🎉 تم تسجيل طلبك واهتمامك بنجاح!</p>
-                  <p>سيقوم فريق مخلصة بمراجعة قاعدة طلبات التسوية وإشعارك برقم هاتفك فور توافر السيارة ومطابقتها للفحص.</p>
+                  <p>سيقوم فريق مخالصة بمراجعة قاعدة طلبات التسوية وإشعارك برقم هاتفك فور توافر السيارة ومطابقتها للفحص.</p>
                 </div>
               ) : (
                 <form onSubmit={handleBuyerRequestSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-white/5 p-4 rounded-2xl border border-white/10">
@@ -375,7 +375,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="space-y-0.5">
                   <h4 className="text-sm font-extrabold text-brand-navy">
-                    {isAr ? 'نماذج صفقات التسوية المعتمدة والتقسيط عبر مخلصة' : 'Verified Settlement & Installment Deal Models'}
+                    {isAr ? 'نماذج صفقات التسوية المعتمدة والتقسيط عبر مخالصة' : 'Verified Settlement & Installment Deal Models'}
                   </h4>
                   <p className="text-2xs text-slate-500">
                     {isAr ? 'أمثلة استرشادية توضح كيف تتم تسوية المديونيات واستلام المستندات الرسمية بالمسارات الثلاثة' : 'Illustrative verified deal benchmarks explaining legal and financial execution'}

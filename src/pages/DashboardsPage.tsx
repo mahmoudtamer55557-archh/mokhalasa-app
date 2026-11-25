@@ -378,7 +378,7 @@ export const DashboardsPage: React.FC<DashboardsPageProps> = ({
                     الموقف الحالي لسيارتك: {LIFECYCLE_STATUS_LABELS[currentOwnerCase.status]?.labelAr}
                   </span>
                   <p className="text-slate-600 text-[11px]">
-                    {currentOwnerCase.distressReasonNotes || 'يقوم مستشار مخلصة المعين بمتابعة الإجراءات ومطابقة بيان السداد المعجل لضمان حماية حقوقك.'}
+                    {currentOwnerCase.distressReasonNotes || 'يقوم مستشار مخالصة المعين بمتابعة الإجراءات ومطابقة بيان السداد المعجل لضمان حماية حقوقك.'}
                   </p>
                 </div>
                 {currentOwnerCase.settlementStatement.isShortfall && (
@@ -420,7 +420,7 @@ export const DashboardsPage: React.FC<DashboardsPageProps> = ({
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-brand-green font-bold">
-                    <span>عمولة مخلصة لتنظيم الصفقة (1.5%):</span>
+                    <span>عمولة مخالصة لتنظيم الصفقة (1.5%):</span>
                     <span>-{formatEGP(currentOwnerCase.settlementStatement.platformCommission)}</span>
                   </div>
 
@@ -441,9 +441,9 @@ export const DashboardsPage: React.FC<DashboardsPageProps> = ({
                 </div>
 
                 <div className="p-3 bg-slate-50 rounded-xl text-[11px] text-slate-600 space-y-1">
-                  <span className="font-bold text-brand-navy block">تأكيد عدم استلام مخلصة لأموال القرض:</span>
+                  <span className="font-bold text-brand-navy block">تأكيد عدم استلام مخالصة لأموال القرض:</span>
                   <p>
-                    مبلغ تسوية البنك ({formatEGP(currentOwnerCase.settlementStatement.lenderSettlementAmount)}) يُسدد من المشتري مباشرة إلى حساب قرضك بالبنك. لا تستلم مخلصة أي أموال تسوية.
+                    مبلغ تسوية البنك ({formatEGP(currentOwnerCase.settlementStatement.lenderSettlementAmount)}) يُسدد من المشتري مباشرة إلى حساب قرضك بالبنك. لا تستلم مخالصة أي أموال تسوية.
                   </p>
                 </div>
               </div>
@@ -566,7 +566,7 @@ export const DashboardsPage: React.FC<DashboardsPageProps> = ({
                 <span className="text-[10px] text-slate-500 mt-0.5 block">تتطلب اتفاق تغطية العجز</span>
               </div>
               <div className="bg-white rounded-2xl p-4.5 border border-brand-border shadow-sm">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">عمولات مخلصة المتوقعة</span>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">عمولات مخالصة المتوقعة</span>
                 <span className="text-2xl font-black text-brand-green mt-1 block">
                   {formatEGP(cases.reduce((sum, c) => sum + (c.settlementStatement.platformCommission || 0), 0))}
                 </span>
@@ -719,7 +719,7 @@ export const DashboardsPage: React.FC<DashboardsPageProps> = ({
                 <span className="text-[10px] text-emerald-600 font-bold mt-0.5 block">100% سداد مباشر بحسابات القروض</span>
               </div>
               <div className="bg-white rounded-2xl p-5 border border-brand-border shadow-sm">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">عمولات مخلصة المحصلة (1.5%)</span>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">عمولات مخالصة المحصلة (1.5%)</span>
                 <span className="text-2xl font-black text-brand-green mt-1 block">276,750 ج.م</span>
                 <span className="text-[10px] text-slate-500 mt-0.5 block">متوسط عمولة 9,500 ج.م / صفقة</span>
               </div>
@@ -1015,7 +1015,7 @@ export const DashboardsPage: React.FC<DashboardsPageProps> = ({
                           <span className="text-[11px] text-slate-500">العرض: {formatEGP(inq.offeredPrice || 0)}</span>
                         </div>
                         <a
-                          href={`https://wa.me/20${inq.buyerPhone}?text=${encodeURIComponent(`مرحباً أستاذ ${inq.buyerName}، من فريق منصة مخلصة بخصوص اهتمامك بسيارة ${activeManagingCase.vehicle.make}.`)}`}
+                          href={`https://wa.me/20${inq.buyerPhone}?text=${encodeURIComponent(`مرحباً أستاذ ${inq.buyerName}، من فريق منصة مخالصة بخصوص اهتمامك بسيارة ${activeManagingCase.vehicle.make}.`)}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-3 py-1.5 rounded-lg bg-brand-green text-white font-bold text-[11px] hover:bg-brand-green-hover transition"

@@ -29,7 +29,7 @@ export const MokhalasaSvgLogo: React.FC<MokhalasaSvgLogoProps> = ({
       xmlns="http://www.w3.org/2000/svg"
       className={`${className} ${onClick ? 'cursor-pointer' : ''}`}
       onClick={onClick}
-      aria-label="مخلصة Mokhalasa Wordmark Logo"
+      aria-label="مخالصة Mokhalasa Wordmark Logo"
       role="img"
     >
       {/* Arabic Wordmark */}
@@ -39,11 +39,11 @@ export const MokhalasaSvgLogo: React.FC<MokhalasaSvgLogoProps> = ({
         textAnchor="middle"
         fontFamily="'Cairo', 'Segoe UI', Arial, sans-serif"
         fontWeight="900"
-        fontSize="38"
+        fontSize="36"
         fill={textColor}
         letterSpacing="-0.02em"
       >
-        مَخْلَصَة
+        مُخَالَصة
       </text>
 
       {/* Modern Accent Leaf / Diacritic over 'خ' in Accent Green */}

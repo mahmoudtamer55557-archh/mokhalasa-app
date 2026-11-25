@@ -82,7 +82,7 @@ export const profileService = {
           profile: {
             id: data.id,
             email: authUser?.email || `${data.phone || 'user'}@customer.mokhalasa.com`,
-            fullName: data.full_name || authUser?.user_metadata?.full_name || 'عميل مخلصة',
+            fullName: data.full_name || authUser?.user_metadata?.full_name || 'عميل مخالصة',
             phone: data.phone || authUser?.user_metadata?.phone || '',
             avatarUrl: data.avatar_url || authUser?.user_metadata?.avatar_url,
             role: data.role || 'customer',
@@ -105,7 +105,7 @@ export const profileService = {
           profile: {
             id: authUser.id,
             email: authUser.email || '',
-            fullName: meta.full_name || meta.name || authUser.email?.split('@')[0] || 'عميل مخلصة',
+            fullName: meta.full_name || meta.name || authUser.email?.split('@')[0] || 'عميل مخالصة',
             phone: meta.phone || '',
             avatarUrl: meta.avatar_url,
             role: meta.role || 'customer',
@@ -132,7 +132,7 @@ export const profileService = {
               profile: {
                 id: parsed.id,
                 email: parsed.email || `${parsed.phone}@customer.mokhalasa.com`,
-                fullName: parsed.name || 'عميل مخلصة',
+                fullName: parsed.name || 'عميل مخالصة',
                 phone: parsed.phone || '',
                 avatarUrl: parsed.avatarUrl,
                 role: 'customer',
@@ -224,7 +224,7 @@ export const profileService = {
       if (targetPhone) {
         sendProfileUpdatedWhatsApp(
           targetPhone,
-          cleanFullName || authUser?.user_metadata?.full_name || 'عميل مخلصة'
+          cleanFullName || authUser?.user_metadata?.full_name || 'عميل مخالصة'
         ).catch(() => {});
       }
 
@@ -354,7 +354,7 @@ export const profileService = {
         const { data: sessionData } = await supabase.auth.getSession();
         const meta = sessionData.session?.user?.user_metadata;
         let userPhone = meta?.phone;
-        let userName = meta?.full_name || 'عميل مخلصة';
+        let userName = meta?.full_name || 'عميل مخالصة';
         if (!userPhone && typeof window !== 'undefined') {
           const cached = JSON.parse(localStorage.getItem('mokhalasa_customer_user') || '{}');
           userPhone = cached.phone;

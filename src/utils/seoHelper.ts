@@ -12,25 +12,25 @@ interface PageSeoMetadata {
 
 const SEO_ROUTES: Record<string, PageSeoMetadata> = {
   home: {
-    titleAr: 'مخلصة | منصة تسوية سيارات حظر البيع والمديونيات والتقسيط المباشر في مصر',
+    titleAr: 'مخالصة | منصة تسوية سيارات حظر البيع والمديونيات والتقسيط المباشر في مصر',
     titleEn: 'Mokhalasa | Car Loan Settlement, Sale Bans & Direct Installments in Egypt',
-    descAr: 'منصة مخلصة: المنصة الأولى في مصر لحلول وفك حظر سيارات المديونيات البنكية، والتقسيط المباشر بدون بنوك، وشراء وبيع السيارات المستعملة بعقود موثقة ومخالصات رسمية.',
+    descAr: 'منصة مخالصة: المنصة الأولى في مصر لحلول وفك حظر سيارات المديونيات البنكية، والتقسيط المباشر بدون بنوك، وشراء وبيع السيارات المستعملة بعقود موثقة ومخالصات رسمية.',
     descEn: 'Mokhalasa: Egypt’s leading platform for car loan debt settlements, bank sale ban releases, and direct installment car sales with official verified contracts.',
-    keywordsAr: 'مخلصة, منصة مخلصة, سيارات حظر بيع, تسوية مديونية سيارة, بيع سيارات متعثرين, تقسيط مباشر بدون بنك, فك حظر بيع بنك, سيارات مستعملة تقسيط مباشر مصر',
+    keywordsAr: 'مخالصة, منصة مخالصة, سيارات حظر بيع, تسوية مديونية سيارة, بيع سيارات متعثرين, تقسيط مباشر بدون بنك, فك حظر بيع بنك, سيارات مستعملة تقسيط مباشر مصر',
     keywordsEn: 'Mokhalasa, car debt settlement Egypt, bank sale ban cars, direct car installments, used cars Egypt',
     path: '',
   },
   marketplace: {
-    titleAr: 'سوق وتصفح سيارات حظر البيع والتقسيط المباشر في مصر | مخلصة',
+    titleAr: 'سوق وتصفح سيارات حظر البيع والتقسيط المباشر في مصر | مخالصة',
     titleEn: 'Marketplace | Bank Sale Ban & Direct Installment Cars in Egypt | Mokhalasa',
     descAr: 'تصفح أحدث سيارات حظر البيع والتقسيط المباشر في مصر بأسعار أقل من السوق مع ضمان فحص الحالة الفنية والاستعلام القانوني والبنكي المعتمد.',
     descEn: 'Browse inspected sale ban and direct installment cars in Egypt below market value with guaranteed technical and legal checks.',
-    keywordsAr: 'سوق سيارات حظر بيع, سيارات تقسيط مباشر, سيارات مستعملة للبيع كاش وتقسيط, مخلصة ماركت بليس, عروض سيارات متعثرين مصر',
+    keywordsAr: 'سوق سيارات حظر بيع, سيارات تقسيط مباشر, سيارات مستعملة للبيع كاش وتقسيط, مخالصة ماركت بليس, عروض سيارات متعثرين مصر',
     keywordsEn: 'used cars marketplace Egypt, bank distressed cars, direct installment cars Cairo Alexandria',
     path: 'marketplace',
   },
   'sell-wizard': {
-    titleAr: 'بيع سيارتك وتسوية المديونية البنكية وفك حظر البيع | مخلصة',
+    titleAr: 'بيع سيارتك وتسوية المديونية البنكية وفك حظر البيع | مخالصة',
     titleEn: 'Sell Your Car & Settle Bank Debt | Mokhalasa',
     descAr: 'سجل سيارتك الآن لبيعها وسداد مديونية البنك واستخراج المخالصة الرسمية أو بيعها بالتقسيط المباشر بعقود موثقة في الشهر العقاري وبدون أي مسؤولية جنائية.',
     descEn: 'List your car to settle your loan, obtain official bank clearance, and safely sell with notarized installment contracts.',
@@ -39,7 +39,7 @@ const SEO_ROUTES: Record<string, PageSeoMetadata> = {
     path: 'sell',
   },
   calculator: {
-    titleAr: 'حاسبة أقساط السيارات وتسوية المديونيات البنكية | مخلصة',
+    titleAr: 'حاسبة أقساط السيارات وتسوية المديونيات البنكية | مخالصة',
     titleEn: 'Car Installment & Bank Settlement Calculator | Mokhalasa',
     descAr: 'احسب القسط الشهري، مديونية البنك، قيمة الخصم للسداد المعجل، والأرباح المتوقعة للتقسيط المباشر والتسوية المصرفية في مصر بدقة وبشكل فوري.',
     descEn: 'Calculate monthly installments, bank loan settlements, early payoff discounts, and direct installment plans instantly in Egypt.',
@@ -48,56 +48,56 @@ const SEO_ROUTES: Record<string, PageSeoMetadata> = {
     path: 'calculator',
   },
   'how-it-works': {
-    titleAr: 'كيف تعمل منصة مخلصة؟ خطوات فك الحظر والتقسيط الآمن | مخلصة',
+    titleAr: 'كيف تعمل منصة مخالصة؟ خطوات فك الحظر والتقسيط الآمن | مخالصة',
     titleEn: 'How It Works | Car Clearance & Installment Process | Mokhalasa',
-    descAr: 'تعرف على آلية عمل منصة مخلصة خطوة بخطوة: الفحص الفني، سداد مديونية البنك، استخراج المخالصة الرسمية، فك الحظر من المرور، ونقل الملكية الآمن.',
+    descAr: 'تعرف على آلية عمل منصة مخالصة خطوة بخطوة: الفحص الفني، سداد مديونية البنك، استخراج المخالصة الرسمية، فك الحظر من المرور، ونقل الملكية الآمن.',
     descEn: 'Learn step-by-step how Mokhalasa handles technical inspection, bank debt settlement, clearance certificates, and official title transfer.',
     keywordsAr: 'خطوات فك حظر البيع, كيف اشتري سيارة حظر بيع, اجراءات بيع سيارة مقسطة, مخالصة بنكية سيارات مصر',
     keywordsEn: 'how to buy car with bank ban Egypt, car debt clearance steps',
     path: 'how-it-works',
   },
   faq: {
-    titleAr: 'الأسئلة الشائعة حول سيارات حظر البيع والتقسيط المباشر | مخلصة',
+    titleAr: 'الأسئلة الشائعة حول سيارات حظر البيع والتقسيط المباشر | مخالصة',
     titleEn: 'FAQ | Vehicle Debt Settlement & Installments | Mokhalasa',
-    descAr: 'كل الإجابات عن فك حظر بيع السيارات، الضمانات القانونية، عقود الشهر العقاري، استرداد الأموال، ومخاطر العقود العرفية وكيف تحميك منصة مخلصة.',
+    descAr: 'كل الإجابات عن فك حظر بيع السيارات، الضمانات القانونية، عقود الشهر العقاري، استرداد الأموال، ومخاطر العقود العرفية وكيف تحميك منصة مخالصة.',
     descEn: 'Frequently asked questions regarding vehicle sale bans, legal notarization, escrow protection, and direct installment financing.',
-    keywordsAr: 'اسئلة حظر بيع السيارات, هل بيع سيارة حظر بيع جناية, شروط التقسيط المباشر, اسئلة مخلصة الشائعة',
+    keywordsAr: 'اسئلة حظر بيع السيارات, هل بيع سيارة حظر بيع جناية, شروط التقسيط المباشر, اسئلة مخالصة الشائعة',
     keywordsEn: 'Egypt car sale ban FAQ, legal car buying installment guide',
     path: 'faq',
   },
   blog: {
-    titleAr: 'دليل ومقالات سوق السيارات وتسوية المديونيات في مصر | مدونة مخلصة',
+    titleAr: 'دليل ومقالات سوق السيارات وتسوية المديونيات في مصر | مدونة مخالصة',
     titleEn: 'Automotive Insights & Settlement Guides | Mokhalasa Blog',
     descAr: 'مقالات ونصائح قانونية وفنية من خبراء السيارات في مصر حول تسوية قروض البنوك، فحص السيارات المستعملة، وتجنب النصب في عقود التقسيط.',
     descEn: 'Expert guides and legal tips on handling bank car loans, second-hand car inspection, and direct installments in Egypt.',
-    keywordsAr: 'دليل شراء سيارة مستعملة مصر, مقالات حظر البيع, نصائح شراء سيارة بالتقسيط, مدونة مخلصة',
+    keywordsAr: 'دليل شراء سيارة مستعملة مصر, مقالات حظر البيع, نصائح شراء سيارة بالتقسيط, مدونة مخالصة',
     keywordsEn: 'used cars Egypt guide, car buying tips Cairo, automotive blog Egypt',
     path: 'blog',
   },
   contact: {
-    titleAr: 'اتصل بنا | الدعم الفني واستشارات تسوية السيارات | مخلصة',
+    titleAr: 'اتصل بنا | الدعم الفني واستشارات تسوية السيارات | مخالصة',
     titleEn: 'Contact Us | Car Settlement Inquiries & Support | Mokhalasa',
-    descAr: 'تواصل مع فريق منصة مخلصة للاستفسارات القانونية، تسوية مديونيات السيارات، وخدمة العملاء عبر الواتساب والموقع المباشر.',
+    descAr: 'تواصل مع فريق منصة مخالصة للاستفسارات القانونية، تسوية مديونيات السيارات، وخدمة العملاء عبر الواتساب والموقع المباشر.',
     descEn: 'Get in touch with the Mokhalasa support team for legal consultations, vehicle debt settlements, and customer service.',
-    keywordsAr: 'تواصل مع مخلصة, رقم خدمة عملاء مخلصة, استشارة تسوية سيارات',
+    keywordsAr: 'تواصل مع مخالصة, رقم خدمة عملاء مخالصة, استشارة تسوية سيارات',
     keywordsEn: 'Mokhalasa contact, car consultation Egypt',
     path: 'contact',
   },
   terms: {
-    titleAr: 'الشروط والأحكام وسياسة الاستخدام القانونية | مخلصة',
+    titleAr: 'الشروط والأحكام وسياسة الاستخدام القانونية | مخالصة',
     titleEn: 'Terms and Conditions | Mokhalasa Platform',
     descAr: 'الشروط والأحكام المنظمة للوساطة في تسوية سيارات حظر البيع والتقسيط المباشر وضمان حقوق البائع والمشتري وفق القانون المصري.',
     descEn: 'Terms of service regulating vehicle debt settlement and direct installment intermediation under Egyptian law.',
-    keywordsAr: 'شروط منصة مخلصة, عقد وساطة سيارات, حقوق المشتري والبائع',
+    keywordsAr: 'شروط منصة مخالصة, عقد وساطة سيارات, حقوق المشتري والبائع',
     keywordsEn: 'Mokhalasa terms, user agreement Egypt',
     path: 'terms',
   },
   privacy: {
-    titleAr: 'سياسة الخصوصية وحماية البيانات الشخصية | مخلصة',
+    titleAr: 'سياسة الخصوصية وحماية البيانات الشخصية | مخالصة',
     titleEn: 'Privacy Policy & Data Protection | Mokhalasa',
-    descAr: 'التزام منصة مخلصة بحماية بيانات العملاء والمستندات الرسمية وأرقام الهوية وسرية المعاملات المالية والمصرفية.',
+    descAr: 'التزام منصة مخالصة بحماية بيانات العملاء والمستندات الرسمية وأرقام الهوية وسرية المعاملات المالية والمصرفية.',
     descEn: 'Mokhalasa privacy policy and data protection commitments for client records, official vehicle documents, and transactions.',
-    keywordsAr: 'سياسة الخصوصية مخلصة, حماية بيانات عملاء السيارات',
+    keywordsAr: 'سياسة الخصوصية مخالصة, حماية بيانات عملاء السيارات',
     keywordsEn: 'Mokhalasa privacy policy, data security',
     path: 'privacy',
   },
@@ -151,11 +151,11 @@ export function applyPageSeo(view: string, car?: Car | null, lang: 'ar' | 'en' =
     const locationText = (isAr ? car.city : (car.cityEn || car.city)) || (isAr ? 'مصر' : 'Egypt');
 
     title = isAr 
-      ? `سيارة ${makeModelYear} للبيع والتسوية في ${locationText} | مخلصة`
+      ? `سيارة ${makeModelYear} للبيع والتسوية في ${locationText} | مخالصة`
       : `${makeModelYear} for Sale & Settlement in ${locationText} | Mokhalasa`;
 
     description = isAr
-      ? `سيارة ${makeModelYear} (${transmissionText}) في ${locationText}. فحص فني معتمد، حلول تسوية حظر البيع البنكي والتقسيط المباشر بدون بنك في مصر مع منصة مخلصة.`
+      ? `سيارة ${makeModelYear} (${transmissionText}) في ${locationText}. فحص فني معتمد، حلول تسوية حظر البيع البنكي والتقسيط المباشر بدون بنك في مصر مع منصة مخالصة.`
       : `${makeModelYear} (${transmissionText}) in ${locationText}. Inspected with loan settlement options and direct installment via Mokhalasa.`;
 
     keywords = isAr

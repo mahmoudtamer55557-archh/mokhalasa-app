@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>ملف فحص وصفقة نيسان صني 2019 — تكملة أقساط معتمدة | مخالصة</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;900&display=swap');
+    
+    @page {
+      size: A4;
+      margin: 12mm 10mm 15mm 10mm;
+      @bottom-center {
+        content: "منصة مخالصة | وثيقة تسوية وتكملة أقساط رسمية رقم MK-2019-NS82 | صفحة " counter(page);
+        font-family: 'Cairo', sans-serif;
+        font-size: 8pt;
+        color: #64748b;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Cairo', sans-serif;
+      background-color: #ffffff;
+      color: #0f172a;
+      line-height: 1.5;
+      font-size: 9.5pt;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .page {
+      page-break-after: always;
+      padding: 5px 0;
+    }
+
+    .page:last-child {
+      page-break-after: avoid;
+    }
+
+    /* Header styling */
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 2.5px solid #059669;
+      margin-bottom: 14px;
+    }
+
+    .brand-title {
+      font-size: 20pt;
+      font-weight: 900;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-title span {
+      color: #059669;
+    }
+
+    .brand-tagline {
+      font-size: 8pt;
+      color: #475569;
+      font-weight: 600;
+    }
+
+    .doc-meta {
+      text-align: left;
+      font-size: 8pt;
+      color: #334155;
+    }
+
+    .doc-badge {
+      display: inline-block;
+      background: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 800;
+      font-size: 8pt;
+      margin-bottom: 4px;
+    }
+
+    /* Hero Vehicle Card */
+    .hero-card {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #ffffff;
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+      position: relative;
+    }
+
+    .hero-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .hero-car-name {
+      font-size: 16pt;
+      font-weight: 900;
+      color: #ffffff;
+    }
+
+    .hero-trim {
+      color: #34d399;
+      font-size: 10.5pt;
+      font-weight: 700;
+    }
+
+    .hero-status-pill {
+      background: #059669;
+      color: #ffffff;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-weight: 800;
+      font-size: 8.5pt;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .hero-item {
+      text-align: center;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 8px 6px;
+      border-radius: 8px;
+    }
+
+    .hero-item-label {
+      font-size: 7.5pt;
+      color: #94a3b8;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .hero-item-val {
+      font-size: 10pt;
+      font-weight: 800;
+      color: #f8fafc;
+    }
+
+    /* Master Financial Section (حسبة المعلم) */
+    .master-deal-box {
+      background: #f8fafc;
+      border: 2px solid #059669;
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    .deal-ribbon {
+      position: absolute;
+      top: -11px;
+      right: 20px;
+      background: #059669;
+      color: #ffffff;
+      padding: 2px 14px;
+      border-radius: 12px;
+      font-size: 8pt;
+      font-weight: 900;
+      letter-spacing: 0.3px;
+    }
+
+    .deal-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 6px;
+    }
+
+    .deal-column {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .deal-col-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10pt;
+      font-weight: 800;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .deal-buyer-header { color: #047857; }
+    .deal-seller-header { color: #1e3a8a; }
+
+    .deal-metric {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      font-size: 8.5pt;
+      border-bottom: 1px dashed #f1f5f9;
+    }
+
+    .deal-metric:last-child {
+      border-bottom: none;
+    }
+
+    .metric-strong {
+      font-weight: 900;
+      font-size: 9.5pt;
+      color: #0f172a;
+    }
+
+    .metric-highlight {
+      color: #059669;
+      font-weight: 900;
+      font-size: 11pt;
+    }
+
+    /* Section Headings */
+    .section-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11pt;
+      font-weight: 900;
+      color: #0f172a;
+      margin: 14px 0 8px 0;
+      padding-bottom: 4px;
+      border-bottom: 1.5px solid #e2e8f0;
+    }
+
+    .section-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: #059669;
+      color: white;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9pt;
+      font-weight: 900;
+    }
+
+    /* Pros & Cons Table */
+    .honest-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .card-pros {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+
+    .card-cons {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+
+    .card-header-pros {
+      color: #166534;
+      font-weight: 900;
+      font-size: 9.5pt;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .card-header-cons {
+      color: #92400e;
+      font-weight: 900;
+      font-size: 9.5pt;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .list-items {
+      list-style: none;
+      padding: 0;
+    }
+
+    .list-items li {
+      position: relative;
+      padding-right: 14px;
+      margin-bottom: 4px;
+      font-size: 8pt;
+      color: #334155;
+      line-height: 1.4;
+    }
+
+    .list-items-pros li::before {
+      content: "✔";
+      position: absolute;
+      right: 0;
+      color: #16a34a;
+      font-size: 7.5pt;
+      font-weight: bold;
+    }
+
+    .list-items-cons li::before {
+      content: "⚠";
+      position: absolute;
+      right: 0;
+      color: #d97706;
+      font-size: 7.5pt;
+    }
+
+    /* Inspection Diagnostics Box */
+    .inspection-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 6px;
+      margin-bottom: 12px;
+      font-size: 8pt;
+    }
+
+    .inspection-table th {
+      background: #f1f5f9;
+      color: #1e293b;
+      font-weight: 800;
+      padding: 6px 8px;
+      text-align: right;
+      border: 1px solid #cbd5e1;
+    }
+
+    .inspection-table td {
+      padding: 5px 8px;
+      border: 1px solid #e2e8f0;
+      color: #334155;
+    }
+
+    .tag-fabrika {
+      background: #dcfce7;
+      color: #15803d;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 7.5pt;
+      display: inline-block;
+    }
+
+    .tag-spray {
+      background: #fef3c7;
+      color: #b45309;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 7.5pt;
+      display: inline-block;
+    }
+
+    /* 4 Pillars Security Box */
+    .security-pillars {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin: 10px 0;
+    }
+
+    .pillar-box {
+      background: #ffffff;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 8px 6px;
+      text-align: center;
+    }
+
+    .pillar-num {
+      width: 20px;
+      height: 20px;
+      background: #0f172a;
+      color: #ffffff;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 8pt;
+      margin-bottom: 4px;
+    }
+
+    .pillar-title {
+      font-weight: 800;
+      font-size: 8pt;
+      color: #0f172a;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .pillar-desc {
+      font-size: 7pt;
+      color: #64748b;
+      line-height: 1.3;
+    }
+
+    /* Comparison Box */
+    .market-comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 8.5pt;
+    }
+
+    .market-comparison-table th, .market-comparison-table td {
+      border: 1px solid #cbd5e1;
+      padding: 6px 10px;
+      text-align: center;
+    }
+
+    .market-comparison-table th {
+      background: #0f172a;
+      color: #ffffff;
+      font-weight: 800;
+    }
+
+    .row-highlight {
+      background: #ecfdf5;
+      font-weight: 800;
+      color: #065f46;
+    }
+
+    /* Footer & Signature Section */
+    .signatures-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 15px;
+      margin-top: 15px;
+      padding-top: 10px;
+      border-top: 1px solid #cbd5e1;
+      font-size: 8pt;
+    }
+
+    .sig-col {
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 8px;
+      height: 75px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .sig-label {
+      font-weight: 800;
+      color: #475569;
+    }
+
+    .sig-line {
+      font-size: 7pt;
+      color: #94a3b8;
+      border-top: 1px solid #cbd5e1;
+      padding-top: 2px;
+      text-align: center;
+    }
+
+    .notice-note {
+      font-size: 7.5pt;
+      color: #64748b;
+      margin-top: 8px;
+      line-height: 1.4;
+      background: #f8fafc;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border-right: 3px solid #059669;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ================= PAGE 1 ================= -->
+  <div class="page">
+    
+    <!-- Top Header -->
+    <div class="header-bar">
+      <div>
+        <div class="brand-title">مَـخْـلَـصَـة <span>MOKHALASA</span></div>
+        <div class="brand-tagline">المنصة الرسمية لحلول سيارات الأقساط وحظر البيع والتقسيط المباشر في مصر</div>
+      </div>
+      <div class="doc-meta">
+        <div class="doc-badge">ملف فحص وصفقة معتمدة (تكملة أقساط)</div>
+        <div><strong>رقم الملف:</strong> MK-2019-NS82</div>
+        <div><strong>تاريخ التقييم:</strong> 21 نوفمبر 2026</div>
+      </div>
+    </div>
+
+    <!-- Hero Card: Nissan Sunny 2019 -->
+    <div class="hero-card">
+      <div class="hero-title-row">
+        <div>
+          <div class="hero-car-name">نيسان صني (N17) — موديل 2019</div>
+          <div class="hero-trim">الفئة الثالثة Super Saloon (بصمة | تكييف تاتش | جنوط سبور | تحكم طارة)</div>
+        </div>
+        <div class="hero-status-pill">تكملة أقساط بنكية معتمدة</div>
+      </div>
+
+      <div class="hero-grid">
+        <div class="hero-item">
+          <span class="hero-item-label">قراءة العداد الفعلي</span>
+          <span class="hero-item-val">92,000 كم</span>
+        </div>
+        <div class="hero-item">
+          <span class="hero-item-label">المحرك والناقل</span>
+          <span class="hero-item-val">1500cc أوتوماتيك 4 سرعات</span>
+        </div>
+        <div class="hero-item">
+          <span class="hero-item-label">حالة الهيكل الخارجي</span>
+          <span class="hero-item-val">دواخل زيرو فابريكا بالكامل</span>
+        </div>
+        <div class="hero-item">
+          <span class="hero-item-label">الموقف المروري</span>
+          <span class="hero-item-val">رخصة سنة (مرور مدينة نصر)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MASTER DEAL ARCHITECTURE (حسبة الراجل المعلم) -->
+    <div class="master-deal-box">
+      <div class="deal-ribbon">هندسة الصفقة الذكية (حسبة راجل معلم — الطرفين كسبانين)</div>
+      
+      <div class="deal-grid">
+        
+        <!-- BUYER ADVANTAGES -->
+        <div class="deal-column">
+          <div class="deal-col-header deal-buyer-header">
+            <span>حقوق ومكاسب المشتري (Buyer Win)</span>
+          </div>
+          <div class="deal-metric">
+            <span>مقدم التنازل الفوري المطلوب:</span>
+            <span class="metric-highlight">100,000 ج.م فقط</span>
+          </div>
+          <div class="deal-metric">
+            <span>القسط الشهري للبنك:</span>
+            <span class="metric-strong">8,200 ج.م / شهر</span>
+          </div>
+          <div class="deal-metric">
+            <span>عدد الأقساط المتبقية للبنك:</span>
+            <span class="metric-strong">36 قسطاً (3 سنوات)</span>
+          </div>
+          <div class="deal-metric">
+            <span>إجمالي سداد المشتري النهائي:</span>
+            <span class="metric-strong" style="color: #047857;">395,200 ج.م</span>
+          </div>
+          <div class="deal-metric" style="background: #f0fdf4; padding: 4px; border-radius: 4px;">
+            <span style="font-size: 7.5pt; font-weight: 800; color: #166534;">وفر المشتري عن سعر السوق الكاش:</span>
+            <span style="font-size: 8.5pt; font-weight: 900; color: #15803d;">توفير ~105,000 ج.م</span>
+          </div>
+        </div>
+
+        <!-- SELLER ADVANTAGES -->
+        <div class="deal-column">
+          <div class="deal-col-header deal-seller-header">
+            <span>حقوق ومكاسب البائع (Seller Win)</span>
+          </div>
+          <div class="deal-metric">
+            <span>كاش فوري مستلم في اليد:</span>
+            <span class="metric-highlight" style="color: #1e3a8a;">100,000 ج.م كاش</span>
+          </div>
+          <div class="deal-metric">
+            <span>إسقاط عبء القسط الشهري:</span>
+            <span class="metric-strong">إلغاء التزام 8,200 ج.م/شهر</span>
+          </div>
+          <div class="deal-metric">
+            <span>جهة التمويل الدائنة:</span>
+            <span class="metric-strong">البنك الأهلي المصري (حظر بيع)</span>
+          </div>
+          <div class="deal-metric">
+            <span>إبراء الذمة البنكية:</span>
+            <span class="metric-strong">إيصالات صراف بنكية شهرية رسمية</span>
+          </div>
+          <div class="deal-metric" style="background: #eff6ff; padding: 4px; border-radius: 4px;">
+            <span style="font-size: 7.5pt; font-weight: 800; color: #1e40af;">حماية الـ I-Score والمسؤولية:</span>
+            <span style="font-size: 8.5pt; font-weight: 900; color: #1d4ed8;">عقد استغلال ثلاثي + IoT GPS</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- COMPARISON TABLE: WHY THIS DEAL BEATS THE MARKET -->
+    <div class="section-head">
+      <span class="section-icon">⚖</span>
+      <span>مقارنة جدوى الصفقة مع بدائل السوق المصري الحالي (2026)</span>
+    </div>
+
+    <table class="market-comparison-table">
+      <thead>
+        <tr>
+          <th>وجه المقارنة</th>
+          <th>شراء صني 2019 كاش من السوق</th>
+          <th>شراء صني 2019 تقسيط من معرض / شركة</th>
+          <th>صفقة تكملة الأقساط عبر «مخالصة»</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>المقدم المطلوب نقداً</strong></td>
+          <td>500,000 ج.م (كاش فوري كامل)</td>
+          <td>180,000 إلى 220,000 ج.م</td>
+          <td class="row-highlight">100,000 ج.م فقط (الأقل في مصر)</td>
+        </tr>
+        <tr>
+          <td><strong>القسط الشهري</strong></td>
+          <td>لا يوجد (دفع كاش)</td>
+          <td>13,500 إلى 15,000 ج.م</td>
+          <td class="row-highlight">8,200 ج.م فقط (بفائدة قديمة رخيصة)</td>
+        </tr>
+        <tr>
+          <td><strong>الإجمالي الكلي المدفوع</strong></td>
+          <td>500,000 ج.م</td>
+          <td>670,000 إلى 720,000 ج.م</td>
+          <td class="row-highlight">395,200 ج.م (أقل من سعر الكاش بـ 100 ألف!)</td>
+        </tr>
+        <tr>
+          <td><strong>الاستعلام البنكي والتعقيد</strong></td>
+          <td>لا يوجد</td>
+          <td>إثبات دخل عالي، استعلام عمل وسكن، رفض محتمل</td>
+          <td class="row-highlight">بدون استعلام بنكي، استلام فوري وضمان متبادل</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- HONEST PROS AND CONS SECTION -->
+    <div class="section-head">
+      <span class="section-icon">🔍</span>
+      <span>كشف المزايا والعيوب والملحوظات الواقعية بكل شفافية (إفصاح مخالصة النزيه)</span>
+    </div>
+
+    <div class="honest-grid">
+      <!-- Pros -->
+      <div class="card-pros">
+        <div class="card-header-pros">
+          <span>أبرز مميزات السيارة الفنية والتشغيلية</span>
+        </div>
+        <ul class="list-items list-items-pros">
+          <li><strong>المحرك والفتيس:</strong> محرك HR15DE ياباني 108 حصان بحالة 88% مع فتيس أوتوماتيك اعتمادي ناعم جداً وسلس في الغيارات.</li>
+          <li><strong>المساحات والرحابة:</strong> أوسع صالون خلفي ومساحة أرجل في فئتها السعرية، مع شنطة خلفية عملاقة سعة 490 لتر.</li>
+          <li><strong>التكييف:</strong> تكييف تاتش أمامي ثلاجة + مروحة صالون خلفية مخصصة للكنبة الخلفية.</li>
+          <li><strong>الارتفاع عن الأرض:</strong> خلوص أرضي 165 مم يمنع حك المطبات في أصعب الطرق والشوارع المصرية.</li>
+          <li><strong>المصاريف والصيانة:</strong> قطع غيار أرخص من أي منافس، متوفرة في كل مكان، وأي فني في مصر يجيد صيانتها.</li>
+          <li><strong>الكماليات:</strong> مفتاح ذكي وبصمة تشغيل (Keyless)، شاشة عرض، كاميرا وحساسات خلفية، طارة مالتي فانكشن.</li>
+        </ul>
+      </div>
+
+      <!-- Cons & Honest Notes -->
+      <div class="card-cons">
+        <div class="card-header-cons">
+          <span>الملاحظات والعيوب الفنية والنمطية (للأمانة)</span>
+        </div>
+        <ul class="list-items list-items-cons">
+          <li><strong>عزل الصوت:</strong> عزل الضوضاء والرياح خفيف بعد سرعة 110 كم/س (عيب نمطي معروف في جميع فئات النيسان صني N17).</li>
+          <li><strong>الفرامل:</strong> دواسة الفرامل خفيفة نسبياً وتحتاج تعود في البداية (منظومة ABS & EBD تعمل بكفاءة تامة وتيل أمامي جديد).</li>
+          <li><strong>الدهان الخارجي:</strong> رش نظافة تجميلي خارجي (رفرفين وبابين) بسبب حكات ركنات سطحية فقط، والمسطحات (كبوت وسقف وشنطة) فابريكا.</li>
+          <li><strong>العفشة:</strong> العفشة بحالة جيدة جداً (تم تغيير بطاحات ومساعدين خلفيين في صيانة الـ 90 ألف)، ولا تحتاج أي مصروف حالي.</li>
+          <li><strong>الكاوتش:</strong> الإطارات الأمامية جديدة كلياً (إنتاج 2024)، والإطارات الخلفية بحالة 75%.</li>
+          <li><strong>حظر البيع:</strong> السيارة محظور بيعها بنكياً لحين استكمال الأقساط، ولا يمكن استخراج توكيل بيع إلا بعد سداد القسط 36.</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ================= PAGE 2 ================= -->
+  <div class="page">
+    
+    <!-- Header Bar -->
+    <div class="header-bar">
+      <div>
+        <div class="brand-title">مَـخْـلَـصَـة <span>MOKHALASA</span></div>
+        <div class="brand-tagline">تقرير الفحص الفني ومنظومة الضمان القانوني والتقني الثلاثي</div>
+      </div>
+      <div class="doc-meta">
+        <div><strong>السيارة:</strong> نيسان صني 2019 — سوبر صالون</div>
+        <div><strong>الشاسيه:</strong> MDHBAAN17J00****</div>
+      </div>
+    </div>
+
+    <!-- TECHNICAL INSPECTION SUMMARY -->
+    <div class="section-head">
+      <span class="section-icon">⚙</span>
+      <span>نتائج تقرير الفحص الفني المعتمد (150 نقطة فحص هندسي)</span>
+    </div>
+
+    <table class="inspection-table">
+      <thead>
+        <tr>
+          <th>عنصر الفحص</th>
+          <th>الحالة والنتيجة الفنية</th>
+          <th>التصنيف</th>
+          <th>ملاحظات الفني المعتمد</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>الشاسيه والقوايم ودواخل السيارة</strong></td>
+          <td>سليمة 100% بدون أي خبطات أو لحامات أو تعديل</td>
+          <td><span class="tag-fabrika">فابريكا زيرو</span></td>
+          <td>قياس سماكة الدهان بالمايكرون (110 - 130 µm) قياس مصنع</td>
+        </tr>
+        <tr>
+          <td><strong>السقف والكبوت والشنطة</strong></td>
+          <td>دهان المصنع الأصلي خالي من أي رش خارجي</td>
+          <td><span class="tag-fabrika">فابريكا أصلي</span></td>
+          <td>لا يوجد معجون، لمعة الدهان الأصلي ممتازة</td>
+        </tr>
+        <tr>
+          <td><strong>الجانب الأيمن والجانب الأيسر</strong></td>
+          <td>رش نظافة خارجي تجميلي بالورنيش (عتب + رفارف)</td>
+          <td><span class="tag-spray">رش نظافة</span></td>
+          <td>بدون معجون على الهيكل الداخلي، إزالة حكات ركنات فقط</td>
+        </tr>
+        <tr>
+          <td><strong>المحرك (Engine Performance)</strong></td>
+          <td>كفاءة كبس المحرك 88% — لا يوجد ترشيح زيت نهائياً</td>
+          <td><span class="tag-fabrika">حالة ممتازة</span></td>
+          <td>صوت المحرك هادئ، تغيير زيت تخليقي كامل 5W-30 بانتظام</td>
+        </tr>
+        <tr>
+          <td><strong>ناقل الحركة الأوتوماتيكي (Gearbox)</strong></td>
+          <td>نقلات ناعمة وسريعة الاستجابة بدون أي نتعة أو تفويت</td>
+          <td><span class="tag-fabrika">حالة ممتازة</span></td>
+          <td>تم استبدال زيت الفتيس الأصلي Nissan Matic-D في الـ 90 ألف</td>
+        </tr>
+        <tr>
+          <td><strong>العفشة والمساعدين والميزان</strong></td>
+          <td>متماسكة وثابتة، تم تجديد البطاحات والمساعدين الخلفيين</td>
+          <td><span class="tag-fabrika">حالة جيدة جداً</span></td>
+          <td>جاهزة للسفر والاستخدام اليومي بدون أي أصوات تخبيط</td>
+        </tr>
+        <tr>
+          <td><strong>منظومة التبريد والتكييف</strong></td>
+          <td>دورة تبريد مغلقة سليمة، كمبروسر تكييف يعمل بكفاءة</td>
+          <td><span class="tag-fabrika">ممتاز</span></td>
+          <td>درجة التبريد 6 درجات مئوية على السرعة الأولى</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- THE 4-PILLAR MOKHALASA SECURITY PROTOCOL -->
+    <div class="section-head">
+      <span class="section-icon">🛡</span>
+      <span>منظومة الحماية والأمان القانوني والتقني عبر «مخالصة» (ضمان الطرفين 100%)</span>
+    </div>
+
+    <div class="security-pillars">
+      <div class="pillar-box">
+        <div class="pillar-num">1</div>
+        <span class="pillar-title">عقد استغلال ثلاثي</span>
+        <span class="pillar-desc">عقد رسمي ينقل كامل المسؤولية الجنائية والمدنية والمخالفات والحوادث فورياً على المشتري.</span>
+      </div>
+
+      <div class="pillar-box">
+        <div class="pillar-num">2</div>
+        <span class="pillar-title">تتبع IoT GPS وإيقاف المحرك</span>
+        <span class="pillar-desc">جهاز تتبع مشفر مربوط بسيرفرات مخالصة مع ميزة الإيقاف الآمن للمحرك عند التخلف غير المبرر.</span>
+      </div>
+
+      <div class="pillar-box">
+        <div class="pillar-num">3</div>
+        <span class="pillar-title">حساب الضمان البنكي</span>
+        <span class="pillar-desc">يودع المشتري القسط لمخالصة، وتورده المنصة للبنك الأهلي وترسل إيصال السداد الرسمي للبائع.</span>
+      </div>
+
+      <div class="pillar-box">
+        <div class="pillar-num">4</div>
+        <span class="pillar-title">فك الحظر ونقل الملكية</span>
+        <span class="pillar-desc">فور سداد القسط الـ 36، تستخرج مخالصة المخالصة وفك الحظر وتنقل الرخصة باسم المشتري رسمياً.</span>
+      </div>
+    </div>
+
+    <!-- STEP-BY-STEP EXECUTION PROTOCOL -->
+    <div class="section-head">
+      <span class="section-icon">📋</span>
+      <span>خارطة تنفيذ الصفقة والتسليم (كيف تتم المعاملة على أرض الواقع؟)</span>
+    </div>
+
+    <div style="font-size: 8pt; line-height: 1.6; color: #334155; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
+      <p><strong>1. جلسة التوفيق وتوقيع العقود:</strong> يلتقي البائع والمشتري في مقر منصة مخالصة أو مركز معتمد لمراجعة كشف حساب البنك الأهلي المصري والتأكد من مطابقة الأقساط الـ 36 المتبقية (8,200 ج.م/شهر).</p>
+      <p><strong>2. توقيع إقرار الاستلام والمسؤولية:</strong> يوقع المشتري على إقرار استلام السيارة كأمانة وعقد الاستغلال والانتفاع، ويتم إثبات التاريخ رسمياً، مما يبرئ ذمة البائع تماماً من أي مخالفات أو حوادث من تاريخ وساعة التسليم.</p>
+      <p><strong>3. تسليم مقدم الـ 100 ألف ج.م:</strong> يستلم البائع مبلغ 100,000 ج.م كاش كاملة وعدّاً في يده بحضور مسؤولي المنصة، ويتم تحرير إيصال استلام نقدية رسمي.</p>
+      <p><strong>4. تركيب وتشغيل جهاز التتبع الذكي:</strong> يقوم مهندس تقني معتمد من مخالصة بتركيب جهاز التتبع المخفي وتفعيله على منصة الرصد، مع تسليم المشتري مفاتيح ورخصة السيارة الأصلية.</p>
+      <p><strong>5. دورة السداد والمتابعة:</strong> يسدد المشتري القسط شهرياً في حساب الضمان قبل ميعاد استحقاق البنك بـ 48 ساعة، وتقوم مخالصة بتوريد القسط وإرسال صورة إيصال الإيداع المختوم للبائع على الواتساب لمتابعة انخفاض المديونية أولاً بأول.</p>
+      <p><strong>6. إنهاء المديونية ونقل الملكية:</strong> عند سداد القسط رقم 36، يقوم فريق مخالصة باستلام خطاب مخالصة البنك الأهلي المصري الموجه للمرور، ويتوجه الطرفان لوحدة المرور والشهر العقاري لنقل الملكية النهائية وتجديد الرخصة باسم المشتري.</p>
+    </div>
+
+    <div class="notice-note">
+      <strong>تأكيد قانوني وتنفيذي:</strong> هذه الصفقة منظمة تحت المظلة القانونية لأحكام القانون المدني المصري وتخضع لإشراف ومتابعة إدارة العمليات الخاصة بمنصة مخالصة (Mokhalasa Operations). لا يتم تحرير أي توكيلات عرفية مخالفة للحظر لضمان الحماية الجنائية الكاملة للطرفين.
+    </div>
+
+    <!-- Signatures and Verification Block -->
+    <div class="signatures-row">
+      <div class="sig-col">
+        <span class="sig-label">طرف أول (المالك الأصلي / البائع):</span>
+        <span class="sig-line">الاسم: ....................................... | التوقيع: ...................</span>
+      </div>
+
+      <div class="sig-col">
+        <span class="sig-label">طرف ثانٍ (المستغل والمشتري الجديد):</span>
+        <span class="sig-line">الاسم: ....................................... | التوقيع: ...................</span>
+      </div>
+
+      <div class="sig-col" style="border-color: #059669; background: #f0fdf4;">
+        <span class="sig-label" style="color: #047857;">اعتماد وتوثيق منصة «مَـخْـلَـصَـة»:</span>
+        <span class="sig-line" style="color: #059669; font-weight: 800;">خاتم الاعتماد والرقابة التنفيذية الرسمية</span>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

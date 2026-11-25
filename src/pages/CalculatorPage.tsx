@@ -101,14 +101,14 @@ export const CalculatorPage: React.FC<CalculatorPageProps> = ({ onNavigate, lang
         <div className="text-center max-w-3xl mx-auto space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-navy/10 text-brand-navy text-xs font-bold">
             <Calculator className="w-4 h-4 text-brand-green" />
-            <span>{isAr ? 'حاسبة تسوية ديون السيارات وعمولة مخلصة (1.5%)' : 'Auto Debt Settlement & 1.5% Commission Calculator'}</span>
+            <span>{isAr ? 'حاسبة تسوية ديون السيارات وعمولة مخالصة (1.5%)' : 'Auto Debt Settlement & 1.5% Commission Calculator'}</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-black text-brand-navy">
             {isAr ? 'حاسبة التخارج وصافي مستحقات البائع' : 'Car Debt Exit & Net Proceeds Calculator'}
           </h1>
           <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
             {isAr
-              ? 'احسب بدقة المبالغ المستردة بعد سداد تسوية البنك بالكامل، وتعرّف على تفصيل عمولة مخلصة الثابتة (1.5%) والرسوم الرسمية، مع فحص حالات العجز المالي (Negative Equity).'
+              ? 'احسب بدقة المبالغ المستردة بعد سداد تسوية البنك بالكامل، وتعرّف على تفصيل عمولة مخالصة الثابتة (1.5%) والرسوم الرسمية، مع فحص حالات العجز المالي (Negative Equity).'
               : 'Accurately simulate seller net proceeds after complete lender payoff, 1.5% transparent platform fee, and identify potential negative equity shortfalls.'}
           </p>
         </div>
@@ -144,7 +144,7 @@ export const CalculatorPage: React.FC<CalculatorPageProps> = ({ onNavigate, lang
               <span className="text-lg font-black text-amber-300 mt-1 block">- 5,000 ج.م</span>
             </div>
             <div className="p-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10">
-              <span className="text-slate-300 block text-[10px]">4. عمولة مخلصة (1.5%)</span>
+              <span className="text-slate-300 block text-[10px]">4. عمولة مخالصة (1.5%)</span>
               <span className="text-lg font-black text-brand-green mt-1 block">- 9,000 ج.م</span>
             </div>
             <div className="col-span-2 sm:col-span-1 p-3 rounded-xl bg-brand-green/20 backdrop-blur-sm border border-brand-green/30">
@@ -159,7 +159,7 @@ export const CalculatorPage: React.FC<CalculatorPageProps> = ({ onNavigate, lang
             </span>
             <span className="text-brand-green flex items-center gap-1 font-bold">
               <ShieldCheck className="w-4 h-4" />
-              <span>تسدد الـ 400 ألف مباشرة بالبنك بحساب القرض، ولا تحجز مخلصة أي أموال تسوية.</span>
+              <span>تسدد الـ 400 ألف مباشرة بالبنك بحساب القرض، ولا تحجز مخالصة أي أموال تسوية.</span>
             </span>
           </div>
         </div>
@@ -376,14 +376,14 @@ export const CalculatorPage: React.FC<CalculatorPageProps> = ({ onNavigate, lang
               <div className="flex justify-between items-center">
                 <span className="font-bold text-emerald-950 flex items-center gap-1">
                   <Scale className="w-4 h-4 text-brand-green" />
-                  <span>عمولة منصة مخلصة لتنظيم الصفقة:</span>
+                  <span>عمولة منصة مخالصة لتنظيم الصفقة:</span>
                 </span>
                 <span className="font-black text-brand-green bg-white px-2 py-0.5 rounded-md border border-emerald-300">
                   {(commissionRate * 100).toFixed(1)}%
                 </span>
               </div>
               <p className="text-[10px] text-emerald-800 leading-relaxed">
-                عمولة مخلصة الثابتة 1.5% من إجمالي ثمن البيع تشمل تدقيق أوراق البنك، التنسيق الميداني بالفرع والشهر العقاري، ومتابعة فك الحظر حتى استلام الرخصة الحرة.
+                عمولة مخالصة الثابتة 1.5% من إجمالي ثمن البيع تشمل تدقيق أوراق البنك، التنسيق الميداني بالفرع والشهر العقاري، ومتابعة فك الحظر حتى استلام الرخصة الحرة.
               </p>
             </div>
 
@@ -440,7 +440,7 @@ export const CalculatorPage: React.FC<CalculatorPageProps> = ({ onNavigate, lang
 
                 <p className="text-xs text-slate-600 max-w-md mx-auto pt-1">
                   {settlement.isShortfall
-                    ? 'يمكن للبائع سداد هذا العجز كاش في خزينة البنك الدائن أثناء زيارة التسوية مع المشتري ومستشار مخلصة.'
+                    ? 'يمكن للبائع سداد هذا العجز كاش في خزينة البنك الدائن أثناء زيارة التسوية مع المشتري ومستشار مخالصة.'
                     : 'يستلم البائع هذا المبلغ كاش بالكامل بعد سداد تسوية البنك وفك حظر البيع.'}
                 </p>
               </div>
@@ -480,7 +480,7 @@ export const CalculatorPage: React.FC<CalculatorPageProps> = ({ onNavigate, lang
 
                   {/* Mokhalasa Commission */}
                   <div className="flex justify-between items-center text-brand-green font-extrabold">
-                    <span>(-) عمولة منصة مخلصة (1.5% من {formatEGP(settlement.grossSalePrice)}):</span>
+                    <span>(-) عمولة منصة مخالصة (1.5% من {formatEGP(settlement.grossSalePrice)}):</span>
                     <span>
                       -{formatEGP(settlement.platformCommission)}
                     </span>
@@ -513,10 +513,10 @@ export const CalculatorPage: React.FC<CalculatorPageProps> = ({ onNavigate, lang
               <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 text-xs text-blue-900 space-y-2">
                 <div className="flex items-center gap-2 font-bold">
                   <Lock className="w-4 h-4 text-blue-700" />
-                  <span>بروتوكول مخلصة لمنع مخاطر النقد والوسطاء (Zero-Custody Guarantee):</span>
+                  <span>بروتوكول مخالصة لمنع مخاطر النقد والوسطاء (Zero-Custody Guarantee):</span>
                 </div>
                 <p className="text-[11px] leading-relaxed text-blue-800">
-                  منصة مخلصة لا تستلم ولا تحتفظ بأي مبالغ تخص تسوية البنك الدائن ({formatEGP(settlement.lenderSettlementAmount)}). يقوم المشتري بإيداع هذا المبلغ مباشرة في حساب القرض بفرع البنك بحضور الطرفين وممثل مخلصة، واستلام إيصال الإيداع المصرفي المعتمد.
+                  منصة مخالصة لا تستلم ولا تحتفظ بأي مبالغ تخص تسوية البنك الدائن ({formatEGP(settlement.lenderSettlementAmount)}). يقوم المشتري بإيداع هذا المبلغ مباشرة في حساب القرض بفرع البنك بحضور الطرفين وممثل مخالصة، واستلام إيصال الإيداع المصرفي المعتمد.
                 </p>
               </div>
 

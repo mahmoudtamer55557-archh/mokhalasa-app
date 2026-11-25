@@ -491,7 +491,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
   // Forward Offer to Seller (Priority 5)
   const handleForwardOffer = async (offerId: string) => {
     setOfferActionMsg(null);
-    const res = await listingService.forwardOfferToSeller(offerId, currentStaffUser?.name || 'مستشار مخلصة');
+    const res = await listingService.forwardOfferToSeller(offerId, currentStaffUser?.name || 'مستشار مخالصة');
     if (res.success) {
       setOfferActionMsg(res.message);
       await loadPurchaseOffers();
@@ -1184,7 +1184,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
           <button
             onClick={() => onNavigate('home')}
             className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition flex items-center gap-1.5"
-            title="العودة للموقع العام لـ مخلصة"
+            title="العودة للموقع العام لـ مخالصة"
           >
             <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
             <span>الموقع العام</span>
@@ -1484,7 +1484,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                 <span>دليل فهم وإدارة «ملفات التخارج المصرفي» (Distress Exit Protocol)</span>
               </div>
               <p className="text-xs text-slate-300 leading-relaxed">
-                <strong>ما هو ملف التخارج؟</strong> هو ملف سيارة عليها حظر بيع بنكي أو أقساط متبقية، يتولى فريق منصة «مخلصة» إدارته قانونياً ومالياً لحماية البائع والمشتري بدون أن تستلم المنصة أي أموال من ثمن السيارة (Zero-Custody).
+                <strong>ما هو ملف التخارج؟</strong> هو ملف سيارة عليها حظر بيع بنكي أو أقساط متبقية، يتولى فريق منصة «مخالصة» إدارته قانونياً ومالياً لحماية البائع والمشتري بدون أن تستلم المنصة أي أموال من ثمن السيارة (Zero-Custody).
               </p>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-2.5 pt-1 text-2xs">
                 <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
@@ -1493,7 +1493,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                 </div>
                 <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
                   <div className="font-bold text-sky-400">2. نشر الإعلان واستقبال المشترين</div>
-                  <p className="text-slate-400">نشر السيارة في معرض «مخلصة» واستقبال عروض شراء جادة وفحص قدرة المشتري على السداد الفوري بالبنك.</p>
+                  <p className="text-slate-400">نشر السيارة في معرض «مخالصة» واستقبال عروض شراء جادة وفحص قدرة المشتري على السداد الفوري بالبنك.</p>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
                   <div className="font-bold text-emerald-400">3. سداد البنك وإصدار المخالصة</div>
@@ -1845,7 +1845,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                 <span>ضوابط الامتثال المصرفي والقانوني وقانون حماية البيانات 151 لسنة 2020</span>
               </div>
               <p className="text-xs text-slate-300 leading-relaxed max-w-3xl">
-                تطبق منصة «مخلصة» أعلى معايير الحوكمة المالية لمنع أي شبهة غسيل أموال أو احتجاز ودائع. لا تحتفظ المنصة بأي أموال تخص تسوية البنوك في أي حساب شخصي، وتتم كافة الإيداعات مباشرة في خزينة البنك الدائن.
+                تطبق منصة «مخالصة» أعلى معايير الحوكمة المالية لمنع أي شبهة غسيل أموال أو احتجاز ودائع. لا تحتفظ المنصة بأي أموال تخص تسوية البنوك في أي حساب شخصي، وتتم كافة الإيداعات مباشرة في خزينة البنك الدائن.
               </p>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 text-xs">
@@ -2218,7 +2218,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                         {item.seller_phone && (() => {
                           const clean = (item.seller_phone || '').replace(/\D/g, '');
                           const intl = clean.startsWith('0') ? `2${clean}` : clean.startsWith('20') ? clean : `20${clean}`;
-                          const waMsg = encodeURIComponent(`مرحباً أستاذ ${item.seller_name || ''}، معك مستشار منصة مخلصة بخصوص سيارتك المعروضة (${item.make} ${item.model}) كود: ${item.case_reference || item.id.slice(0, 8)}...`);
+                          const waMsg = encodeURIComponent(`مرحباً أستاذ ${item.seller_name || ''}، معك مستشار منصة مخالصة بخصوص سيارتك المعروضة (${item.make} ${item.model}) كود: ${item.case_reference || item.id.slice(0, 8)}...`);
                           return (
                             <a
                               href={`https://wa.me/${intl}?text=${waMsg}`}
@@ -2442,7 +2442,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                     <span>عروض الشراء والطلبات الواردة (Purchase Offers Queue)</span>
                   </h3>
                   <p className="text-xs text-slate-400 mt-1">
-                    إدارة وتنسيق عروض المشترين، والاتصال المباشر عبر واتساب وهاتفياً بتنسيق مستشار الصفقات في مخلصة.
+                    إدارة وتنسيق عروض المشترين، والاتصال المباشر عبر واتساب وهاتفياً بتنسيق مستشار الصفقات في مخالصة.
                   </p>
                 </div>
 
@@ -2483,7 +2483,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                   const cleanBuyerPhone = (offer.buyerPhone || '').replace(/\D/g, '');
                   const intlBuyerPhone = cleanBuyerPhone.startsWith('0') ? `2${cleanBuyerPhone}` : cleanBuyerPhone.startsWith('20') ? cleanBuyerPhone : `20${cleanBuyerPhone}`;
                   const waBuyerText = encodeURIComponent(
-                    `مرحباً أستاذ ${offer.buyerName}، معك مستشار الصفقات من منصة «مخلصة». بخصوص عرض الشراء المقدم على سيارة ${offer.carTitle} (كود الحالة: ${offer.caseReference}) بمبلغ ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م. يسعدنا إبلاغك بموافقة البائع والبدء في تنسيق موعد المعاينة وإجراءات الفحص...`
+                    `مرحباً أستاذ ${offer.buyerName}، معك مستشار الصفقات من منصة «مخالصة». بخصوص عرض الشراء المقدم على سيارة ${offer.carTitle} (كود الحالة: ${offer.caseReference}) بمبلغ ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م. يسعدنا إبلاغك بموافقة البائع والبدء في تنسيق موعد المعاينة وإجراءات الفحص...`
                   );
 
                   // Match Seller Information from listings
@@ -2496,7 +2496,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                   const cleanSellerPhone = sellerPhone.replace(/\D/g, '');
                   const intlSellerPhone = cleanSellerPhone.startsWith('0') ? `2${cleanSellerPhone}` : cleanSellerPhone.startsWith('20') ? cleanSellerPhone : `20${cleanSellerPhone}`;
                   const waSellerText = encodeURIComponent(
-                    `مرحباً أستاذ ${sellerName}، معك مستشار الصفقات من منصة «مخلصة». بخصوص سيارتك المعروضة (${offer.carTitle} - كود ${offer.caseReference})، تم تسجيل موافقتك على العرض المالي المقدم بمبلغ ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م، ونبدأ الآن التنسيق معك لتحديد موعد المعاينة وإتمام تسوية البنك...`
+                    `مرحباً أستاذ ${sellerName}، معك مستشار الصفقات من منصة «مخالصة». بخصوص سيارتك المعروضة (${offer.carTitle} - كود ${offer.caseReference})، تم تسجيل موافقتك على العرض المالي المقدم بمبلغ ${offer.offeredPrice.toLocaleString('ar-EG')} ج.م، ونبدأ الآن التنسيق معك لتحديد موعد المعاينة وإتمام تسوية البنك...`
                   );
 
                   // Match Buyer Account Activity & Active Listings ("هل عارض إعلانات ولا لأ")
@@ -3093,7 +3093,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                               <div className="w-7 h-7 rounded-lg bg-brand-green/20 text-brand-green flex items-center justify-center font-bold text-2xs">
                                 {(c.full_name || c.name || 'ع')[0]}
                               </div>
-                              <span>{c.full_name || c.name || 'عميل مخلصة'}</span>
+                              <span>{c.full_name || c.name || 'عميل مخالصة'}</span>
                             </td>
                             <td className="p-3.5 font-mono text-slate-300" dir="ltr">
                               {c.phone ? (
@@ -3401,7 +3401,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
                   {(() => {
                     const clean = (selectedModerationListing.seller_phone || '').replace(/\D/g, '');
                     const intl = clean.startsWith('0') ? `2${clean}` : clean.startsWith('20') ? clean : `20${clean}`;
-                    const waMsg = encodeURIComponent(`مرحباً أستاذ ${selectedModerationListing.seller_name || ''}، معك إدارة منصة مخلصة بخصوص سيارتك المعروضة (${selectedModerationListing.make} ${selectedModerationListing.model})...`);
+                    const waMsg = encodeURIComponent(`مرحباً أستاذ ${selectedModerationListing.seller_name || ''}، معك إدارة منصة مخالصة بخصوص سيارتك المعروضة (${selectedModerationListing.make} ${selectedModerationListing.model})...`);
                     return (
                       <a
                         href={`https://wa.me/${intl}?text=${waMsg}`}
@@ -3430,7 +3430,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-extrabold text-white flex items-center gap-1.5">
                   <FileText className="w-4 h-4 text-brand-green" />
-                  <span>الأوراق والمستندات الرسمية المحمية (خاصة بإدارة مخلصة فقط):</span>
+                  <span>الأوراق والمستندات الرسمية المحمية (خاصة بإدارة مخالصة فقط):</span>
                 </span>
                 <div className="flex items-center gap-2">
                   {selectedModerationListing.documents_verified ? (
@@ -4329,7 +4329,7 @@ export const PrivateOperationsDashboard: React.FC<PrivateOperationsDashboardProp
               <img src={docPreviewUrl} alt={docPreviewTitle} className="max-h-[70vh] w-auto object-contain" />
             </div>
             <div className="flex justify-between items-center text-3xs text-slate-400 pt-1">
-              <span>سرية تامة — متاحة للتدقيق والمطابقة فقط من مستشاري مخلصة المصرح لهم.</span>
+              <span>سرية تامة — متاحة للتدقيق والمطابقة فقط من مستشاري مخالصة المصرح لهم.</span>
               <button
                 type="button"
                 onClick={() => setDocPreviewUrl(null)}

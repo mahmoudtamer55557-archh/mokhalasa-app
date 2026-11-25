@@ -329,7 +329,7 @@ export const StaffLoginPage: React.FC<StaffLoginPageProps> = ({
             className="text-xs text-slate-400 hover:text-white transition inline-flex items-center gap-1.5 font-bold"
           >
             <ArrowRight className="w-3.5 h-3.5 text-brand-green" />
-            <span>العودة إلى الموقع العام لـ «مخلصة»</span>
+            <span>العودة إلى الموقع العام لـ «مخالصة»</span>
           </button>
         </div>
 

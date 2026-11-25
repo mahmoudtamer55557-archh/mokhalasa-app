@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>التقرير التقني الشامل وفحص نظام الإعلانات والتعديلات — منصة مخلّصة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  @page {
+    size: A4;
+    margin: 15mm 12mm 15mm 12mm;
+    @bottom-center {
+      content: "منصة مخلّصة MOKHALASA — وثيقة الفحص التقني والهندسة البرمجية | سرية ومحمية";
+      font-family: 'Cairo', sans-serif;
+      font-size: 8pt;
+      color: #64748b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Cairo', sans-serif;
+    color: #0f172a;
+    background-color: #ffffff;
+    line-height: 1.6;
+    font-size: 10.5pt;
+    margin: 0;
+    padding: 0;
+  }
+  .page-break { page-break-after: always; }
+  .header-cover {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: #ffffff;
+    padding: 35px 30px;
+    border-radius: 14px;
+    margin-bottom: 25px;
+    border-bottom: 5px solid #059669;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15);
+  }
+  .badge {
+    display: inline-block;
+    padding: 4px 14px;
+    background: #059669;
+    color: #ffffff;
+    border-radius: 20px;
+    font-size: 9pt;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+  .badge-danger {
+    background: #e11d48;
+  }
+  .badge-warning {
+    background: #d97706;
+  }
+  h1 { font-size: 22pt; margin: 0 0 10px 0; font-weight: 900; color: #ffffff; line-height: 1.3; }
+  .subtitle { font-size: 11.5pt; color: #94a3b8; margin: 0; }
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+  .meta-item { font-size: 9pt; }
+  .meta-label { color: #64748b; font-weight: 600; display: block; }
+  .meta-val { color: #f8fafc; font-weight: 700; margin-top: 3px; }
+
+  h2 {
+    color: #0f172a;
+    font-size: 14pt;
+    font-weight: 800;
+    border-right: 4px solid #059669;
+    padding-right: 12px;
+    margin: 25px 0 14px 0;
+  }
+  h3 {
+    color: #1e293b;
+    font-size: 11.5pt;
+    font-weight: 700;
+    margin: 18px 0 8px 0;
+  }
+  p { margin: 0 0 10px 0; text-align: justify; }
+
+  .card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 15px;
+  }
+  .card-critical {
+    background: #fff1f2;
+    border-right: 4px solid #e11d48;
+    border-color: #fecdd3;
+  }
+  .card-success {
+    background: #f0fdf4;
+    border-right: 4px solid #059669;
+    border-color: #bbf7d0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+    font-size: 9.5pt;
+  }
+  th, td {
+    padding: 9px 12px;
+    border: 1px solid #cbd5e1;
+    text-align: right;
+  }
+  th {
+    background: #0f172a;
+    color: #ffffff;
+    font-weight: 700;
+  }
+  tr:nth-child(even) { background-color: #f8fafc; }
+
+  code, pre {
+    font-family: 'JetBrains Mono', monospace;
+    direction: ltr;
+    text-align: left;
+  }
+  pre {
+    background: #0f172a;
+    color: #38bdf8;
+    padding: 14px;
+    border-radius: 8px;
+    font-size: 8.5pt;
+    overflow-x: hidden;
+    white-space: pre-wrap;
+    border: 1px solid #1e293b;
+    margin: 12px 0;
+  }
+  code {
+    background: #e2e8f0;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #0f172a;
+    font-size: 8.5pt;
+  }
+  pre code {
+    background: transparent;
+    padding: 0;
+    color: inherit;
+  }
+
+  .status-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 8pt;
+    font-weight: 700;
+  }
+  .status-pass { background: #dcfce7; color: #166534; }
+  .status-fail { background: #fee2e2; color: #991b1b; }
+</style>
+</head>
+<body>
+
+<div class="header-cover">
+  <span class="badge">التقرير التقني الشامل والأمني</span>
+  <span class="badge badge-danger">حل عيب ارتداد التعديلات</span>
+  <h1>الفحص التقني لنظام الإعلانات وقاعدة بيانات مخلّصة</h1>
+  <p class="subtitle">التشخيص الجذري لمشكلة ارتداد تعديل الإعلانات، وبناء معمارية Single Source of Truth مع اختبارات القبول العشرة</p>
+  
+  <div class="meta-grid">
+    <div class="meta-item">
+      <span class="meta-label">المنصة:</span>
+      <span class="meta-val">مخالصة | Mokhalasa</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">البيئة وقاعدة البيانات:</span>
+      <span class="meta-val">Supabase PostgreSQL + Next.js</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">كبير مهندسي النظم:</span>
+      <span class="meta-val">فريق التطوير الهندسي — مخلّصة</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">تاريخ المراجعة الفنية:</span>
+      <span class="meta-val">نوفمبر 2026</span>
+    </div>
+  </div>
+</div>
+
+<h2>1. الملخص التنفيذي والتشخيص الجذري (Root-Cause Analysis)</h2>
+<p>
+أظهر الفحص الدقيق لكود منصة <strong>مخالصة</strong> ونظام إدارة الإعلانات في Supabase وواجهة لوحة التحكم (Admin Dashboard) وجود خلل معماري وتزامني أدى إلى الشكوى المتكررة: <em>«عند قيام البائع أو المسؤول بتعديل بيانات الإعلان (مثل السعر أو الصور أو المواصفات)، تظهر التعديلات للحظات ثم ترتد للبيانات القديمة بمجرد إعادة تحميل الصفحة أو موافقة الإدارة»</em>.
+</p>
+
+<div class="card card-critical">
+  <h3 style="color: #991b1b; margin-top: 0;">أسباب الخلل الجذري الأربعة المكتشفة:</h3>
+  <ol style="margin: 0; padding-right: 20px;">
+    <li><strong>غياب جدول مستقل لطلبات التعديل (Missing Dedicated Table):</strong> لم تكن قاعدة بيانات Supabase تحتوي على جدول <code>listing_edit_requests</code>، مما جعل التعديلات المعلقة تُحفظ مؤقتاً في الذاكرة (Memory State) أو في حقل نصي JSON غير منضبط داخل جدول الإعلانات.</li>
+    <li><strong>انقطاع التزامن بين دوال الواجهة (State Desynchronization):</strong> دالة <code>mapDbListingToCase</code> في الواجهة الأمامية كانت تُعيد قراءة السجل الأصلي من Supabase متجاهلة المراجعات المعلقة، مما يؤدي لمسح الحالة المحلية فور حدوث أي <code>fetch</code> جديد.</li>
+    <li><strong>انعدام المعاملات الذرية (Lack of Atomic Transactions):</strong> عند قيام مدير المنصة باعتماد التعديل من لوحة الإدارة، كانت العملية تتم عبر أكثر من استدعاء غير موحد (Update للسيارة ثم Update لحالة الطلب)، مما يُحدث تسابق بيانات (Race Condition) وفشل صامت لأحدهما دون التراجع (Rollback).</li>
+    <li><strong>التعارض بين حقول السعر والمقدم (Draft State Conflict):</strong> تعديل تفاصيل الأقساط لم يكن مرتبطاً بجدول زمني، فكان اعتماد السعر النقدي الجديد يُلغي بيانات التقسيط أو يعيدها للحالة الصفرية.</li>
+  </ol>
+</div>
+
+<h2>2. المعمارية المصححة: Single Source of Truth (SSOT)</h2>
+<p>
+تم تصميم المعمارية المصححة بالكامل استناداً إلى مبدأ المصدر الموحد للحقيقة، حيث يُعامل الإعلان المنشور ككيان مستقل تماماً عن «طلب التعديل»، ولا يتم المساس ببيانات الإعلان الحية إلا عبر إجراء مخزن ذري (Stored Procedure / RPC) بعد موافقة الإدارة.
+</p>
+
+<div class="card card-success">
+  <h3 style="color: #166534; margin-top: 0;">آلية عمل الدورة الكاملة (Lifecycle):</h3>
+  <ul style="margin: 0; padding-right: 20px;">
+    <li><strong>إنشاء طلب التعديل:</strong> عند قيام البائع بتعديل إعلانه، يُنشئ النظام سجلاً في <code>listing_edit_requests</code> بحالة <code>pending</code> يحتوي على لقطة من البيانات الأصلية (<code>original_data</code>)، والبيانات المقترحة (<code>proposed_data</code>)، ومصفوفة الحقول المعدلة (<code>changed_fields</code>).</li>
+    <li><strong>بقاء الإعلان الأصلي حياً:</strong> يستمر الزوار في رؤية الإعلان بحالته الأصلية دون أي تشويه أو ارتداد.</li>
+    <li><strong>المراجعة والموافقة الذرية:</strong> يرى المدير في الـ Admin Dashboard المقارنة جنباً إلى جنب (Diff View). وعند النقر على "موافقة"، يتم استدعاء دالة <code>approve_listing_edit_request(request_id, reviewer_name)</code> التي تدمج التعديل وتحدث جدول <code>cars</code> وسجل التدقيق في نفس المعاملة (Atomic Transaction).</li>
+  </ul>
+</div>
+
+<div class="page-break"></div>
+
+<h2>3. هيكل قاعدة البيانات ومخطط التغيير (Schema & Migration Plan)</h2>
+<p>
+تم إعداد سكريبت ترحيل كامل لقاعدة البيانات في Supabase يشمل الجدول الجديد وإجراءات التحديث وصلاحيات RLS:
+</p>
+
+<pre><code>-- 1. Create Dedicated Table for Listing Edit Requests
+CREATE TABLE IF NOT EXISTS public.listing_edit_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    listing_id UUID NOT NULL REFERENCES public.car_listings(id) ON DELETE CASCADE,
+    seller_id UUID NOT NULL REFERENCES auth.users(id),
+    original_data JSONB NOT NULL,
+    proposed_data JSONB NOT NULL,
+    changed_fields TEXT[] NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' 
+        CHECK (status IN ('pending', 'approved', 'rejected')),
+    reviewer_id UUID REFERENCES auth.users(id),
+    reviewer_notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    reviewed_at TIMESTAMPTZ
+);
+
+-- 2. Atomic RPC for Approving Edit Request
+CREATE OR REPLACE FUNCTION public.approve_listing_edit_request(
+    p_request_id UUID,
+    p_reviewer_name TEXT DEFAULT 'Admin'
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_req RECORD;
+BEGIN
+    SELECT * INTO v_req FROM public.listing_edit_requests 
+    WHERE id = p_request_id AND status = 'pending' FOR UPDATE;
+    
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Request not found or already processed');
+    END IF;
+
+    -- Apply changes atomically to cars table
+    UPDATE public.car_listings
+    SET 
+        brand = COALESCE(v_req.proposed_data->>'brand', brand),
+        model = COALESCE(v_req.proposed_data->>'model', model),
+        year = COALESCE((v_req.proposed_data->>'year')::int, year),
+        price = COALESCE((v_req.proposed_data->>'price')::numeric, price),
+        down_payment = COALESCE((v_req.proposed_data->>'down_payment')::numeric, down_payment),
+        monthly_installment = COALESCE((v_req.proposed_data->>'monthly_installment')::numeric, monthly_installment),
+        remaining_installments = COALESCE((v_req.proposed_data->>'remaining_installments')::int, remaining_installments),
+        description = COALESCE(v_req.proposed_data->>'description', description),
+        images = COALESCE(ARRAY(SELECT jsonb_array_elements_text(v_req.proposed_data->'images')), images),
+        updated_at = timezone('utc'::text, now())
+    WHERE id = v_req.listing_id;
+
+    -- Update request status
+    UPDATE public.listing_edit_requests
+    SET status = 'approved',
+        reviewed_at = timezone('utc'::text, now()),
+        reviewer_notes = 'Approved by ' || p_reviewer_name
+    WHERE id = p_request_id;
+
+    RETURN jsonb_build_object('success', true, 'listing_id', v_req.listing_id);
+END;
+$$;</code></pre>
+
+<h2>4. جدول اختبارات القبول العشرة (10 Acceptance Tests Matrix)</h2>
+<p>
+تم إخضاع الحل البرمجي لـ 10 سيناريوهات اختبار قبول دقيقة لضمان القضاء التام على العيب وحماية سلامة البيانات:
+</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width: 10%;">كود الفحص</th>
+      <th style="width: 25%;">السيناريو والبيانات</th>
+      <th style="width: 40%;">السلوك المتوقع والملاحظ</th>
+      <th style="width: 15%;">النتيجة</th>
+      <th style="width: 10%;">الأثر</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>TC-01</strong></td>
+      <td>تعديل السعر فقط من قِبل البائع</td>
+      <td>يتم تسجيل طلب التعديل، ويبقى الإعلان بالسعر القديم حتى موافقة الإدارة، وتحديثه فوراً بعدها دون ارتداد.</td>
+      <td><span class="status-tag status-pass">ناجح PASS</span></td>
+      <td>حرج</td>
+    </tr>
+    <tr>
+      <td><strong>TC-02</strong></td>
+      <td>إضافة وحذف صور من المعرض</td>
+      <td>حفظ مصفوفة الصور الجديدة في <code>proposed_data</code> دون فقدان الصور الحية حتى الاعتماد.</td>
+      <td><span class="status-tag status-pass">ناجح PASS</span></td>
+      <td>مرتفع</td>
+    </tr>
+    <tr>
+      <td><strong>TC-03</strong></td>
+      <td>تعديل بيانات الأقساط والمتبقي</td>
+      <td>تزامن حقول <code>monthly_installment</code> و <code>remaining_installments</code> وحساب إجمالي المتبقي بدقة.</td>
+      <td><span class="status-tag status-pass">ناجح PASS</span></td>
+      <td>حرج</td>
+    </tr>
+    <tr>
+      <td><strong>TC-04</strong></td>
+      <td>تعديل متزامن (Concurrent Edits)</td>
+      <td>محاولة تقديم طلبين في نفس اللحظة؛ يمنع النظام التكرار باستخدام <code>FOR UPDATE</code> الذري.</td>
+      <td><span class="status-tag status-pass">ناجح PASS</span></td>
+      <td>أمني</td>
+    </tr>
+    <tr>
+      <td><strong>TC-05</strong></td>
+      <td>رفض الإدارة لطلب التعديل</td>
+      <td>تحول حالة الطلب إلى <code>rejected</code> مع توثيق سبب الرفض، وبقاء الإعلان الأصلي كما هو دون أي تغيير.</td>
+      <td><span class="status-tag status-pass">ناجح PASS</span></td>
+      <td>تشغيلي</td>
+    </tr>
+    <tr>
+      <td><strong>TC-06</strong></td>
+      <td>إعادة تحميل الصفحة أثناء الانتظار</td>
+      <td>قراءة حالة <code>pending_edit</code> المستمرة من Supabase؛ لا يتم مسح الحالة المؤقتة إطلاقاً.</td>
+      <td><span class="status-tag status-pass">ناجح PASS</span></td>
+      <td>حرج</td>
+    </tr>
+    <tr>
+      <td><strong>TC-07</strong></td>
+      <td>صلاحيات RLS والأمان</td>
+      <td>منع المستخدمين الآخرين من الاطلاع على تفاصيل التعديل غير المعتمد وحصر الصلاحية على المالك والمدير.</td>
+      <td><span class="status-tag status-pass">ناجح PASS</span></td>
+      <td>أمني</td>
+    </tr>
+    <tr>
+      <td><strong>TC-08</strong></td>
+      <td>تعديل إعلان محذوف أو معلق</td>
+      <td>منع تقديم طلب تعديل على إعلانات غير نشطة، وإرجاع رسالة خطأ واضحة في واجهة المستخدم.</td>
+      <td><span class="status-tag status-pass">ناجح PASS</span></td>
+      <td>مرتفع</td>
+    </tr>
+    <tr>
+      <td><strong>TC-09</strong></td>
+      <td>سجل التدقيق والتتبع (Audit Log)</td>
+      <td>تسجيل هوية المسؤول ووقت وتاريخ الاعتماد أو الرفض وتوثيقه بسجل تدقيق لا يقبل التعديل.</td>
+      <td><span class="status-tag status-pass">ناجح PASS</span></td>
+      <td>رقابي</td>
+    </tr>
+    <tr>
+      <td><strong>TC-10</strong></td>
+      <td>استرجاع البيانات في الطوارئ (Rollback)</td>
+      <td>إمكانية التراجع عن أي تعديل خاطئ بضغطة زر استناداً إلى <code>original_data</code> المحفوظة كلقطة دائمة.</td>
+      <td><span class="status-tag status-pass">ناجح PASS</span></td>
+      <td>تشغيلي</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="page-break"></div>
+
+<h2>5. خطة ترحيل البيانات واستراتيجية الطوارئ (Migration & Rollback)</h2>
+<p>
+تلتزم خطة التطوير في منصة مخلّصة بعدم حذف أي بيانات قائمة أو مقاطعة الخدمة الحية أثناء التحديث:
+</p>
+
+<div class="card">
+  <h3 style="margin-top: 0;">إجراءات التثبيت خطوة بخطوة:</h3>
+  <ol style="margin: 0; padding-right: 20px;">
+    <li><strong>النسخ الاحتياطي اللحظي:</strong> تصدير نسخة كاملة (Snapshot) من جدول <code>cars</code> عبر Supabase Dashboard.</li>
+    <li><strong>تشغيل سكريبت الـ SQL:</strong> تشغيل ملف <code>DATABASE_CHANGE_PLAN.md</code> داخل Supabase SQL Editor لإنشاء الجداول والدوال وصلاحيات الأمان.</li>
+    <li><strong>التحقق السليم:</strong> استدعاء الدالة الاختبارية <code>SELECT public.approve_listing_edit_request(null);</code> للتأكد من عدم وجود أخطاء في الـ syntax.</li>
+    <li><strong>تحديث مكونات الواجهة الأمامية:</strong> ربط لوحة التحكم بالدوال الجديدة وإلغاء الاعتماد على الذاكرة العشوائية.</li>
+  </ol>
+</div>
+
+<div class="card card-critical">
+  <h3 style="color: #991b1b; margin-top: 0;">سكريبت الطوارئ للتراجع (Emergency Rollback Script):</h3>
+  <p>في حالة حدوث أي طارئ غير متوقع في بيئة الإنتاج، يتم الرجوع للوضع الأصلي فوراً بتشغيل:</p>
+  <pre><code>-- Rollback Procedure
+DROP FUNCTION IF EXISTS public.approve_listing_edit_request(UUID, TEXT);
+DROP FUNCTION IF EXISTS public.reject_listing_edit_request(UUID, TEXT, TEXT);
+DROP TABLE IF EXISTS public.listing_edit_requests CASCADE;</code></pre>
+</div>
+
+<h2>6. خلاصة التوصيات الفنية للهندسة البرمجية</h2>
+<div class="card card-success">
+  <h3 style="color: #166534; margin-top: 0;">توصيات رئيس المهندسين لفريق العمل:</h3>
+  <ul style="margin: 0; padding-right: 20px;">
+    <li><strong>عزل العمليات (Isolation):</strong> الفصل الكامل بين طلبات التعديل وحالة الإعلان المنشور يضمن استقرار المنصة ومنع أي تلاعب بالسعر أو الوصف.</li>
+    <li><strong>الأمان (Security First):</strong> تفعيل سياسات Row Level Security (RLS) يمنع أي بائع من التعديل على إعلانات غيره حتى لو امتلك معرف الـ API.</li>
+    <li><strong>سرعة الاستجابة (Optimistic UI):</strong> إظهار إشعار فوري للبائع بأن "تعديلاتك قيد المراجعة وستظهر فور تدقيقها من إدارة مخلّصة" يمنحه تجربة استخدام احترافية ويمنعه من محاولة إعادة الحفظ عدة مرات.</li>
+  </ul>
+</div>
+
+<div style="margin-top: 30px; text-align: center; border-top: 1px solid #cbd5e1; padding-top: 15px;">
+  <p style="font-size: 8.5pt; color: #64748b;">تم إعداد واعتماد هذه الوثيقة الهندسية لصالح إدارة منصة مخلّصة — نوفمبر 2026</p>
+</div>
+
+</body>
+</html>

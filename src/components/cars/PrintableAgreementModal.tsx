@@ -97,7 +97,7 @@ export const PrintableAgreementModal: React.FC<PrintableAgreementModalProps> = (
                 استمارة اتفاق وساطة وحجز مبدئي لمركبة
               </h1>
               <p className="text-3xs sm:text-2xs text-slate-500">
-                منظمة عبر منصة «مخلصة» لوساطة وتسوية المركبات وفقاً لقوانين التجارة والبنك المركزي المصري
+                منظمة عبر منصة «مخالصة» لوساطة وتسوية المركبات وفقاً لقوانين التجارة والبنك المركزي المصري
               </p>
             </div>
             <div className="text-left flex flex-col items-end">
@@ -251,7 +251,7 @@ export const PrintableAgreementModal: React.FC<PrintableAgreementModalProps> = (
                 <span className="font-black text-sm text-rose-700">{settlementAmount.toLocaleString()} ج.م</span>
               </div>
               <div className="p-2 rounded-xl bg-white border border-slate-200">
-                <span className="text-slate-500 block">أتعاب وساطة مخلصة (1.5%):</span>
+                <span className="text-slate-500 block">أتعاب وساطة مخالصة (1.5%):</span>
                 <span className="font-black text-sm text-brand-navy">{feeMokhalasa.toLocaleString()} ج.م</span>
               </div>
               <div className="p-2 rounded-xl bg-white border border-emerald-300">
@@ -267,8 +267,8 @@ export const PrintableAgreementModal: React.FC<PrintableAgreementModalProps> = (
             <ol className="list-decimal list-inside space-y-1">
               <li><strong>السداد البنكي المباشر:</strong> يلتزم المشتري بتوريد مبلغ مديونية البنك مباشرة في خزينة الفرع الدائن باسم حساب قرض البائع، ويستلم إيصالاً بنكياً رسمياً بذلك.</li>
               <li><strong>إجراءات فك الحظر:</strong> يلتزم البائع فور استخراج إفادة السداد البنكية بمرافقة المشتري لوحدة المرور والشهر العقاري لتسجيل عقد البيع النهائي المسجل للمشتري ونقل الملكية.</li>
-              <li><strong>استحقاق أتعاب الوساطة:</strong> يقر الطرفان باستحقاق منصة «مخلصة» لأتعاب التنسيق والوساطة وقدرها (1.5%) تُسدد فور توثيق عقد البيع الرسمي بالشهر العقاري.</li>
-              <li><strong>إخلاء المسؤولية:</strong> منصة «مخلصة» هي جهة تنسيق ووساطة تنظيمية ولا تعد طرفاً مديناً أو مقرضاً، ولا تودع أي أموال في حساباتها طبقاً لقانون البنك المركزي رقم 194 لسنة 2020.</li>
+              <li><strong>استحقاق أتعاب الوساطة:</strong> يقر الطرفان باستحقاق منصة «مخالصة» لأتعاب التنسيق والوساطة وقدرها (1.5%) تُسدد فور توثيق عقد البيع الرسمي بالشهر العقاري.</li>
+              <li><strong>إخلاء المسؤولية:</strong> منصة «مخالصة» هي جهة تنسيق ووساطة تنظيمية ولا تعد طرفاً مديناً أو مقرضاً، ولا تودع أي أموال في حساباتها طبقاً لقانون البنك المركزي رقم 194 لسنة 2020.</li>
             </ol>
           </div>
 
@@ -287,7 +287,7 @@ export const PrintableAgreementModal: React.FC<PrintableAgreementModalProps> = (
             </div>
 
             <div className="space-y-8">
-              <span className="font-black text-brand-navy block">اعتماد وسيط منصة «مخلصة»:</span>
+              <span className="font-black text-brand-navy block">اعتماد وسيط منصة «مخالصة»:</span>
               <div className="border-b border-dashed border-slate-400 mx-4"></div>
               <span className="text-3xs text-slate-400 block">الختم وتوقيع المنسق</span>
             </div>

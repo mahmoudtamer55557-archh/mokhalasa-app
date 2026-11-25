@@ -175,7 +175,7 @@ export function mapSupabaseUserToCustomerUser(supabaseUser: any): CustomerUser {
   const name = 
     metadata.full_name || 
     metadata.name || 
-    (supabaseUser.email ? supabaseUser.email.split('@')[0] : 'عميل مخلصة');
+    (supabaseUser.email ? supabaseUser.email.split('@')[0] : 'عميل مخالصة');
 
   const provider = appMetadata.provider === 'google' ? 'google' : 'email';
   const rawPhone = metadata.phone || '';
@@ -268,7 +268,7 @@ export const authService = {
           userId: prof.id,
           phone: cleanPhone,
           email: `${cleanPhone}@customer.mokhalasa.com`,
-          fullName: prof.full_name || 'عميل مخلصة',
+          fullName: prof.full_name || 'عميل مخالصة',
           governorate: prof.governorate || 'القاهرة',
           city: prof.city || '',
           isVerified: true,
@@ -295,7 +295,7 @@ export const authService = {
           userId: listing.user_id,
           phone: cleanPhone,
           email: `${cleanPhone}@customer.mokhalasa.com`,
-          fullName: listing.seller_name || 'عميل مخلصة',
+          fullName: listing.seller_name || 'عميل مخالصة',
           governorate: listing.governorate || 'القاهرة',
           city: listing.city || '',
           isVerified: true,
@@ -522,7 +522,7 @@ export const authService = {
       return {
         success: true,
         requiresEmailConfirmation: false,
-        message: 'تم تفعيل حسابك وتوثيق رقم هاتفك وعنوانك وبصمة جهازك بنجاح وتسجيل دخولك إلى مخلصة!',
+        message: 'تم تفعيل حسابك وتوثيق رقم هاتفك وعنوانك وبصمة جهازك بنجاح وتسجيل دخولك إلى مخالصة!',
         user: customer
       };
 
@@ -603,7 +603,7 @@ export const authService = {
             await supabase.from('profiles').upsert({
               id: data.user.id,
               phone: userPhone,
-              full_name: data.user.user_metadata?.full_name || existingRecord?.fullName || 'عميل مخلصة',
+              full_name: data.user.user_metadata?.full_name || existingRecord?.fullName || 'عميل مخالصة',
               governorate: data.user.user_metadata?.governorate || existingRecord?.governorate || 'القاهرة',
               city: data.user.user_metadata?.city || existingRecord?.city || null,
               updated_at: new Date().toISOString()
@@ -617,7 +617,7 @@ export const authService = {
             userId: data.user.id,
             phone: userPhone,
             email: data.user.email || resolvedEmail,
-            fullName: data.user.user_metadata?.full_name || existingRecord?.fullName || 'عميل مخلصة',
+            fullName: data.user.user_metadata?.full_name || existingRecord?.fullName || 'عميل مخالصة',
             governorate: data.user.user_metadata?.governorate || existingRecord?.governorate || 'القاهرة',
             city: data.user.user_metadata?.city || existingRecord?.city || '',
             isVerified: true,
@@ -646,7 +646,7 @@ export const authService = {
       if (existingRecord && existingRecord.currentPasswordHash && existingRecord.currentPasswordHash === enteredPwdHash) {
         const customer: CustomerUser = {
           id: existingRecord.userId,
-          name: existingRecord.fullName || 'عميل مخلصة',
+          name: existingRecord.fullName || 'عميل مخالصة',
           email: existingRecord.email || resolvedEmail,
           phone: existingRecord.phone || cleanPhone,
           provider: 'email',
@@ -836,7 +836,7 @@ export const authService = {
 
       const customer: CustomerUser = {
         id: updatedAccount.userId,
-        name: updatedAccount.fullName || 'عميل مخلصة',
+        name: updatedAccount.fullName || 'عميل مخالصة',
         email: updatedAccount.email || `${normalizedPhone}@customer.mokhalasa.com`,
         phone: normalizedPhone,
         provider: 'email',
@@ -852,7 +852,7 @@ export const authService = {
       } catch {}
 
       // Send WhatsApp confirmation of password change
-      sendPasswordChangedWhatsApp(normalizedPhone, updatedAccount.fullName || 'عميل مخلصة').catch(err =>
+      sendPasswordChangedWhatsApp(normalizedPhone, updatedAccount.fullName || 'عميل مخالصة').catch(err =>
         console.warn('Password reset confirmation WhatsApp notice:', err)
       );
 
@@ -973,14 +973,14 @@ export const authService = {
         userId,
         phone: normalized,
         email: `${normalized}@customer.mokhalasa.com`,
-        fullName: fullName?.trim() || 'عميل مخلصة',
+        fullName: fullName?.trim() || 'عميل مخالصة',
         governorate: governorate || 'القاهرة',
         isVerified: true,
         passwordHashes: [],
         createdAt: new Date().toISOString()
       });
 
-      sendWelcomeWhatsApp(normalized, fullName || 'عميل مخلصة').catch(err =>
+      sendWelcomeWhatsApp(normalized, fullName || 'عميل مخالصة').catch(err =>
         console.warn('Welcome WhatsApp notice:', err)
       );
 
@@ -1015,7 +1015,7 @@ export const authService = {
       const acc = check.account;
       const customer: CustomerUser = {
         id: acc.userId,
-        name: acc.fullName || 'عميل مخلصة',
+        name: acc.fullName || 'عميل مخالصة',
         email: acc.email || `${normalized}@customer.mokhalasa.com`,
         phone: normalized,
         provider: 'phone_otp',

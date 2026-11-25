@@ -116,7 +116,7 @@ export function computeVehicleValuation(input: ValuationInput): ValuationResult 
 
   const missingInfoNotes: string[] = [];
   if (activeComparables.length === 0) {
-    missingInfoNotes.push('بيانات المقارنة المباشرة لهذه الفئة محدودة، يوصى بمراجعة يدوية من خبير مخلصة.');
+    missingInfoNotes.push('بيانات المقارنة المباشرة لهذه الفئة محدودة، يوصى بمراجعة يدوية من خبير مخالصة.');
   }
   if (!trim || trim.includes('غير مدرجة')) {
     missingInfoNotes.push('الفئة مسجلة يدوياً، يلزم مراجعة كتالوج الوكيل لتأكيد الكماليات الإضافية.');
@@ -135,7 +135,7 @@ export function computeVehicleValuation(input: ValuationInput): ValuationResult 
   }));
 
   if (sources.length === 0) {
-    sources.push({ name: 'مؤشر مخلصة التقديري لمتوسط السوق 2026', timestamp: '2026-10-22' });
+    sources.push({ name: 'مؤشر مخالصة التقديري لمتوسط السوق 2026', timestamp: '2026-10-22' });
   }
 
   return {

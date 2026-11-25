@@ -78,7 +78,7 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
     const fullBirthDate = `${birthYear}-${birthMonth}-${birthDay}`;
     const ageResult = validateAdultAge18Plus(fullBirthDate);
     if (!ageResult.isAdult) {
-      setErrorMsg(ageResult.error || 'يجب ألا يقل العمر عن 18 عاماً للتسجيل على منصة مخلصة وفقاً للقوانين المصرية.');
+      setErrorMsg(ageResult.error || 'يجب ألا يقل العمر عن 18 عاماً للتسجيل على منصة مخالصة وفقاً للقوانين المصرية.');
       return;
     }
 
@@ -89,7 +89,7 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
       // 3. Strict Phone Uniqueness Check across entire DB and registry!
       const phoneCheck = await authService.checkPhoneAccountExists(cleanPhone);
       if (phoneCheck.exists && phoneCheck.account && phoneCheck.account.userId && phoneCheck.account.userId !== customerUser.id) {
-        setErrorMsg('رقم الهاتف هذا مسجل بالفعل بحساب آخر على منصة مخلصة. كل عميل يمتلك حساباً واحداً فقط برقم هاتفه.');
+        setErrorMsg('رقم الهاتف هذا مسجل بالفعل بحساب آخر على منصة مخالصة. كل عميل يمتلك حساباً واحداً فقط برقم هاتفه.');
         setIsSubmitting(false);
         return;
       }
@@ -162,7 +162,7 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
         return;
       }
 
-      const resolvedName = fullNameInput.trim() || customerUser.name || 'عميل مخلصة';
+      const resolvedName = fullNameInput.trim() || customerUser.name || 'عميل مخالصة';
 
       // 1. Update user_metadata in Supabase Auth
       await supabase.auth.updateUser({
@@ -259,7 +259,7 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
               حساب واحد موثق لكل رقم هاتف مصري (+18)
             </span>
             <p className="text-3xs text-slate-500 leading-relaxed">
-              وفقاً لقواعد مخلصة والقوانين المصرية، تقتصر المعاملات والعروض على الحسابات الموثقة للبالغين فقط.
+              وفقاً لقواعد مخالصة والقوانين المصرية، تقتصر المعاملات والعروض على الحسابات الموثقة للبالغين فقط.
             </p>
           </div>
         </div>

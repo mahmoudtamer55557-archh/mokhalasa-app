@@ -159,7 +159,7 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
   };
 
   const whatsappInquiryMessage = encodeURIComponent(
-    `مرحباً فريق مخلصة، أنا مهتم بشراء سيارة ${car.make} ${car.model} ${car.year} المعروضة على المنصة بسعر ${car.askingPrice.toLocaleString()} ج.م (كود السيارة: ${car.id}). أرجو التنسيق للمعاينة وفحص أوراق البنك الدائن وفق بروتوكول مخلصة.`
+    `مرحباً فريق مخالصة، أنا مهتم بشراء سيارة ${car.make} ${car.model} ${car.year} المعروضة على المنصة بسعر ${car.askingPrice.toLocaleString()} ج.م (كود السيارة: ${car.id}). أرجو التنسيق للمعاينة وفحص أوراق البنك الدائن وفق بروتوكول مخالصة.`
   );
 
   return (
@@ -209,11 +209,11 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
             </div>
             <div>
               <span className="font-extrabold text-brand-navy block">
-                {isAr ? 'معاملة محمية ومنسقة بالكامل عبر منصة مخلصة' : 'Fully Managed & Protected by Mokhalasa'}
+                {isAr ? 'معاملة محمية ومنسقة بالكامل عبر منصة مخالصة' : 'Fully Managed & Protected by Mokhalasa'}
               </span>
               <p className="text-slate-600 text-[11px]">
                 {isAr
-                  ? 'لحماية الطرفين ومنع العشوائية، تتولى مخلصة تدقيق أوراق البنك، ترتيب المعاينة، وتنسيق إيداع التسوية البنكية مباشرة بفرع البنك الدائن.'
+                  ? 'لحماية الطرفين ومنع العشوائية، تتولى مخالصة تدقيق أوراق البنك، ترتيب المعاينة، وتنسيق إيداع التسوية البنكية مباشرة بفرع البنك الدائن.'
                   : 'To protect both parties, Mokhalasa verifies bank quotes, schedules inspections, and coordinates direct bank payoff.'}
               </p>
             </div>
@@ -233,7 +233,7 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
             <div className="relative aspect-[16/10] rounded-3xl overflow-hidden bg-slate-900 border border-brand-border shadow-card group">
               <img
                 src={car.images[activeImageIndex] || car.images[0]}
-                alt={`سيارة ${car.make} ${car.model} موديل ${car.year} - تسوية حظر بيع وفحص فني مخلصة`}
+                alt={`سيارة ${car.make} ${car.model} موديل ${car.year} - تسوية حظر بيع وفحص فني مخالصة`}
                 className="w-full h-full object-cover transition-all duration-300"
                 loading="eager"
                 decoding="async"
@@ -526,7 +526,7 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
                 </div>
               )}
 
-              {/* Installment Continuation Option (تكملة الأقساط بضمان مخلصة) */}
+              {/* Installment Continuation Option (تكملة الأقساط بضمان مخالصة) */}
               {car.saleType === 'installment_continuation' && (
                 <div className="bg-gradient-to-br from-emerald-50 to-teal-50/70 rounded-2xl p-4.5 border-2 border-emerald-400/80 text-xs space-y-3 shadow-sm">
                   <div className="flex justify-between items-center pb-2 border-b border-emerald-200">
@@ -623,7 +623,7 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
                     </span>
                     <p className="text-[10px]">
                       {isAr
-                        ? 'يقوم المشتري بإيداع مبلغ تسوية البنك مباشرة في حساب القرض بالفرع واستلام إشعار سداد رسمي باسم المقترض، وتتولى مخلصة تسليم مخالصة البنك ونقل الملكية بالشهر العقاري.'
+                        ? 'يقوم المشتري بإيداع مبلغ تسوية البنك مباشرة في حساب القرض بالفرع واستلام إشعار سداد رسمي باسم المقترض، وتتولى مخالصة تسليم مخالصة البنك ونقل الملكية بالشهر العقاري.'
                         : 'Buyer deposits the settlement directly into the loan account at the branch with an official cashier receipt.'}
                     </p>
                   </div>
@@ -704,11 +704,11 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
                   className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-2xs transition flex items-center justify-center gap-2"
                 >
                   <PhoneCall className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>{isAr ? 'تواصل مع فريق مخلصة عبر واتساب (مباشر)' : 'Chat with Mokhalasa via WhatsApp'}</span>
+                  <span>{isAr ? 'تواصل مع فريق مخالصة عبر واتساب (مباشر)' : 'Chat with Mokhalasa via WhatsApp'}</span>
                 </a>
 
                 <p className="text-[10px] text-slate-400 text-center">
-                  * المعاملة تدار مركزياً من مستشاري مخلصة لحماية حقوق الطرفين والبنك.
+                  * المعاملة تدار مركزياً من مستشاري مخالصة لحماية حقوق الطرفين والبنك.
                 </p>
               </div>
 
@@ -744,7 +744,7 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
             {/* 4-Step Settlement Process Summary */}
             <div className="bg-white rounded-3xl p-5 border border-brand-border shadow-sm space-y-2.5 text-xs">
               <span className="font-extrabold text-brand-navy block">
-                {isAr ? 'خطوات شراء هذه السيارة عبر مخلصة:' : 'Purchase Steps with Mokhalasa:'}
+                {isAr ? 'خطوات شراء هذه السيارة عبر مخالصة:' : 'Purchase Steps with Mokhalasa:'}
               </span>
               <div className="space-y-2 text-slate-600">
                 <div className="flex items-start gap-2">
@@ -773,7 +773,7 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
                 <span>تحذير أمان وتسوية قانونية معتمدة:</span>
               </div>
               <p className="text-2xs text-slate-700 leading-relaxed">
-                لحماية أموالك وتفادي أي مساءلة: <strong>لا تقم بتسليم أي مبالغ نقدية للبائع بخصوص المديونية</strong>. يتم إيداع مبلغ التسوية مباشرة في خزينة البنك المقرض، وتستلم إشعار سداد رسمي ومخالصة فك الحظر، والتنازل الموثق بالشهر العقاري بإشراف المستشار القانوني لمنصة مخلصة.
+                لحماية أموالك وتفادي أي مساءلة: <strong>لا تقم بتسليم أي مبالغ نقدية للبائع بخصوص المديونية</strong>. يتم إيداع مبلغ التسوية مباشرة في خزينة البنك المقرض، وتستلم إشعار سداد رسمي ومخالصة فك الحظر، والتنازل الموثق بالشهر العقاري بإشراف المستشار القانوني لمنصة مخالصة.
               </p>
               <div className="pt-1 flex items-center justify-between text-3xs text-slate-500 border-t border-amber-200">
                 <span>إشراف قانوني معتمد • صفر توكيلات مجهولة</span>
@@ -804,7 +804,7 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
                   {isAr ? 'تسجيل الاهتمام بشراء السيارة' : 'Express Interest in Vehicle'}
                 </h3>
                 <span className="text-[11px] text-brand-green font-bold block">
-                  عبر مستشار الصفقات في مخلصة
+                  عبر مستشار الصفقات في مخالصة
                 </span>
               </div>
               <button
@@ -823,7 +823,7 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
                 </h4>
                 <p className="text-xs text-slate-500 leading-relaxed">
                   {submissionSuccessMsg || (isAr
-                    ? 'سيقوم مستشار الصفقات المعين في مخلصة بالتواصل معك هاتفياً خلال ساعتين عمل لترتيب موعد المعاينة وتدقيق أوراق البنك الدائن.'
+                    ? 'سيقوم مستشار الصفقات المعين في مخالصة بالتواصل معك هاتفياً خلال ساعتين عمل لترتيب موعد المعاينة وتدقيق أوراق البنك الدائن.'
                     : 'Our transaction coordinator will contact you shortly to schedule an inspection.')}
                 </p>
                 <div className="p-3 bg-slate-50 rounded-xl text-[11px] text-slate-600">
@@ -972,7 +972,7 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
                       className="mt-0.5 rounded text-brand-green focus:ring-brand-green accent-brand-green w-4 h-4 cursor-pointer"
                     />
                     <span className="text-[11px] text-emerald-950 font-medium leading-relaxed">
-                      أوافق على أن التنسيق يتم حصراً عبر فريق مخلصة، وأن سداد مديونية البنك يتم بإيداع بنكي مباشر في الفرع المانح للقرض.
+                      أوافق على أن التنسيق يتم حصراً عبر فريق مخالصة، وأن سداد مديونية البنك يتم بإيداع بنكي مباشر في الفرع المانح للقرض.
                     </span>
                   </label>
                 </div>
@@ -996,7 +996,7 @@ export const CarDetailPage: React.FC<CarDetailPageProps> = ({
                     ) : (
                       <>
                         <Send className="w-4 h-4" />
-                        <span>{isAr ? 'إرسال عرض الشراء لمستشار مخلصة' : 'Submit Offer to Mokhalasa'}</span>
+                        <span>{isAr ? 'إرسال عرض الشراء لمستشار مخالصة' : 'Submit Offer to Mokhalasa'}</span>
                       </>
                     )}
                   </button>

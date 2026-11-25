@@ -15,7 +15,7 @@ interface CustomerSupportChatbotProps {
 const QUICK_QUESTIONS = [
   'خطوات بيع سيارة عليها حظر بنكي وأقساط',
   'عايز اشتري سيارة مفحوصة من المعرض',
-  'كيف تضمن مخلصة سداد البنك وفك الحظر؟',
+  'كيف تضمن مخالصة سداد البنك وفك الحظر؟',
   'عندي شكوى عاجلة وعايز أكلم الإدارة'
 ];
 
@@ -28,7 +28,7 @@ export const CustomerSupportChatbot: React.FC<CustomerSupportChatbotProps> = ({
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
-      text: 'أهلاً بك في مخلصة! أنا مستشارك الذكي لخدمات بيع وشراء سيارات التقسيط والتسويات البنكية بمصر. كيف يمكنني خدمتك اليوم؟'
+      text: 'أهلاً بك في مخالصة! أنا مستشارك الذكي لخدمات بيع وشراء سيارات التقسيط والتسويات البنكية بمصر. كيف يمكنني خدمتك اليوم؟'
     }
   ]);
   const [inputText, setInputText] = useState('');
@@ -66,7 +66,7 @@ export const CustomerSupportChatbot: React.FC<CustomerSupportChatbotProps> = ({
         ...prev,
         {
           role: 'assistant',
-          text: res.message || 'نعتذر لحضرتك جداً، يمكنك التواصل المباشر مع مستشاري مخلصة لحل استفسارك فوراً عبر [واتساب المستشارين](https://wa.me/201008836962).'
+          text: res.message || 'نعتذر لحضرتك جداً، يمكنك التواصل المباشر مع مستشاري مخالصة لحل استفسارك فوراً عبر [واتساب المستشارين](https://wa.me/201008836962).'
         }
       ]);
     }
@@ -140,7 +140,7 @@ export const CustomerSupportChatbot: React.FC<CustomerSupportChatbotProps> = ({
         <button
           onClick={() => setIsOpen(true)}
           className="group relative flex items-center gap-2.5 px-4 py-3 rounded-full bg-brand-navy hover:bg-slate-800 text-white shadow-xl hover:shadow-2xl transition duration-200 border border-slate-700/60 active:scale-95"
-          aria-label="مساعد مخلصة الذكي"
+          aria-label="مساعد مخالصة الذكي"
         >
           <div className="relative">
             <Bot className="w-5 h-5 text-brand-green" />
@@ -148,7 +148,7 @@ export const CustomerSupportChatbot: React.FC<CustomerSupportChatbotProps> = ({
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full" />
           </div>
           <span className="text-xs font-black tracking-wide hidden sm:inline">
-            اسأل مساعد مخلصة
+            اسأل مساعد مخالصة
           </span>
           <span className="px-2 py-0.5 rounded-full bg-brand-green/20 text-brand-green text-3xs font-black">
             AI
@@ -167,7 +167,7 @@ export const CustomerSupportChatbot: React.FC<CustomerSupportChatbotProps> = ({
               </div>
               <div>
                 <h4 className="font-black text-xs flex items-center gap-1.5">
-                  <span>مساعد مخلصة الذكي</span>
+                  <span>مساعد مخالصة الذكي</span>
                   <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-3xs font-mono font-bold">Fast AI</span>
                 </h4>
                 <p className="text-3xs text-slate-400 flex items-center gap-1">
@@ -250,7 +250,7 @@ export const CustomerSupportChatbot: React.FC<CustomerSupportChatbotProps> = ({
               <span>مشكلة أو شكوى عاجلة؟</span>
             </span>
             <a
-              href="https://wa.me/201008836962?text=مرحباً%20إدارة%20مخلصة،%20لدي%20شكوى%20أو%20استفسار%20عاجل%20أرجو%20المتابعة."
+              href="https://wa.me/201008836962?text=مرحباً%20إدارة%20مخالصة،%20لدي%20شكوى%20أو%20استفسار%20عاجل%20أرجو%20المتابعة."
               target="_blank"
               rel="noreferrer"
               className="text-emerald-800 hover:text-emerald-950 font-black underline flex items-center gap-1"

@@ -352,7 +352,7 @@ export const listingService = {
               userId: resolvedUserId,
               type: 'listing_published',
               title: 'تم إرسال إعلان سيارتك بنجاح',
-              message: `تم تسجيل سيارتك ${submission.make} ${submission.model} ${submission.year} بنجاح برقم ملف (${caseReference}). الإعلان قيد مراجعة واعتماد الإدارة وسيتواصل معك مستشار مخلصة.`,
+              message: `تم تسجيل سيارتك ${submission.make} ${submission.model} ${submission.year} بنجاح برقم ملف (${caseReference}). الإعلان قيد مراجعة واعتماد الإدارة وسيتواصل معك مستشار مخالصة.`,
               linkView: 'profile',
               relatedId: listingId
             }, true);
@@ -962,7 +962,7 @@ export const listingService = {
               userId: carData.user_id,
               type: 'listing_status_changed',
               title: '🎉 تم تدقيق وتوثيق أوراق سيارتك الرسمية بنجاح!',
-              message: `تم فحص رخصة السيارة والمستندات ومطابقتها من قبل إدارة مخلصة، ومُنح إعلانك (${carData.make} ${carData.model}) شارة «أوراق رسمية مفحوصة وموثقة إدارياً (مضمونة بنكياً وقانونياً)».`,
+              message: `تم فحص رخصة السيارة والمستندات ومطابقتها من قبل إدارة مخالصة، ومُنح إعلانك (${carData.make} ${carData.model}) شارة «أوراق رسمية مفحوصة وموثقة إدارياً (مضمونة بنكياً وقانونياً)».`,
               linkView: 'profile',
               relatedId: listingId
             }, true);
@@ -1195,7 +1195,7 @@ export const listingService = {
             userId: listingData.user_id,
             type: 'listing_status_changed',
             title: '📄 مطلوب رفع المستندات الرسمية لسيارتك',
-            message: `إدارة مخلصة تطلب منك رفع صور المستندات الرسمية (الرخصة، بطاقة الرقم القومي، وبيان المديونية البنكي) لسيارتك (${listingData.make} ${listingData.model}). يرجى الدخول لصفحة حسابك وإرفاقها.`,
+            message: `إدارة مخالصة تطلب منك رفع صور المستندات الرسمية (الرخصة، بطاقة الرقم القومي، وبيان المديونية البنكي) لسيارتك (${listingData.make} ${listingData.model}). يرجى الدخول لصفحة حسابك وإرفاقها.`,
             linkView: 'profile',
             relatedId: listingId
           }, true);
@@ -1323,7 +1323,7 @@ export const listingService = {
 
       return {
         success: true,
-        message: 'تم حفظ ورفع المستندات الرسمية بنجاح وإشعار فريق العمليات بمخلصة لتدقيقها.'
+        message: 'تم حفظ ورفع المستندات الرسمية بنجاح وإشعار فريق العمليات بمخالصة لتدقيقها.'
       };
     } catch (err: any) {
       return { success: false, message: err?.message || 'تعذر رفع المستندات.' };
@@ -1736,7 +1736,7 @@ export const listingService = {
       const { data: sessionData } = await supabase.auth.getSession();
       const adminUser = sessionData.session?.user;
 
-      let staffName = 'إدارة مخلصة';
+      let staffName = 'إدارة مخالصة';
       try {
         const staffRaw = sessionStorage.getItem('mokhalasa_staff_session');
         if (staffRaw) {
@@ -1824,7 +1824,7 @@ export const listingService = {
               userId: listingData.user_id,
               type: 'listing_published',
               title: 'تهانينا! تم اعتماد ونشر إعلان سيارتك',
-              message: `تمت مراجعة واعتماد إعلان سيارتك (${listingData.make} ${listingData.model} ${listingData.year}) بنجاح من قِبل إدارة مخلصة، وأصبح الآن منشوراً ومتاحاً لجميع المشترين في المعرض العام.`,
+              message: `تمت مراجعة واعتماد إعلان سيارتك (${listingData.make} ${listingData.model} ${listingData.year}) بنجاح من قِبل إدارة مخالصة، وأصبح الآن منشوراً ومتاحاً لجميع المشترين في المعرض العام.`,
               linkView: 'profile',
               relatedId: listingId
             }, true);
@@ -2233,7 +2233,7 @@ export const listingService = {
           inspection: {
             isInspected: false,
             score: 85,
-            inspectorName: 'فحص فني أولي مخلصة',
+            inspectorName: 'فحص فني أولي مخالصة',
             date: new Date(row.created_at).toISOString().split('T')[0],
             engineCondition: 'ممتاز',
             transmissionCondition: 'ممتاز',
@@ -2763,7 +2763,7 @@ export const listingService = {
    */
   async forwardOfferToSeller(
     offerId: string,
-    staffName: string = 'مستشار مخلصة'
+    staffName: string = 'مستشار مخالصة'
   ): Promise<{ success: boolean; message: string }> {
     try {
       const now = new Date().toISOString();
@@ -3020,8 +3020,8 @@ export const listingService = {
       return {
         success: true,
         message: decision === 'accept' 
-          ? 'تم تسجيل موافقتك المبدئية على العرض بنجاح وإشعار المشتري وإدارة مخلصة!' 
-          : 'تم تسجيل رفضك للعرض وإشعار المشتري وإدارة مخلصة.'
+          ? 'تم تسجيل موافقتك المبدئية على العرض بنجاح وإشعار المشتري وإدارة مخالصة!' 
+          : 'تم تسجيل رفضك للعرض وإشعار المشتري وإدارة مخالصة.'
       };
     } catch (err: any) {
       return { success: false, message: err?.message || 'تعذر تسجيل الرد على العرض.' };
@@ -3223,7 +3223,7 @@ export const listingService = {
                   id,
                   userId,
                   type: 'general',
-                  title: an.title || 'إشعار من منصة مخلصة',
+                  title: an.title || 'إشعار من منصة مخالصة',
                   message: cleanMsg,
                   linkView: linkMatch ? linkMatch[1] : 'portal',
                   relatedId: refMatch ? refMatch[1] : an.listing_id,
@@ -3704,7 +3704,7 @@ export function mapDbListingToCase(l: DatabaseCarListing): DistressedVehicleCase
       inspection: {
         isInspected: true,
         score: 85,
-        inspectorName: 'فريق فحص مخلصة',
+        inspectorName: 'فريق فحص مخالصة',
         date: new Date().toISOString().split('T')[0],
         engineCondition: 'ممتاز',
         transmissionCondition: 'ممتاز',

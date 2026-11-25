@@ -462,7 +462,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               {isAr ? 'الشفافية الإجرائية والقانونية الملموسة' : 'Tangible Legal & Procedural Transparency'}
             </span>
             <h2 className="text-xl sm:text-2xl font-black text-brand-navy">
-              {isAr ? 'ما الذي يستلمه كل طرف عند إتمام الصفقة عبر مخلصة؟' : 'What Official Documents Does Each Party Receive?'}
+              {isAr ? 'ما الذي يستلمه كل طرف عند إتمام الصفقة عبر مخالصة؟' : 'What Official Documents Does Each Party Receive?'}
             </h2>
             <p className="text-xs sm:text-sm text-slate-500">
               {isAr ? 'لا نعتمد على وعود شفهية؛ كل خطوة مدعومة بمستندات بنكية وحكومية رسمية تثبت إبراء الذمة ونقل الملكية' : 'Every step is backed by stamped bank releases and notarized property deeds.'}

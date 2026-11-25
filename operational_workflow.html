@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>MOKHALASA — الدورة التشغيلية وحزمة العقود وإدارة الأقساط</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    @page { size: A4; margin: 14mm 12mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
+    body { background-color: #ffffff; color: #1e293b; font-size: 9.8pt; line-height: 1.55; }
+    .page { page-break-after: always; position: relative; min-height: 260mm; padding-bottom: 25px; }
+    .page:last-child { page-break-after: auto; }
+    
+    .cover { display: flex; flex-direction: column; justify-content: space-between; height: 265mm; padding: 25px 20px; border: 3px double #0284c7; border-radius: 14px; background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 50%, #f8fafc 100%); }
+    .cover-top { text-align: center; border-bottom: 2px solid #0284c7; padding-bottom: 18px; }
+    .badge { display: inline-block; background: #0284c7; color: #ffffff; padding: 5px 16px; border-radius: 20px; font-weight: 800; font-size: 10.5pt; margin-bottom: 12px; }
+    .cover-title { font-size: 23pt; font-weight: 900; color: #0369a1; margin: 10px 0; }
+    .cover-subtitle { font-size: 12.5pt; font-weight: 700; color: #065f46; margin-bottom: 8px; }
+    .cover-middle { text-align: justify; padding: 20px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; margin: 15px 0; }
+    .cover-footer { text-align: center; border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 9pt; color: #64748b; }
+
+    .header-bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0284c7; padding-bottom: 8px; margin-bottom: 14px; }
+    .header-brand { font-size: 12.5pt; font-weight: 900; color: #0284c7; }
+    .header-tag { font-size: 8.5pt; color: #64748b; font-weight: 600; }
+    .footer-bar { position: absolute; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; border-top: 1px solid #cbd5e1; padding-top: 6px; font-size: 8.5pt; color: #94a3b8; }
+    
+    h2.section-title { font-size: 13.5pt; font-weight: 900; color: #0f172a; margin-bottom: 10px; background: #f0f9ff; padding: 6px 12px; border-right: 5px solid #0284c7; border-radius: 4px; }
+    h3.sub-title { font-size: 11pt; font-weight: 800; color: #0369a1; margin: 10px 0 5px 0; }
+    p { text-align: justify; margin-bottom: 8px; font-size: 9.3pt; color: #334155; }
+
+    .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+    .card.blue-card { background: #f0f9ff; border-right: 4px solid #0284c7; }
+    .card.green-card { background: #f0fdf4; border-right: 4px solid #059669; }
+    
+    table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 8.5pt; }
+    th { background: #0f172a; color: #ffffff; padding: 6px 8px; font-weight: 800; text-align: right; }
+    td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; color: #334155; }
+    tr:nth-child(even) td { background: #f8fafc; }
+
+    ul.bullet-list { list-style-type: none; padding-right: 5px; margin-bottom: 8px; }
+    ul.bullet-list li { position: relative; padding-right: 18px; margin-bottom: 4px; font-size: 8.8pt; color: #334155; text-align: justify; }
+    ul.bullet-list li::before { content: "✔"; position: absolute; right: 0; top: 0; color: #0284c7; font-weight: 800; font-size: 8pt; }
+    
+    .attorney-note { display: inline-block; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; font-weight: 800; font-size: 7.5pt; padding: 1px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+  <!-- PAGE 1: COVER -->
+  <div class="page cover">
+    <div class="cover-top">
+      <span class="badge">دليل التشغيل وإدارة العمليات — 2026</span>
+      <h1 class="cover-title">الدورة التشغيلية وحزمة العقود ونظام الأقساط</h1>
+      <p class="cover-subtitle">MOKHALASA — 16-Step Operational Lifecycle & Legal Documentation Package</p>
+      <div style="font-size: 10.5pt; font-weight: 700; color: #0369a1;">منصة مخالصة | https://mokalasa.online</div>
+    </div>
+
+    <div class="cover-middle">
+      <h3 style="color:#0369a1; margin-bottom:8px; text-align:center;">دليل العمليات الميدانية والتعاقدية</h3>
+      <p>
+        يوثق هذا الدليل المسار التشغيلي الكامل لخدمة تكملة الأقساط من نقطة استقبال طلب العميل وحتى نقل الملكية بالمرور. كما يتضمن تفصيل حزمة العقود والمستندات الـ 15 المعتمدة لضبط العلاقة وإغلاق كافة الثغرات القانونية بين البائع والمشتري والمنصة، مع توثيق حالات دورة حياة الطلب داخل لوحة الإدارة.
+      </p>
+      <div style="margin-top: 15px; background: #f0f9ff; padding: 12px; border-radius: 8px; border-right: 4px solid #0284c7;">
+        <strong>المعايير الحاكمة للدورة التشغيلية:</strong>
+        <p style="margin: 4px 0 0 0; font-size: 9pt;">
+          1. التحقق الاستباقي من الهوية والمستندات بالوسائل المشروعة قبل أي التزام.<br>
+          2. التثبيت الإلزامي لأجهزة الـ GPS وقواطع المحركات قبل تسليم حيازة السيارة.<br>
+          3. التحصيل الدوري عبر خزانة المنصة والتوريد للبنك بإيصالات إيداع رسمية.<br>
+          4. عدم ادعاء انتقال المديونية البنكية إلا بمستند رسمي صادر من الجهة الممولة.
+        </p>
+      </div>
+    </div>
+
+    <div class="cover-footer">
+      <p>جمهورية مصر العربية — نوفمبر 2026 | دليل تشغيلي داخلي لفريق العمليات والمستشارين</p>
+    </div>
+  </div>
+
+  <!-- PAGE 2: 16-STEP LIFECYCLE (PART 1: STEPS 1-8) -->
+  <div class="page">
+    <div class="header-bar">
+      <span class="header-brand">MOKHALASA — الدورة التشغيلية</span>
+      <span class="header-tag">المبحث الأول: خطوات دورة المعاملة التشغيلية (1 إلى 8)</span>
+    </div>
+
+    <h2 class="section-title">1. المسار التشغيلي لمعاملة تكملة الأقساط (المرحلة الأولى: التحقق والمطابقة)</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 5%;">#</th>
+          <th style="width: 15%;">المرحلة</th>
+          <th style="width: 12%;">المسؤول</th>
+          <th style="width: 18%;">المستندات المطلوبة</th>
+          <th style="width: 25%;">الإجراء التنفيذي</th>
+          <th style="width: 12%;">حالة الطلب</th>
+          <th style="width: 13%;">إثبات التنفيذ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>استقبال الطلب</td>
+          <td>فريق خدمة العملاء</td>
+          <td>طلب إلكتروني + رخصة السيارة</td>
+          <td>تسجيل بيانات السيارة، سنة الصنع، والجهة الممولة مبدئياً.</td>
+          <td>Draft</td>
+          <td>سجل بالداشبورد</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>مراجعة السيارة</td>
+          <td>أخصائي الحالات</td>
+          <td>صور السيارة + رخصة التسيير</td>
+          <td>مطابقة بيانات السيارة مع مواصفات السوق وطلب رخصة سارية.</td>
+          <td>Pending Verification</td>
+          <td>تقرير الفحص الأولي</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>طلب مستندات القرض</td>
+          <td>أخصائي التدقيق</td>
+          <td>عقد التمويل + جدول الأقساط</td>
+          <td>مطابقة أصل القسط، الأقساط المسددة، والمتأخرات إن وجدت.</td>
+          <td>Documents Review</td>
+          <td>ملف المستندات الرقمي</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>التحقق من التمويل</td>
+          <td>مسؤول الاتصال البنكي</td>
+          <td>كشف حساب بنكي حديث</td>
+          <td>التأكد من عدم وجود نزاع قضائي أو شيكات مرتدة لدى البنك.</td>
+          <td>Documents Verified</td>
+          <td>مستخرج كشف القرض</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td>تحديد الأرقام</td>
+          <td>أخصائي التسوية</td>
+          <td>حاسبة مخالصة الذكية</td>
+          <td>تحديد المقدم المطلوب، القسط الشهري، والمدة المتبقية بدقة.</td>
+          <td>Buyer Matching</td>
+          <td>بيان التسوية المالي</td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td>عرض السيارة</td>
+          <td>مدير التسويق</td>
+          <td>بطاقة عرض بدون بيانات شخصية</td>
+          <td>عرض الفرصة على قائمة المشترين الجادين المؤهلين بالمنصة.</td>
+          <td>Buyer Matching</td>
+          <td>سجل عروض المشتري</td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td>التحقق من المشتري</td>
+          <td>وحدة تقييم الجدارة</td>
+          <td>بطاقة رقم قومي + إيصال مرافق</td>
+          <td>الاستعلام الميداني والمشروع عن محل الإقامة ومصدر الدخل والضامن.</td>
+          <td>Legal Review</td>
+          <td>تقرير استعلام المشتري</td>
+        </tr>
+        <tr>
+          <td>8</td>
+          <td>شرح المخاطر</td>
+          <td>مستشار مخالصة</td>
+          <td>إقرار المخاطر التمويلي</td>
+          <td>جلسة مصارحة وإمضاء إقرار فهم أن القرض باسم البائع والتزامات السداد.</td>
+          <td>Legal Review</td>
+          <td>إقرار مخاطر موقع</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="footer-bar">
+      <span>MOKHALASA — الدورة التشغيلية</span>
+      <span>صفحة 2 من 4</span>
+    </div>
+  </div>
+
+  <!-- PAGE 3: 16-STEP LIFECYCLE (PART 2: STEPS 9-16) -->
+  <div class="page">
+    <div class="header-bar">
+      <span class="header-brand">MOKHALASA — الدورة التشغيلية</span>
+      <span class="header-tag">المبحث الثاني: خطوات دورة المعاملة التشغيلية (9 إلى 16)</span>
+    </div>
+
+    <h2 class="section-title">2. المسار التشغيلي لمعاملة تكملة الأقساط (المرحلة الثانية: التنفيذ والإغلاق)</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 5%;">#</th>
+          <th style="width: 15%;">المرحلة</th>
+          <th style="width: 12%;">المسؤول</th>
+          <th style="width: 18%;">المستندات المطلوبة</th>
+          <th style="width: 25%;">الإجراء التنفيذي</th>
+          <th style="width: 12%;">حالة الطلب</th>
+          <th style="width: 13%;">إثبات التنفيذ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>9</td>
+          <td>تجهيز العقود</td>
+          <td>الإدارة القانونية</td>
+          <td>عقد الاتفاق الثلاثي الموحد</td>
+          <td>إدراج بيانات الأطراف، جدول الأقساط، شروط الـ GPS، والضمانات.</td>
+          <td>Agreement Pending</td>
+          <td>مسودة العقد المعتمدة</td>
+        </tr>
+        <tr>
+          <td>10</td>
+          <td>التوقيع والضمانات</td>
+          <td>المستشار القانوني</td>
+          <td>شيكات / إيصالات أمانة + العقد</td>
+          <td>توقيع البائع والمشتري والضامن بمقر مخالصة واستلام الضمانات.</td>
+          <td>Agreement Signed</td>
+          <td>أصول العقود الموقعة</td>
+        </tr>
+        <tr>
+          <td>11</td>
+          <td>تركيب GPS والتسليم</td>
+          <td>الفني المعتمد</td>
+          <td>محضر فحص وتسليم + صور</td>
+          <td>تركيب جهاز التتبع المخفي وفحص المحرك وتسليم المفاتيح للمشتري.</td>
+          <td>Vehicle Delivered</td>
+          <td>إشارة GPS حية + محضر</td>
+        </tr>
+        <tr>
+          <td>12</td>
+          <td>تفعيل السداد</td>
+          <td>مسؤول التحصيل</td>
+          <td>جدول السداد بالمنصة</td>
+          <td>بدء دورة الأقساط الشهرية وتحصيل القسط عبر حساب المنصة الوسيط.</td>
+          <td>Installments Active</td>
+          <td>سجل الإيداعات بالداشبورد</td>
+        </tr>
+        <tr>
+          <td>13</td>
+          <td>السداد للبنك</td>
+          <td>مسؤول العمليات البنكية</td>
+          <td>إيصال إيداع البنك الرسمي</td>
+          <td>سداد القسط في حساب البنك ورفع صورة الإيصال للطرفين بالمنصة.</td>
+          <td>Installments Active</td>
+          <td>إيصال بنكي مختوم</td>
+        </tr>
+        <tr>
+          <td>14</td>
+          <td>معالجة التأخير</td>
+          <td>فريق المتابعة والـ GPS</td>
+          <td>سجل التنبيهات وإشارات الـ GPS</td>
+          <td>تفعيل بروتوكول التعثر (تنبيه يوم 3 -> إيقاف المحرك يوم 7 عند الامتناع).</td>
+          <td>Payment Overdue</td>
+          <td>تقرير إيقاف المحرك</td>
+        </tr>
+        <tr>
+          <td>15</td>
+          <td>المخالصة وفك الحظر</td>
+          <td>مسؤول العلاقات الحكومية</td>
+          <td>خطاب رفع الحظر + شهادة بيانات</td>
+          <td>عند سداد آخر قسط، سحب المخالصة من البنك وفك الحظر بالمرور.</td>
+          <td>Ownership Transfer</td>
+          <td>شهادة براءة ذمة المرور</td>
+        </tr>
+        <tr>
+          <td>16</td>
+          <td>نقل الملكية والإغلاق</td>
+          <td>المستشار القانوني</td>
+          <td>عقد بيع مسجل بالشهر العقاري</td>
+          <td>تسليم التوكيل ونقل الملكية النهائي للمشتري وإغلاق الملف رسمياً.</td>
+          <td>Completed / Closed</td>
+          <td>رخصة باسم المشتري</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="footer-bar">
+      <span>MOKHALASA — الدورة التشغيلية</span>
+      <span>صفحة 3 من 4</span>
+    </div>
+  </div>
+
+  <!-- PAGE 4: 15 CONTRACTS & DOCUMENTS PACK -->
+  <div class="page">
+    <div class="header-bar">
+      <span class="header-brand">MOKHALASA — الدورة التشغيلية</span>
+      <span class="header-tag">المبحث الثالث: حزمة العقود والمستندات الـ 15 المعتمدة</span>
+    </div>
+
+    <h2 class="section-title">3. مصفوفة حزمة العقود والمستندات الـ 15 المعتمدة</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 4%;">#</th>
+          <th style="width: 28%;">اسم المستند / العقد</th>
+          <th style="width: 18%;">الأطراف الموقعة</th>
+          <th style="width: 32%;">الغرض الجوهري والبند الأساسي</th>
+          <th style="width: 18%;">المخاطر التي يعالجها</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>اتفاقية وساطة مع البائع</td>
+          <td>مخلّصة + البائع</td>
+          <td>تفويض مخلّصة بالبحث عن مشتري وتنظيم الحيازة.</td>
+          <td>تنظيم أتعاب وعمولة المنصة.</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>اتفاقية وساطة مع المشتري</td>
+          <td>مخلّصة + المشتري</td>
+          <td>إقرار المشتري بقبول الوساطة وشروط الخدمة.</td>
+          <td>التزام المشتري بالتحصيل والرسوم.</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>عقد الاتفاق الثلاثي الموحد</td>
+          <td>البائع + المشتري + مخلّصة</td>
+          <td>تنظيم الحيازة المشروطة وجدول الأقساط والالتزامات.</td>
+          <td>إطار المعاملة الحاكم قانونياً.</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>اتفاق تكملة الأقساط التفصيلي</td>
+          <td>البائع + المشتري</td>
+          <td>تحديد الأقساط وتواريخها والمقدم وآلية السداد.</td>
+          <td>منع النزاع حول المبالغ والتواريخ.</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td>إقرار البائع بالموقف التمويلي</td>
+          <td>البائع</td>
+          <td>إقرار بصحة بيانات القرض وعدم وجود أحكام.</td>
+          <td>حماية المشتري من الديون الخفية.</td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td>إقرار المشتري بتحمل الالتزامات</td>
+          <td>المشتري + الضامن</td>
+          <td>إقرار بالسداد الشهري وتحمل أي مخالفات وحوادث.</td>
+          <td>حماية البائع من المخالفات الجنائية.</td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td>جدول الأقساط والمواعيد الرسمية</td>
+          <td>الطرفان + مخلّصة</td>
+          <td>ملحق تفصيلي برقم كل قسط وتاريخ استحقاقه وقيمته.</td>
+          <td>إثبات التخلف عن الميعاد بدقة.</td>
+        </tr>
+        <tr>
+          <td>8</td>
+          <td>إقرار ومحضر استلام السيارة</td>
+          <td>المشتري + مخلّصة</td>
+          <td>استلام السيارة بحالتها الراهنة على سبيل الأمانة.</td>
+          <td>تطبيق م 341 عقوبات عند التبديد.</td>
+        </tr>
+        <tr>
+          <td>9</td>
+          <td>محضر المعاينة الفنية المصور</td>
+          <td>فني الفحص + الطرفان</td>
+          <td>توثيق حالة الهيكل، الموتور، العداد، والدهان بالصور.</td>
+          <td>منع الخلاف حول تلفيات سابقة.</td>
+        </tr>
+        <tr>
+          <td>10</td>
+          <td>إقرار استلام المفاتيح والرخصة</td>
+          <td>المشتري</td>
+          <td>إثبات استلام المفتاح الأصلي وصورة الرخصة المعتمدة.</td>
+          <td>تحديد بداية تاريخ انتقال الحيازة.</td>
+        </tr>
+        <tr>
+          <td>11</td>
+          <td>وثيقة ضمان مخلّصة الإجرائي</td>
+          <td>مخلّصة</td>
+          <td>تحديد التزام مخلّصة الإجرائي والتنفيذي وسقف المسؤولية.</td>
+          <td>منع مساءلة مخلّصة عن أصل الدين.</td>
+        </tr>
+        <tr>
+          <td>12</td>
+          <td>إقرار فهم مخاطر حظر البنك</td>
+          <td>المشتري</td>
+          <td>إقرار بأن السيارة باسم البنك لحين سداد آخر قسط.</td>
+          <td>منع ادعاء المشتري بالتعرض لغش.</td>
+        </tr>
+        <tr>
+          <td>13</td>
+          <td>سياسة التعثر وقواطع الـ GPS</td>
+          <td>المشتري والضامن</td>
+          <td>موافقة المشتري الصريحة على إيقاف المحرك عند التأخير 7 أيام.</td>
+          <td>إضفاء المشروعية على التعطيل بالـ GPS.</td>
+        </tr>
+        <tr>
+          <td>14</td>
+          <td>آلية إنهاء الاتفاق والتحكيم الودي</td>
+          <td>الأطراف الثلاثة</td>
+          <td>تحديد آلية رد السيارة أو تسوية المستحقات عند الفسخ.</td>
+          <td>منع اللجوء للنزاعات القضائية الطويلة.</td>
+        </tr>
+        <tr>
+          <td>15</td>
+          <td>إقرار آلية نقل الملكية وفك الحظر</td>
+          <td>البائع</td>
+          <td>تعهد بالحضور للشهر العقاري والمرور فور إخطار البنك.</td>
+          <td>ضمان حق المشتري بنقل الملكية.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="margin-top: 6px; text-align: center;">
+      <span class="attorney-note">⚠️ تنبيه مهني: النماذج المشار إليها أعلاه مسودات إرشادية وتحتاج مراجعة وتدقيق نهائي من محامٍ مصري متخصص قبل التوقيع.</span>
+    </div>
+
+    <div class="footer-bar">
+      <span>MOKHALASA — الدورة التشغيلية</span>
+      <span>صفحة 4 من 4</span>
+    </div>
+  </div>
+
+</body>
+</html>

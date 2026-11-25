@@ -544,7 +544,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
     );
     if (res.success) {
       const newStatus = decision === 'accept' ? 'seller_accepted' : 'seller_rejected';
-      setOfferActionMsg(decision === 'accept' ? 'تم قبول العرض وإشعار مستشار مخلصة لترتيب المعاينة!' : 'تم رفض العرض.');
+      setOfferActionMsg(decision === 'accept' ? 'تم قبول العرض وإشعار مستشار مخالصة لترتيب المعاينة!' : 'تم رفض العرض.');
       setDbOffers(prev => prev.map(o => (o.id === offerId || o.listingId === offerId || (o.listingId && offerId.includes(o.listingId))) ? { ...o, status: newStatus as any } : o));
     }
   };
@@ -956,7 +956,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 font-black text-sm">
                 <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
-                <span>ملاحظات التدقيق والمطلوب تعديله من إدارة مخلصة:</span>
+                <span>ملاحظات التدقيق والمطلوب تعديله من إدارة مخالصة:</span>
               </div>
               <button
                 type="button"
@@ -1191,7 +1191,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                   </div>
 
                   <a
-                    href={`https://wa.me/201008836962?text=${encodeURIComponent(`مرحباً أستاذ ${activeCase.assignedEmployeeName}، بخصوص طلب سيارتي كود (${activeCase.caseReference}) في منصة مخلصة.`)}`}
+                    href={`https://wa.me/201008836962?text=${encodeURIComponent(`مرحباً أستاذ ${activeCase.assignedEmployeeName}، بخصوص طلب سيارتي كود (${activeCase.caseReference}) في منصة مخالصة.`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full py-2.5 px-3 rounded-xl bg-brand-green hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition"
@@ -1218,7 +1218,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                       <strong>-{formatEGP(activeCase.settlementStatement.lenderSettlementAmount)}</strong>
                     </div>
                     <div className="flex justify-between text-brand-green font-bold">
-                      <span>عمولة مخلصة (1.5%):</span>
+                      <span>عمولة مخالصة (1.5%):</span>
                       <span>-{formatEGP(activeCase.settlementStatement.platformCommission)}</span>
                     </div>
                     <div className="flex justify-between pt-2 border-t border-slate-200 font-extrabold text-brand-navy text-sm">
@@ -1247,7 +1247,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                   <span>عروض الأسعار المقدمة من المشترين</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  جميع العروض الواردة على سيارتك مع إمكانية القبول أو الرفض بالتنسيق مع مسؤول مخلصة.
+                  جميع العروض الواردة على سيارتك مع إمكانية القبول أو الرفض بالتنسيق مع مسؤول مخالصة.
                 </p>
               </div>
             </div>
@@ -1370,7 +1370,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                               </p>
                               {isAccepted && (
                                 <p className="text-2xs text-emerald-800 font-bold bg-white/80 p-2 rounded-xl border border-emerald-200/80">
-                                  🔒 تم تثبيت موافقتك على العرض ولا يمكن التراجع أو إلغاؤه، وجاري الآن اعتماد إدارة مخلصة لتحديد موعد المقابلة البنكية.
+                                  🔒 تم تثبيت موافقتك على العرض ولا يمكن التراجع أو إلغاؤه، وجاري الآن اعتماد إدارة مخالصة لتحديد موعد المقابلة البنكية.
                                 </p>
                               )}
                             </div>
@@ -1620,7 +1620,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                               {c.vehicle.images && c.vehicle.images[0] ? (
                                 <img
                                   src={c.vehicle.images[0]}
-                                  alt={`سيارة ${c.vehicle.make} - ملف تسوية مخلصة`}
+                                  alt={`سيارة ${c.vehicle.make} - ملف تسوية مخالصة`}
                                   className="w-full h-full object-cover"
                                   loading="lazy"
                                   decoding="async"
@@ -2354,7 +2354,7 @@ export const SellerCasePortalPage: React.FC<SellerCasePortalPageProps> = ({
                     rel="noreferrer"
                     className="text-3xs font-black text-emerald-800 underline hover:text-emerald-950"
                   >
-                    فتح واتساب مخلصة
+                    فتح واتساب مخالصة
                   </a>
                 </div>
 

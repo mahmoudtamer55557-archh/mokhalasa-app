@@ -33,7 +33,7 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
                 {isAr ? 'دليل المعاملات الآمنة' : 'Safe Transaction Protocol'}
               </span>
               <h1 className="text-2xl sm:text-3xl font-black text-brand-navy">
-                {isAr ? 'كيف تعمل منظومة «مخلصة» لحماية الطرفين؟' : 'How It Works: Step-by-Step with Mokhalasa'}
+                {isAr ? 'كيف تعمل منظومة «مخالصة» لحماية الطرفين؟' : 'How It Works: Step-by-Step with Mokhalasa'}
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 max-w-lg mx-auto">
                 {isAr
@@ -76,7 +76,7 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
                   <div>
                     <span className="font-black text-emerald-900 block mb-0.5">منظومة تكملة الأقساط: كيف يتم تأمينك كبائع أو مشترٍ؟</span>
                     <p className="text-2xs text-emerald-800 leading-relaxed">
-                      هذا المسار مخصص لنقل حيازة السيارة لمشترٍ يكمل باقي أقساط البنك مع استلام البائع مقدماً نقدياً فورياً في يده. تعمل مخلصة كضامن ومراقب تقني وقانوني حتى سداد آخر قسط وفك الحظر النهائي.
+                      هذا المسار مخصص لنقل حيازة السيارة لمشترٍ يكمل باقي أقساط البنك مع استلام البائع مقدماً نقدياً فورياً في يده. تعمل مخالصة كضامن ومراقب تقني وقانوني حتى سداد آخر قسط وفك الحظر النهائي.
                     </p>
                   </div>
                 </div>
@@ -93,14 +93,14 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
                     step: '02',
                     titleAr: 'توقيع عقد الاستغلال والانتفاع الثلاثي الموثق',
                     titleEn: 'Notarized Tripartite Usufruct Contract',
-                    descAr: 'تحرير عقد قانوني رسمي بين البائع والمشتري ومخلصة ينقل كامل المسؤولية الجنائية والمدنية والمخالفات والحوادث فورياً على المشتري المستغل، مع إقرار استلام السيارة كأمانة لحماية البائع من شبهة تبديد الضمانة.',
+                    descAr: 'تحرير عقد قانوني رسمي بين البائع والمشتري ومخالصة ينقل كامل المسؤولية الجنائية والمدنية والمخالفات والحوادث فورياً على المشتري المستغل، مع إقرار استلام السيارة كأمانة لحماية البائع من شبهة تبديد الضمانة.',
                     descEn: 'Execution of a tripartite usufruct contract transferring all criminal and civil liability for traffic and vehicle use directly to the new buyer.'
                   },
                   {
                     step: '03',
                     titleAr: 'تأمين السيارة بجهاز تتبع ذكي IoT GPS مع ميزة إيقاف المحرك',
                     titleEn: 'IoT GPS Tracking & Remote Engine Cutoff Installation',
-                    descAr: 'تركيب جهاز تتبع مشفر مرتبط بسيرفرات مخلصة مع تحديد النطاق الجغرافي (Geofencing)، وتفعيل ميزة التعطيل الآمن لتشغيل المحرك (Engine Immobilizer) عند التخلف عن السداد لحفظ أصل المركبة.',
+                    descAr: 'تركيب جهاز تتبع مشفر مرتبط بسيرفرات مخالصة مع تحديد النطاق الجغرافي (Geofencing)، وتفعيل ميزة التعطيل الآمن لتشغيل المحرك (Engine Immobilizer) عند التخلف عن السداد لحفظ أصل المركبة.',
                     descEn: 'Installation of high-grade encrypted IoT tracker with geofencing and remote starter cutoff failsafes in case of default.'
                   },
                   {
@@ -114,14 +114,14 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
                     step: '05',
                     titleAr: 'إدارة حساب الضمان وتوريد الأقساط للبنك شهرياً',
                     titleEn: 'Escrow Payment Servicing & Bank Deposit Receipts',
-                    descAr: 'يودع المشتري القسط شهرياً في حساب الضمان عبر مخلصة، وتقوم المنصة بتوريد القسط مباشرة للبنك وإرسال إيصال السداد الرسمي فورياً لهاتف البائع لإبراء ذمته.',
+                    descAr: 'يودع المشتري القسط شهرياً في حساب الضمان عبر مخالصة، وتقوم المنصة بتوريد القسط مباشرة للبنك وإرسال إيصال السداد الرسمي فورياً لهاتف البائع لإبراء ذمته.',
                     descEn: 'Buyer deposits monthly installments into Mokhalasa escrow; we remit directly to the lender and issue official clearance receipts to seller.'
                   },
                   {
                     step: '06',
                     titleAr: 'سداد آخر قسط واستخراج خطاب فك الحظر ونقل الملكية',
                     titleEn: 'Final Payoff, Lien Release & Title Registration',
-                    descAr: 'عند سداد القسط الأخير، يتولى فريق مخلصة استخراج مخالصة البنك الرسمية وشهادة فك الحظر الموجهة للمرور، والتنسيق لحضور الطرفين بالشهر العقاري لنقل الملكية النهائية للمشتري.',
+                    descAr: 'عند سداد القسط الأخير، يتولى فريق مخالصة استخراج مخالصة البنك الرسمية وشهادة فك الحظر الموجهة للمرور، والتنسيق لحضور الطرفين بالشهر العقاري لنقل الملكية النهائية للمشتري.',
                     descEn: 'Upon final installment completion, Mokhalasa secures official bank lien release and coordinates final Notary title registration.'
                   }
                 ].map((s) => (
@@ -171,7 +171,7 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
                     step: '04',
                     titleAr: 'سداد مديونية البنك مباشرة في حساب القرض بالفرع',
                     titleEn: 'Direct Bank Payoff at Creditor Branch (Zero-Custody)',
-                    descAr: 'يتوجه المشتري بصحبة البائع ومندوب مخلصة لفرع البنك لإيداع مبلغ التسوية مباشرة في حساب القرض، واستلام إيصال الصراف الرسمي (Teller Slip) المثبت لبراءة الذمة.',
+                    descAr: 'يتوجه المشتري بصحبة البائع ومندوب مخالصة لفرع البنك لإيداع مبلغ التسوية مباشرة في حساب القرض، واستلام إيصال الصراف الرسمي (Teller Slip) المثبت لبراءة الذمة.',
                     descEn: 'Buyer, seller, and a Mokhalasa specialist visit the bank. Settlement funds are deposited directly into the loan account with zero intermediary custody.'
                   },
                   {
@@ -243,7 +243,7 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
                   aEn: 'Absolutely not. Egyptian law and Notary regulations linked to the traffic electronic registry strictly prohibit registering sales or issuing power-of-attorney while an active bank lien exists.'
                 },
                 {
-                  qAr: 'لماذا ترفض منصة «مخلصة» بيع السيارات بـ "توكيل إدارة شامل"؟',
+                  qAr: 'لماذا ترفض منصة «مخالصة» بيع السيارات بـ "توكيل إدارة شامل"؟',
                   qEn: 'Why does Mokhalasa refuse transactions via informal management power of attorney?',
                   aAr: 'لأن توكيل الإدارة لا ينقل الملكية قانوناً، وينتهي فوراً بحكم المادة 714 من القانون المدني بوفاة الموكل أو الوكيل. كما أنه يعرض المشتري لخطر مصادرة السيارة إذا تعثر البائع في سداد أقساط أخرى، ويعرض البائع للمساءلة الجنائية إذا ارتكب المشتري أي مخالفات أو جرائم بالسيارة.',
                   aEn: 'Because a management POA does not transfer legal ownership and terminates automatically upon death under Article 714 of the Civil Code. It leaves buyers vulnerable to impoundment and exposes sellers to criminal liability.'
@@ -255,7 +255,7 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
                   aEn: 'Payment is made under a legally binding tripartite contract documenting the bank teller receipt. The buyer takes immediate physical custody and original documents, while the seller is legally obligated to execute title transfer upon clearance.'
                 },
                 {
-                  qAr: 'هل تستلم منصة «مخلصة» أموال السداد أو الأقساط بحساباتها؟',
+                  qAr: 'هل تستلم منصة «مخالصة» أموال السداد أو الأقساط بحساباتها؟',
                   qEn: 'Does Mokhalasa hold settlement funds or installment payments in its own accounts?',
                   aAr: 'قطعاً لا. تنفيذاً لأحكام قانون البنك المركزي رقم 194 لسنة 2020 بشأن حظر توظيف الأموال، المنصة لا تلمس مليمًا واحداً من أموال التسوية البنكية. يقوم المشتري بنفسه بإيداع المبلغ في حساب قرض البائع داخل خزينة فرع البنك الدائن، وتتقاضى المنصة فقط أتعاب تنظيم الصفقة (1.5%) عند توثيق البيع.',
                   aEn: 'Strictly no. Pursuant to Central Bank Law 194/2020, Mokhalasa operates on a 100% Zero-Custody principle. Buyers deposit directly at the creditor bank counter. Mokhalasa only receives its 1.5% success fee upon final notary closing.'
@@ -263,19 +263,19 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
                 {
                   qAr: 'كم تبلغ عمولة السداد المعجل في البنوك المصرية؟',
                   qEn: 'What are early payoff penalty fees across Egyptian banks?',
-                  aAr: 'تختلف حسب البنك: في بنك كريدي أجريكول تبلغ 15% على أصل الدين، وفي البنك التجاري الدولي (CIB) 7%، وفي البنك الأهلي المصري 3% إلى 3.5%، وفي QNB مصر 7%، وكونتكت للتمويل الاستهلاكي 4%، وتوضح حاسبة مخلصة الرسوم بدقة لكل بنك.',
+                  aAr: 'تختلف حسب البنك: في بنك كريدي أجريكول تبلغ 15% على أصل الدين، وفي البنك التجاري الدولي (CIB) 7%، وفي البنك الأهلي المصري 3% إلى 3.5%، وفي QNB مصر 7%، وكونتكت للتمويل الاستهلاكي 4%، وتوضح حاسبة مخالصة الرسوم بدقة لكل بنك.',
                   aEn: 'Fees range from 3% to 15% depending on the institution (e.g. Crédit Agricole 15%, CIB 7%, NBE 3-3.5%, QNB 7%, Contact 4%). Mokhalasa’s built-in calculator provides exact breakdowns for each bank.'
                 },
                 {
-                  qAr: 'هل توفر منصة «مخلصة» سيارات بالتقسيط المباشر بدون بنوك وسيارات كاش؟',
+                  qAr: 'هل توفر منصة «مخالصة» سيارات بالتقسيط المباشر بدون بنوك وسيارات كاش؟',
                   qEn: 'Does Mokhalasa offer direct in-house installment cars and certified cash cars?',
-                  aAr: 'نعم بالتأكيد. بالإضافة إلى تخصصنا الرائد في تسوية سيارات الأقساط البنكية وحظر البيع، توفر مخلصة مساراً متكاملاً للتقسيط المباشر بين المعارض أو الملاك والمشترين بضمانات مباشرة بدون استعلام بنكي معقد، إلى جانب قسم متخصص للسيارات الكاش ذات الملكية الخالصة والمفحوصة بالكامل.',
+                  aAr: 'نعم بالتأكيد. بالإضافة إلى تخصصنا الرائد في تسوية سيارات الأقساط البنكية وحظر البيع، توفر مخالصة مساراً متكاملاً للتقسيط المباشر بين المعارض أو الملاك والمشترين بضمانات مباشرة بدون استعلام بنكي معقد، إلى جانب قسم متخصص للسيارات الكاش ذات الملكية الخالصة والمفحوصة بالكامل.',
                   aEn: 'Yes! Along with our premier bank distress and sale-ban track, Mokhalasa provides dedicated tracks for direct in-house installments with showrooms/owners (no bank credit checks required) and verified clean-title cash cars.'
                 },
                 {
                   qAr: 'كيف يضمن البائع ألا يهرب المشتري بالسيارة أو يتوقف عن سداد أقساط البنك في نظام تكملة الأقساط؟',
                   qEn: 'How does the seller ensure the buyer does not default on bank installments or abscond with the car in the continuation system?',
-                  aAr: 'عبر منظومة الحماية الرباعية من مخلصة: 1) تركيب جهاز تتبع مشفر IoT GPS مربوط بسيرفرات مخلصة مع ميزة الإيقاف الآمن للمحرك عن بُعد (Engine Immobilizer) عند التخلف غير المبرر عن السداد، 2) عقد استغلال وانتفاع ثلاثي رسمي يثبت استلام المشتري للسيارة كأمانة وينقل كامل المسؤولية الجنائية والمدنية والمخالفات والحوادث عليه فورياً، 3) حساب الضمان البنكي لتوريد القسط وإصدار إيصال السداد الرسمي للبائع شهرياً، 4) حق الاسترداد الفوري للأصل.',
+                  aAr: 'عبر منظومة الحماية الرباعية من مخالصة: 1) تركيب جهاز تتبع مشفر IoT GPS مربوط بسيرفرات مخالصة مع ميزة الإيقاف الآمن للمحرك عن بُعد (Engine Immobilizer) عند التخلف غير المبرر عن السداد، 2) عقد استغلال وانتفاع ثلاثي رسمي يثبت استلام المشتري للسيارة كأمانة وينقل كامل المسؤولية الجنائية والمدنية والمخالفات والحوادث عليه فورياً، 3) حساب الضمان البنكي لتوريد القسط وإصدار إيصال السداد الرسمي للبائع شهرياً، 4) حق الاسترداد الفوري للأصل.',
                   aEn: 'Through Mokhalasa’s 4-pillar protection: 1) Encrypted IoT GPS with remote starter immobilizer, 2) Notarized tripartite usufruct contract transferring all civil and criminal liability to the buyer, 3) Escrow servicing ensuring direct bank payoff receipts for the seller, and 4) Immediate repossession protocols.'
                 },
                 {
@@ -285,9 +285,9 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
                   aEn: 'No, provided it is executed under a notarized tripartite usufruct contract (not an unauthorized title transfer). The contract explicitly affirms the existing bank lien and designates the buyer solely as an authorized usufructuary custodian and installment servicer.'
                 },
                 {
-                  qAr: 'كيف يعمل جهاز التتبع الذكي IoT GPS وخاصية إيقاف المحرك عن بُعد في مخلصة؟',
+                  qAr: 'كيف يعمل جهاز التتبع الذكي IoT GPS وخاصية إيقاف المحرك عن بُعد في مخالصة؟',
                   qEn: 'How does the IoT GPS tracking and remote engine cutoff operate at Mokhalasa?',
-                  aAr: 'يتم تركيب جهاز تتبع معتمد مخفي داخل ضفيرة السيارة لا يمكن نزعه أو التلاعب به، متصل بسيرفرات مخلصة على مدار الساعة لرصد الموقع الجغرافي وتحديد النطاقات المصرح بها (Geofencing). في حال تأخر المشتري عن سداد القسط الشهري، ترسل المنصة إنذارات رسمية، وإذا امتنع يتم تفعيل خاصية الإيقاف الآمن للمحرك (لا ينطفئ أثناء السير حفاظاً على الأرواح، بل يُمنع المحرك من إعادة التشغيل بعد توقفه التام) حتى تسوية الموقف.',
+                  aAr: 'يتم تركيب جهاز تتبع معتمد مخفي داخل ضفيرة السيارة لا يمكن نزعه أو التلاعب به، متصل بسيرفرات مخالصة على مدار الساعة لرصد الموقع الجغرافي وتحديد النطاقات المصرح بها (Geofencing). في حال تأخر المشتري عن سداد القسط الشهري، ترسل المنصة إنذارات رسمية، وإذا امتنع يتم تفعيل خاصية الإيقاف الآمن للمحرك (لا ينطفئ أثناء السير حفاظاً على الأرواح، بل يُمنع المحرك من إعادة التشغيل بعد توقفه التام) حتى تسوية الموقف.',
                   aEn: 'A tamper-resistant IoT device connects to Mokhalasa servers with 24/7 geofencing. If installments default after automated notices, the remote immobilizer prevents engine restarts safely while stationary until arrears are resolved.'
                 },
                 {
@@ -329,7 +329,7 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
               </h3>
               <p>
                 {isAr
-                  ? 'منصة «مخلصة» (Mokhalasa) هي منصة وساطة تكنولوجية وتسويقية تعمل وفقاً لأحكام قانون التجارة المصري وقانون المعاملات الإلكترونية. المنصة ليست بنكاً ولا تقدم خدمات الائتمان أو القروض أو التمويل العقاري أو الاستهلاكي، ولا تتلقى ودائع أو مدفوعات نقدية نيابة عن العملاء.'
+                  ? 'منصة «مخالصة» (Mokhalasa) هي منصة وساطة تكنولوجية وتسويقية تعمل وفقاً لأحكام قانون التجارة المصري وقانون المعاملات الإلكترونية. المنصة ليست بنكاً ولا تقدم خدمات الائتمان أو القروض أو التمويل العقاري أو الاستهلاكي، ولا تتلقى ودائع أو مدفوعات نقدية نيابة عن العملاء.'
                   : 'Mokhalasa is a technological coordination platform operating under Egyptian commercial laws. It is not a bank, lending facility, or financial depository. Mokhalasa does not accept client deposits or loan payments in its accounts.'}
               </p>
 
@@ -372,7 +372,7 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
               </h3>
               <p>
                 {isAr
-                  ? 'تلتزم منصة مخلصة بعدم نشر أو مشاركة صور بطاقات الرقم القومي أو رخص السيارات أو كشوف الحسابات المصرفية مع أي طرف ثالث غير مصرح له. يتم حجب وتعتيم الأرقام الحساسة (Data Masking) في كافة العروض الترويجية العامة.'
+                  ? 'تلتزم منصة مخالصة بعدم نشر أو مشاركة صور بطاقات الرقم القومي أو رخص السيارات أو كشوف الحسابات المصرفية مع أي طرف ثالث غير مصرح له. يتم حجب وتعتيم الأرقام الحساسة (Data Masking) في كافة العروض الترويجية العامة.'
                   : 'Mokhalasa never publishes or shares national ID copies, vehicle licenses, or bank statements with unauthorized third parties. Sensitive identifiers are masked across public marketplace listings.'}
               </p>
 
@@ -399,7 +399,7 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
               </h3>
               <p>
                 {isAr
-                  ? 'تلتزم مخلصة بمبدأ شفافية البيانات وحق نقلها، وتخضع سجلات العملاء لبروتوكولات نسخ احتياطي مشفرة ومحكمة تضمن سلامة الحقوق التعاقدية وإيصالات الإيداع البنكي الرسمية.'
+                  ? 'تلتزم مخالصة بمبدأ شفافية البيانات وحق نقلها، وتخضع سجلات العملاء لبروتوكولات نسخ احتياطي مشفرة ومحكمة تضمن سلامة الحقوق التعاقدية وإيصالات الإيداع البنكي الرسمية.'
                   : 'Mokhalasa adheres to data portability principles under encrypted protocols, ensuring contractual rights and bank deposit receipts are immutably verifiable.'}
               </p>
             </div>
@@ -411,7 +411,7 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
           <div className="space-y-8 animate-fadeIn">
             <div className="text-center space-y-2 pb-4 border-b border-slate-100">
               <span className="text-xs font-bold text-brand-green uppercase tracking-wider block">
-                {isAr ? 'فريق وساطة وتسوية مخلصة' : 'Mokhalasa Advisory & Support Team'}
+                {isAr ? 'فريق وساطة وتسوية مخالصة' : 'Mokhalasa Advisory & Support Team'}
               </span>
               <h1 className="text-2xl sm:text-3xl font-black text-brand-navy">
                 {isAr ? 'تواصل معنا — نحن هنا لمساعدتك' : 'Contact Us — We Are Here to Assist You'}
@@ -535,7 +535,7 @@ export const StaticPages: React.FC<StaticPagesProps> = ({ type, onNavigate, lang
                     </h4>
                     <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
                       {isAr
-                        ? 'سيقوم أحد مستشاري مخلصة بالتواصل معك هاتفياً أو عبر الواتساب في أقرب وقت لتوضيح كافة التفاصيل.'
+                        ? 'سيقوم أحد مستشاري مخالصة بالتواصل معك هاتفياً أو عبر الواتساب في أقرب وقت لتوضيح كافة التفاصيل.'
                         : 'A customer support representative will reach out to you via phone or WhatsApp shortly.'}
                     </p>
                     <button

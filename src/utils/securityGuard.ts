@@ -489,7 +489,7 @@ export function validateAdultAge18Plus(birthDateStr: string): AgeVerificationRes
     return {
       isAdult: false,
       ageYears: age,
-      error: 'عذراً، يشترط ألا يقل عمر المستخدم عن 18 عاماً كاملة للتسجيل أو التعامل المالي والقانوني على منصة مُخلصة.',
+      error: 'عذراً، يشترط ألا يقل عمر المستخدم عن 18 عاماً كاملة للتسجيل أو التعامل المالي والقانوني على منصة مخالصة.',
     };
   }
 

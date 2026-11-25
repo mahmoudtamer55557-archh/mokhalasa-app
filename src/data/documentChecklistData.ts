@@ -136,7 +136,7 @@ export const ALL_DOCUMENTS_MASTER_LIST: RequiredDocumentMetadata[] = [
     descriptionAr: 'إقرار موقع من المالك يفيد بأن السيارة غير محملة بحظر بيع وأن القرض شخصي نقدي يتحمل البائع التزاماته بالكامل دون أي شائبة على المشتري.',
     applicableStatuses: ['personal_loan_free_license'],
     isRequired: true,
-    issuedByAr: 'منصة مخلصة (نموذج إقرار قانوني معتمد)',
+    issuedByAr: 'منصة مخالصة (نموذج إقرار قانوني معتمد)',
     purposeAr: 'حماية المشتري وإخلاء مسؤوليته التامة تجاه البنك المقرض وضمان استمرار المالك في السداد أو التسوية.',
     verified: true,
     source: 'القانون المدني المصري (أحكام الالتزام والضمان الشخصي)',

@@ -417,7 +417,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
   const calculateCompletion = (p: UserProfileData | null): number => {
     if (!p) return 0;
     let score = 30; // Registered account & email
-    if (p.fullName && p.fullName !== 'عميل مخلصة') score += 25;
+    if (p.fullName && p.fullName !== 'عميل مخالصة') score += 25;
     if (p.phone && p.phone.length >= 10) score += 25;
     if (p.avatarUrl) score += 10;
     if (p.governorate) score += 10;
@@ -1181,7 +1181,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
                       <span>توثيق الهوية والأمان المصرفي</span>
                     </h4>
                     <p className="text-2xs text-slate-500 leading-relaxed">
-                      وفقاً لمعايير الأمان المالي لمنصة «مخلصة»، يشترط توثيق رقم الهاتف برمز OTP لتأكيد الجدية في نشر الإعلانات أو تقديم عروض الشراء لحماية حقوق الأطراف كافة.
+                      وفقاً لمعايير الأمان المالي لمنصة «مخالصة»، يشترط توثيق رقم الهاتف برمز OTP لتأكيد الجدية في نشر الإعلانات أو تقديم عروض الشراء لحماية حقوق الأطراف كافة.
                     </p>
                     {!(profile?.isVerified || customerUser?.isVerified || Boolean(profile?.phone || customerUser?.phone)) && (
                       <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-2xs space-y-2">
@@ -1237,7 +1237,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
                   </div>
 
                   <p className="text-2xs text-slate-500 leading-relaxed">
-                    تلتزم منصة «مخلصة» بحماية خصوصية بياناتك الشخصية ومستنداتك. إذا قررت التوقف عن استخدام المنصة، يحق لك طلب حذف حسابك نهائياً. يتم إيقاف الحساب فورياً مع منحك فترة سماح مدتها 30 يوماً للتراجع واستعادة الحساب عند تسجيل الدخول، وبعد انقضاء الـ 30 يوماً دون أي نشاط يتم مسح سجلاتك وملفاتك نهائياً من كافة خوادمنا المشفرة.
+                    تلتزم منصة «مخالصة» بحماية خصوصية بياناتك الشخصية ومستنداتك. إذا قررت التوقف عن استخدام المنصة، يحق لك طلب حذف حسابك نهائياً. يتم إيقاف الحساب فورياً مع منحك فترة سماح مدتها 30 يوماً للتراجع واستعادة الحساب عند تسجيل الدخول، وبعد انقضاء الـ 30 يوماً دون أي نشاط يتم مسح سجلاتك وملفاتك نهائياً من كافة خوادمنا المشفرة.
                   </p>
 
                   <div className="pt-1 flex items-center gap-3">
@@ -1289,14 +1289,14 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
                     لم تقم بإضافة أي سيارات للبيع بعد
                   </h3>
                   <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
-                    هل لديك سيارة محملة بأقساط أو ترغب في تسوية مديونيتها البنكية بأمان؟ ابدأ بعرضها الآن مع مخلصة.
+                    هل لديك سيارة محملة بأقساط أو ترغب في تسوية مديونيتها البنكية بأمان؟ ابدأ بعرضها الآن مع مخالصة.
                   </p>
                   <div className="pt-2">
                     <button
                       onClick={() => onNavigate('sell-wizard')}
                       className="px-5 py-2.5 rounded-xl bg-brand-navy hover:bg-slate-900 text-white font-black text-xs shadow-md transition"
                     >
-                      اعرض عربيتك الآن مع مخلصة
+                      اعرض عربيتك الآن مع مخالصة
                     </button>
                   </div>
                 </div>
@@ -1347,7 +1347,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
                           <div className="font-extrabold text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
                               <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                              <span>ملاحظات التدقيق والمطلوب تعديله من إدارة مخلصة:</span>
+                              <span>ملاحظات التدقيق والمطلوب تعديله من إدارة مخالصة:</span>
                             </div>
                             <button
                               onClick={() => handleOpenEditListing(item)}
@@ -1397,7 +1397,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
                           ) : item.documents_requested ? (
                             <span className="text-3xs font-black text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full flex items-center gap-1 self-start sm:self-auto animate-pulse">
                               <Clock className="w-3 h-3 text-blue-600" />
-                              مطلوبة من قِبل إدارة مخلصة
+                              مطلوبة من قِبل إدارة مخالصة
                             </span>
                           ) : (
                             <span className="text-3xs text-slate-400">اختيارية حالياً ومطلوبة عند إتمام البيع</span>
@@ -1406,8 +1406,8 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
 
                         <p className="text-2xs text-slate-600 leading-relaxed">
                           {item.documents_submitted 
-                            ? 'أوراقك الرسمية مسجلة ومحفوظة لدى فريق العمليات بمخلصة لتدقيق تسوية البنك وفك الحظر.'
-                            : 'لتسريع تسوية المديونية وتأكيد جدية المشترين، يمكنك رفع صور رخصة السيارة والبطاقة القومية وبيان السداد المعجل مباشرة عبر الموقع أو إرسالها لواتساب مخلصة.'}
+                            ? 'أوراقك الرسمية مسجلة ومحفوظة لدى فريق العمليات بمخالصة لتدقيق تسوية البنك وفك الحظر.'
+                            : 'لتسريع تسوية المديونية وتأكيد جدية المشترين، يمكنك رفع صور رخصة السيارة والبطاقة القومية وبيان السداد المعجل مباشرة عبر الموقع أو إرسالها لواتساب مخالصة.'}
                         </p>
 
                         <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -1421,7 +1421,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
                           </button>
 
                           <a
-                            href={`https://wa.me/201008836962?text=${encodeURIComponent(`مرحباً إدارة مخلصة، أرغب في إرسال المستندات الرسمية لإعلاني كود: ${item.id.slice(0, 8)} (${item.make} ${item.model} ${item.year})`)}`}
+                            href={`https://wa.me/201008836962?text=${encodeURIComponent(`مرحباً إدارة مخالصة، أرغب في إرسال المستندات الرسمية لإعلاني كود: ${item.id.slice(0, 8)} (${item.make} ${item.model} ${item.year})`)}`}
                             target="_blank"
                             rel="noreferrer"
                             className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-2xs transition flex items-center gap-1.5"
@@ -1498,7 +1498,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
 
                 {incomingOffers.length === 0 ? (
                   <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 text-slate-400 text-xs">
-                    لا توجد عروض شراء واردة على سياراتك حالياً. بمجرد قيام مشتري بتقديم عرض وتمريره من فريق مخلصة سيظهر هنا لاتخاذ قرارك.
+                    لا توجد عروض شراء واردة على سياراتك حالياً. بمجرد قيام مشتري بتقديم عرض وتمريره من فريق مخالصة سيظهر هنا لاتخاذ قرارك.
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-3">
@@ -1545,14 +1545,14 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
                             <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-xl space-y-3">
                               <div className="text-2xs font-bold text-amber-900 flex items-center gap-1.5">
                                 <Clock className="w-4 h-4 text-amber-600" />
-                                <span>تم تمرير هذا العرض لك من مستشار مخلصة — يرجى تحديد موقفك:</span>
+                                <span>تم تمرير هذا العرض لك من مستشار مخالصة — يرجى تحديد موقفك:</span>
                               </div>
 
                               <input
                                 type="text"
                                 value={sellerResponseNotes[offer.id] || ''}
                                 onChange={(e) => setSellerResponseNotes(prev => ({ ...prev, [offer.id]: e.target.value }))}
-                                placeholder="أضف ملاحظة للمشتري ومستشار مخلصة (اختياري)..."
+                                placeholder="أضف ملاحظة للمشتري ومستشار مخالصة (اختياري)..."
                                 className="w-full px-3 py-2 rounded-xl bg-white border border-amber-300 text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
                               />
 
@@ -1594,7 +1594,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
                                 </span>
                               </div>
                               <p className="text-2xs text-emerald-700 leading-relaxed pr-6">
-                                تم تسجيل موافقتك بنجاح وإشعار المشتري وإدارة مخلصة. سيتواصل معك مستشار الصفقات لتنسيق المعاينة والفحص والتسوية البنكية خلال 24 ساعة.
+                                تم تسجيل موافقتك بنجاح وإشعار المشتري وإدارة مخالصة. سيتواصل معك مستشار الصفقات لتنسيق المعاينة والفحص والتسوية البنكية خلال 24 ساعة.
                               </p>
                             </div>
                           ) : (
@@ -1662,7 +1662,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
                           <span>السعر المطلوب: <strong className="font-mono text-slate-700">{offer.askingPrice.toLocaleString('ar-EG')} ج.م</strong></span>
                         </div>
                         <div className="text-3xs text-slate-400">
-                          * حماية الخصوصية (Priority 8): رقم هاتف البائع محمي ولا يتم كشفه؛ التنسيق يتم مباشرة بإشراف مخلصة.
+                          * حماية الخصوصية (Priority 8): رقم هاتف البائع محمي ولا يتم كشفه؛ التنسيق يتم مباشرة بإشراف مخالصة.
                         </div>
                       </div>
                     ))}
@@ -2201,7 +2201,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
                   خصوصية تامة وحماية مشفرة
                 </span>
                 <p className="text-3xs text-emerald-800 leading-relaxed">
-                  هذه المستندات مشفرة ولا تظهر لأي زائر أو مشترٍ في الموقع. مخصصة حصرياً لفريق إدارة مخلصة لمطابقة السجل واعتماد شارة (أوراق مفحوصة وموثقة).
+                  هذه المستندات مشفرة ولا تظهر لأي زائر أو مشترٍ في الموقع. مخصصة حصرياً لفريق إدارة مخالصة لمطابقة السجل واعتماد شارة (أوراق مفحوصة وموثقة).
                 </p>
               </div>
             </div>
@@ -2442,7 +2442,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
                   rel="noreferrer"
                   className="text-3xs font-black text-emerald-800 underline hover:text-emerald-950"
                 >
-                  فتح واتساب مخلصة
+                  فتح واتساب مخالصة
                 </a>
               </div>
 
@@ -2488,7 +2488,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
                 طلب حذف الحساب نهائياً
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                هل أنت متأكد من رغبتك في حذف حسابك من منصة «مخلصة»؟
+                هل أنت متأكد من رغبتك في حذف حسابك من منصة «مخالصة»؟
               </p>
             </div>
 
